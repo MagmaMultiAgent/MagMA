@@ -1,0 +1,35 @@
+FROM 12.2.0-devel-ubuntu20.04
+
+# Set working directory
+WORKDIR '/usr/src/luxai'
+
+# Install required system packages
+RUN apt-get update --fix-missing && \
+    apt-get install -y wget bzip2 ca-certificates curl git && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Miniconda
+RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh && \
+    /bin/bash ~/miniconda.sh -b -p /opt/conda && \
+    rm ~/miniconda.sh && \
+    /opt/conda/bin/conda clean -a && \
+    ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh && \
+    echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc && \
+    echo "conda activate base" >> ~/.bashrc
+
+# Set environment variables
+ENV PATH /opt/conda/bin:$PATH
+
+COPY src/Lux-Design-S2/environment.yml .
+
+RUN conda env create -f env.yml && conda clean -afy
+
+SHELL ["conda", "run", "-n", "luxai_s2", "/bin/bash", "-c"]
+
+# Set PATH for the Conda environment
+ENV PATH /opt/conda/envs/luxai_s2/bin:$PATH
+
+# Install Lux AI Python package
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir --upgrade luxai_s2 juxai-s2
