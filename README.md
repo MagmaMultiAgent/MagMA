@@ -1,5 +1,12 @@
-### Automated Game Validation using RL methods - Thesis
+### Thesis Project - Lux AI Competition
 
-[Overleaf](https://www.overleaf.com/project/63f3787cc02f1f4ade847e9d)
+----
 
-[Figma Board](https://www.figma.com/file/lkaIcC9OVWUrqiFIEV4rIH/MineRL?node-id=0-1&t=xzLmjwiJ7z8GhJ9x-0)
+## 2023.08.10
+
+ - Created two Dockerfiles, both for CPU and GPU usage.
+ - Created a simple reinforcement learning agent template wrapper for future use.
+ - Created a Figma board that encompasses the logic behind the game.
+
+![Lux AI Competition](resources/LuxAIDummy.jpg)
+
