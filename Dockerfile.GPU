@@ -1,4 +1,4 @@
-FROM 12.2.0-devel-ubuntu20.04
+FROM ubuntu:12.2.0-devel-ubuntu20.04
 
 # Set working directory
 WORKDIR '/usr/src/luxai'
@@ -21,15 +21,23 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86
 # Set environment variables
 ENV PATH /opt/conda/bin:$PATH
 
-COPY src/Lux-Design-S2/environment.yml .
+COPY envs/environment.yml .
 
-RUN conda env create -f env.yml && conda clean -afy
+RUN conda env create -f environment.yml && conda clean -afy
 
 SHELL ["conda", "run", "-n", "luxai_s2", "/bin/bash", "-c"]
 
 # Set PATH for the Conda environment
 ENV PATH /opt/conda/envs/luxai_s2/bin:$PATH
 
-# Install Lux AI Python package
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir --upgrade luxai_s2 juxai-s2
+# Install Lux AI Python packages
+RUN pip install --no-cache-dir --upgrade pip
+
+RUN apt update -y && apt upgrade -y && apt install -y build-essential && apt-get install -y manpages-dev
+    
+RUN pip install --no-cache-dir setuptools==57.1.0 psutil==5.7.0 \ 
+    pettingzoo==1.12.0 vec_noise==1.1.4 \
+    pygame termcolor wheel==0.38.4 notebook tensorboard
+
+RUN pip install stable_baselines3==1.7.0 gym==0.21 --upgrade luxai_s2 juxai-s2
+

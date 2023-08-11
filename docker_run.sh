@@ -1,0 +1,1 @@
+docker run -it -p 8888:8888 -v $(pwd)/src:/usr/src/luxai ranuon98/luxai_cpu /bin/bash
