@@ -1,0 +1,1 @@
+docker build --platform linux/x86_64 -t ranuon98/luxai_cpu -f Dockerfile.CPU .
