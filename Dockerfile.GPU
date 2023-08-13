@@ -1,4 +1,4 @@
-FROM ubuntu:12.2.0-devel-ubuntu20.04
+FROM nvidia/cuda:12.2.0-base-ubuntu20.04
 
 # Set working directory
 WORKDIR '/usr/src/luxai'
@@ -21,10 +21,13 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86
 # Set environment variables
 ENV PATH /opt/conda/bin:$PATH
 
+# Copy conda environment file
 COPY envs/environment.yml .
 
+# Create environment from yaml file
 RUN conda env create -f environment.yml && conda clean -afy
 
+# Set up bash to run with luxai_s2 conda environment
 SHELL ["conda", "run", "-n", "luxai_s2", "/bin/bash", "-c"]
 
 # Set PATH for the Conda environment
@@ -33,11 +36,17 @@ ENV PATH /opt/conda/envs/luxai_s2/bin:$PATH
 # Install Lux AI Python packages
 RUN pip install --no-cache-dir --upgrade pip
 
+# Install basic dev tools, like GCC
 RUN apt update -y && apt upgrade -y && apt install -y build-essential && apt-get install -y manpages-dev
-    
+
+# Intall prerequisites for LUX
 RUN pip install --no-cache-dir setuptools==57.1.0 psutil==5.7.0 \ 
-    pettingzoo==1.12.0 vec_noise==1.1.4 \
+    pettingzoo==1.12.0 vec_noise==1.1.4 ipykernel \
     pygame termcolor wheel==0.38.4 notebook tensorboard
 
+# Install Lux, RL baselines and Jax
 RUN pip install stable_baselines3==1.7.0 gym==0.21 --upgrade luxai_s2 juxai-s2
+
+# Add Lux conda env to ipykernel to run Notebooks
+RUN python -m ipykernel install --user --name=luxai_s2
 
