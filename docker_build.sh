@@ -1,31 +1,40 @@
 #!/bin/bash
 
-if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
-    echo "Usage: $0 <os> <device> <version>"
-    echo "Arguments:"
-    echo "  os      : Operating system (mac/windows)"
-    echo "  device  : Device type (CPU/GPU)"
-    echo "  version : Docker version tag"
-    exit 0
-fi
+while getopts ":os:device:ver:h" opt; do
+    case $opt in
+        os)
+            os=$OPTARG
+            ;;
+        device)
+            device=$OPTARG
+            ;;
+        ver)
+            version=$OPTARG
+            ;;
+        h)
+            echo "Usage: $0 -os <win/mac> -device <cpu/gpu> -ver <version>"
+            exit 0
+            ;;
+        \?)
+            echo "Invalid option: -$OPTARG. Use '$0 -h' for usage information." >&2
+            exit 1
+            ;;
+    esac
+done
 
-if [ "$#" -ne 3 ]; then
-    echo "Error: Incorrect number of arguments. Use '$0 --help' for usage information."
+if [ -z "$os" ] || [ -z "$device" ] || [ -z "$version" ]; then
+    echo "Error: Missing arguments. Use '$0 -h' for usage information."
     exit 1
 fi
 
-if [ "$1" = "mac" ]; then
-    if [ "$2" = "CPU" ]; then
-        docker build --platform linux/x86_64 -t ranuon98/luxai_cpu:"$3" -f Dockerfile.CPU .
-    else
-        docker build --platform linux/x86_64 -t ranuon98/luxai_gpu:"$3" -f Dockerfile.GPU .
-    fi
+if [ "$os" = "mac" ]; then
+    platform="--platform linux/x86_64"
 else
-    if [ "$2" = "CPU" ]; then
-        docker build -t ranuon98/luxai_cpu:"$3" -f Dockerfile.CPU .
-    else
-        docker build -t ranuon98/luxai_gpu:"$3" -f Dockerfile.GPU .
-    fi
+    platform=""
 fi
 
-
+if [ "$device" = "CPU" ]; then
+    docker build $platform -t ranuon98/luxai_cpu:"$version" -f Dockerfile.CPU .
+else
+    docker build $platform -t ranuon98/luxai_gpu:"$version" -f Dockerfile.GPU .
+fi
