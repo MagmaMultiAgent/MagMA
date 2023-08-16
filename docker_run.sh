@@ -26,7 +26,7 @@ if [ -z "$device" ] || [ -z "$version" ]; then
     usage
 fi
 
-if [ "$device" = "CPU" ]; then
+if [ "$device" = "cpu" ]; then
     docker run -it -p 8888:8888 -v $(pwd)/src:/usr/src/luxai ranuon98/luxai_cpu:"$version" /bin/bash
 else
     docker run -it --gpus all -p 8888:8888 -v $(pwd)/src:/usr/src/luxai ranuon98/luxai_gpu:"$version" /bin/bash
