@@ -1,203 +1,101 @@
-# Thesis Project - Lux AI Competition
 
-This repository is a record of my research journey, starting from brainstorming RL solutions in game environments, diving into RL competitions, and eventually crafting agents for the 2023 Lux AI competition held during the yearly NeurIPS conference.
+<p align="center">
+    <img width="100%"  src="docs/images/logo.png" />
+</p>
 
-----
+# VigIL - Lux AI Competition
 
-## June:
+This repository is a record of my research journey, starting from brainstorming **RL and IL** solutions in game environments, diving into RL competitions, and eventually crafting agents for the 2023 Lux AI competition held during the yearly **NeurIPS conference**.
 
-### Week 3:
+The **Lux AI Challenge** is a competition where competitors design agents to tackle a multi-variable optimization, resource gathering, and allocation problem in a 1v1 scenario against other competitors. In addition to optimization, successful agents must be capable of analyzing their opponents and developing appropriate policies to get the upper hand.
 
-Researching Ideas for Auto-Validating Games with RL and Imitation Learning.
+# Getting Started
 
-As video games grow in size, testing becomes a bigger headache with new bits adding up. This often leads to quick checks or even ignoring testing in some areas. AI can be used as a validation assistant to inform developers about potential bugs or loopholes in their designs. Imitation Learning, also known as Learning from Demonstrations or Learning from Experts, involves training a model to replicate the behavior demonstrated by an expert. In this approach, the model learns from a dataset of expert demonstrations and aims to mimic their actions. It is particularly useful when expert knowledge is available and can be leveraged to guide the learning process. Imitation Learning is commonly used in scenarios where the optimal policy is difficult to directly define or derive, such as in complex control tasks. RL is quite different, since it interacts and learns from an environment through trial and error. The utilization of both or a mixture of these algorithms to learn exploits and find bugs in a game could prove useful.
+I highly recommend utilizing Docker to set up and manage the environment on your system. Alternatively, a binary installation is also a viable option, especially considering the excellent performance and reliability of the official [pip](https://pypi.org/project/luxai-s2/) package.
 
-#### **Tasks**:
+## Docker
 
-* Research novel RL algorithms, that are used frequently in industry and practice. Found OpenAI Spinning-Up. Researched PPO and DQN. ✅
-* Find recently published research papers about the usage and limits of imitation learning in game design. All papers are included in the */papers/* directory. ✅
-* Find solutions that interlink Reinforcement Learning and Imitation Learning to create a composite Game Validator. ✅
-* Find working implementations of simple Game Design Validators. ❌
+For implementing this solution, it's essential to have Docker Desktop installed on your system. Detailed guides for setting up Docker Desktop on [Mac](https://docs.docker.com/desktop/install/mac-install/), [Windows](https://docs.docker.com/desktop/install/windows-install/), and [Linux](https://docs.docker.com/desktop/install/linux-install/) can be accessed through the official Docker website. 
 
-[OpenAI Spinning-Up Project](https://spinningup.openai.com/en/latest/)
+### CPU
 
-[OpenAI PPO](https://openai.com/research/openai-baselines-ppo)
+Once Docker is properly configured on your system to execute the environment using a **CPU**, you can proceed by using the provided **run script**.
 
-[OpenAI DQN](https://openai.com/research/openai-baselines-dqn)
+```bash
+bash ./docker_run.sh -d cpu -v latest
+```
 
-### Week 4:
+### GPU
 
-Researching RL platforms and games for benchmarking.
+To employ [JAX](https://github.com/google/jax) as the backend and execute the environment on a GPU device, follow the script below:
 
-Given the scarcity of well-documented and practical implementations in the worl of Game Validation, the journey for a suitable Reinforcement Learning platform became a must. Notably, OpenAI has made substantial strides in RL research, culminating in the development of OpenAI Gym. This open-source Python library serves as a pivotal resource for the creation and comparison of reinforcement learning algorithms. It establishes a standardized interface for seamless interaction between learning algorithms and diverse environments, accompanied by a comprehensive collection of environments according to this API.
+```bash
+bash ./docker_run.sh -d gpu -v latest
+```
 
-In the year 2021, the ownership of Gym transitioned to the hands of the Farama team, leading to its rebranding as Gymnasium. Gymnasium not only offers an extensive array of native game environments but also supports APIs to seamlessly integrate third-party games like MineRL or gym-derk.
+## Binary
 
-#### **Tasks**:
+You will need Python >=3.7, <3.11 installed on your system. Once installed, you can install the Lux AI season 2 environment and optionally the GPU version with:
 
-* Research RL platforms that offer a wide array of APIs to solve RL environments. ✅
-* Familiarize with OpenAI Gym and its API to build a basic RL agent. ✅
-* MineRL stands out as an ideal game for benchmarking and validating Reinforcement Learning (RL) algorithms in the context of Game Design Validation. Its active competitions, backed by OpenAI and AICrowd, focus on solving four complex problems within tight timeframes, mirroring human-like performance. MineRL's versatile environment allows for the simultaneous application of diverse Deep Learning and RL approaches, addressing challenges in a partially observable, modelless setting devoid of explicit rewards. This unique blend of features positions MineRL as a crucial platform for refining RL techniques and exploring innovative Game Design concepts. ✅
-* Explore the realm of possibilities within Minecraft's environment that could be used for exploitation by an agent. Find ways to suggest alternative development ideas to increase task complexity or eliminate exploitory solutions. Task could be: Diamond Collection, Reaching the End Portal, etc. ✅
+```bash
+pip install --upgrade luxai_s2
+pip install juxai-s2 # installs the GPU version, requires a compatible GPU
+```
 
-[MineRL: Basalt Competition 2022](https://minerl.io/basalt/)
+Due to potential compatibility challenges when installing `gym` alongside `vec_noise` and the `stable_baselines3` package, it is advisable to apply specific version **tags** during installation to prevent potential crashes. To mitigate this, I've streamlined the package selection in the [environment.yml file](https://github.com/Getlar/VigIL-Game-Validation/blob/main/envs/conda/environment.yml), aiming to alleviate strain on the conda environment setup.
 
-[MineRL: Official Competition Page](https://www.aicrowd.com/challenges/neurips-2022-minerl-basalt-competition)
+To create a conda environment and use it run:
 
-[GymDerk: GPU accelerated MOBA in Gym](https://gym.derkgame.com/)
+```bash
+conda env create -f environment.yml
+conda activate luxai_s2
+```
 
-[OpenAI Gymnasium](https://gymnasium.farama.org/)
+To install **additional packages** required to train and run specific agents run the following commands:
 
-![viewer|64x64](/docs/gifs/1.gif)
-![viewer|64x64](/docs/gifs/2.gif)
-![viewer|64x64](/docs/gifs/3.gif)
-![viewer|64x64](/docs/gifs/4.gif)
+```bash
+apt update -y && apt upgrade -y && apt install -y build-essential && apt-get install -y manpages-dev # Required if dev tools are missing.
+```
+```bash
+pip install --no-cache-dir setuptools==57.1.0 psutil==5.7.0 pettingzoo==1.12.0 vec_noise==1.1.4 ipykernel pygame termcolor wheel==0.38.4 notebook tensorboard
+```
+```bash
+pip install stable_baselines3==1.7.0 gym==0.21 --upgrade luxai_s2 
+```
+# Run
 
-----
+To verify your installation, you can run the CLI tool by replacing `path/to/bot/main.py` with a path to a bot.
 
-## July:
+```bash
+luxai-s2 path/to/bot/main.py path/to/bot/main.py -v 2 -o replay.json
+```
 
-### Week 1:
+This will turn on logging to level 2, and store the replay file at *replay.json*.
 
-Research the competitions and its environment. Create a basic MineRL agent, that can traverse the map.
+# Train
 
-In delving into the MineRL framework from an academic perspective, I first studied the previous year's competition paper and thoroughly examined the comprehensive official documentation. Further insights were gained by analyzing scholarly papers from the competition winners, who generously shared their open-source submissions. Additionally, a great livestream, hosted by event organizers provided detailed explanations of these submissions. The combined knowledge gained from these resources was enough to choose a path to follow in the development process.
+To use the training code, run [train.py](https://github.com/Getlar/VigIL-Game-Validation/blob/main/src/Lux-Agents-S2/train.py) --help for help and to train an agent run:
 
+```bash
+python src/Lux-Agents-S2/train.py --n-envs 4 --log-path logs/exp_1  --seed 660
+```
 
+Set your `--n-envs` according to your available CPU cores. This will train an RL agent using the PPO algorithm with 4 parallel environments to sample from.
 
-* Study the competition paper in order to understand the game environment and pre-training processes. ✅
-* Go through all available social media content to find hints, smart remarks or other interesting bits that help with familiarizing with the game. ✅
-* Create a basic agent, that can traverse the environment and do basic actions. ✅
-* Research and create a literature review from past accepted solutions. ✅
+# Evaluation
 
-![Basalt 2021](docs/images//MineRL2021.png)
+To start evaluating with the CLI tool and eventually submit to the competition, we need to save our best model (stored in <log_path>/models/best_model.zip) to the root directory. Alternatively you can modify `MODEL_WEIGHTS_RELATIVE_PATH` in [agent.py](https://github.com/Getlar/VigIL-Game-Validation/blob/main/src/Lux-Agents-S2/agent.py) to point to where the model file is. If you ran the training script above it will save the trained agent to `logs/exp_1/models/best_model.zip`.
 
-![Basalt 2022](docs/images//MineRL2022.png)
+Once that is setup, you can test and watch your trained agent on the nice HTML visualizer by running the following:
 
-![Competitions](docs/images//CompetitionShort.png)
+```bash
+luxai-s2 main.py main.py --out=replay.html
+```
 
-[Team Kairos Youtube](https://www.youtube.com/watch?v=0Xu1EkrFefo&t) / [Team Kairos GitHub](https://github.com/viniciusguigo/kairos_minerl_basalt)
+Open up `replay.html` and you can look at what your agent is doing.
 
-[Team Obsidian Youtube](https://www.youtube.com/watch?v=ZOHIFjZB-DM) / [Team Obsidian GitHub](https://github.com/Div99/IQ-Learn)
+# Core Contributors
 
-[Team NotYourRL Youtube](https://www.youtube.com/watch?v=IjNf7Wc3E90&t) / [Team NotYourRL GitHub](https://github.com/TomFrederik/basalt-notyourrl)
+I would like to extend my heartfelt gratitude to [Gulyás László](https://github.com/lesIII) for their invaluable guidance and insightful mentorship throughout the course of this project.
 
-[Team GoUp GitHub](https://github.com/gomiss/neurips-2022-minerl-basalt-competition)
-
-[Team Voggite GitHub](https://github.com/shuishida/minerl_2022)
-
-### Week 2:
-
-Research the VPT model and solutions around it.
-
-As for the 2022 MineRL Basalt event, a new tool, called VPT (Video Pre-Training) model was given to competitors to use freely in their submissions. VPT is a trained a neural network to play Minecraft by Video PreTraining (VPT) on a massive unlabeled video dataset of human Minecraft play, while using only a small amount of labeled contractor data. With fine-tuning, the model can learn to craft diamond tools, a task that usually takes proficient humans over 20 minutes (24,000 actions). The model uses the native human interface of keypresses and mouse movements, making it quite general, and represents a step towards general computer-using agents. An IDM model is trained on recorded contractor data that can predict future actions, given a frame of the game. The IDM model can be further used to label even more data, now free of charge.
-
-#### **Tasks**:
-
-* Run an agent using multiple models from the model zoo available on the official GitHub page of the project. ✅
-* Run fine-tuned models on Diamond collection or house building. ✅
-* Run the IDM model and test it on new unseen video data. ✅
-* Fine tune the *1x Width Foundaition Model* to find water. ❌
-
-[OpenAI VPT Blog](https://openai.com/research/vpt) / [OpenAI VPT Paper](https://cdn.openai.com/vpt/Paper.pdf)
-
-[Running IDM](https://www.youtube.com/watch?v=wgmpqLcmTgM)
-
-[Running Foundation](https://www.youtube.com/watch?v=RHcWwsiHP_c)
-
-[Running Foundation with Behavioral Cloning](https://www.youtube.com/watch?v=zjapCRIwXp4)
-
-[Running Foundation with Behavioral Cloning Fine-Tuned for Diamond Collection](https://www.youtube.com/watch?v=fmmf1SHr4jU)
-
-### Week 3:
-
-Be on the lookout for new competitions and conference announcements.
-
-As a result of insufficient sponsorship for the 2023 iteration of the MineRL competition, the project has been temporarily suspended with an indefinite timeline. In light of this, several alternative online competitions and conferences, including but not limited to Kaggle, NeurIPS 2023, and IJCAI 2023, have emerged as potential avenues for participation and engagement.
-
-#### **Tasks**:
-
-* Search for possible conferences, events or online competitions that feature RL as a standard. ✅
-* Identifying at least three promising competitions. ✅
-* Conducting thorough research on the chosen competitions and creating a decision matrix. ✅
-* Making a final recommendation based on emerging news, events and weighted pros and cons. ✅
-
-![Competition List](/docs/images/Competitions.png)
-
-[NeuralMMO GitHub](https://neuralmmo.github.io/_build/html/rst/landing.html)
-
-[Melting Pot GitHub](https://github.com/deepmind/meltingpot)
-
-[LuxAI Season 2 GitHub](https://github.com/Lux-AI-Challenge/Lux-Design-S2#getting-started)
-
-### Week 4:
-
-
-My assigned tasks encompassed a comprehensive exploration of the LuxAI Season 2 competition, involving an in-depth review of multiple sources including documentation, the Kaggle platform, and GitHub repositories. 
-
-#### **Tasks**:
-
-* Thoroughly understand the basic and advanced specifications outlined in the official documentation. ✅
-* Analyze the Kaggle competition page to gain insights into the competition's structure, rules, and resources. ✅
-* Investigate the relevant GitHub repositories to gain a deeper understanding of the competition's technical aspects. ✅
-* Grasp the primary goal of the LuxAI Season 2 game, including its mechanics and win conditions. ✅
-* Gain insights into how the initial factory bidding process functions and influences gameplay. ✅
-* Understand the mechanics of constructing heavy and light machinery within the game environment. ✅
-* Delve into the functioning of water and lichen within the game, including their roles and effects. ✅
-* Gain a comprehensive understanding of how resource collection, particularly ore and ice, contributes to gameplay. ✅
-* Learn how agents interact with factories to deposit resources and contribute to production. ✅
-* Understand the rate at which factories consume water, ice, and ore resources. ✅
-* Explore the constraints on converting ice and ore resources into water and mental units within factories. ✅
-* Grasp how each agent navigates and interacts with the game environment during its turns. ✅
-* Determine the time allotted to each agent for making decisions within the game. ✅
-* Experiment with Lux Eye, a GUI tool, to visualize and gain insights into gameplay scenarios. ✅
-
----- 
-
-## August:
-
-## 2023.08.09
-
-- Followed the two tutorials available on the Kaggle page to understand the Gym API.
-- Tested a basic agent that chooses actions randomly.
-- Tested a basic agent which is trained using PPO to mine ice and keep its factory alive.
-
-[RL with Lux](https://www.kaggle.com/code/stonet2000/rl-with-lux-2-rl-problem-solving/notebook?scriptVersionId=121082267)
-
-## 2023.08.10
-
- - Created two Dockerfiles, both for CPU and GPU usage.
- - Created a simple reinforcement learning agent template wrapper for future use.
- - Created a Figma board that encompasses the logic behind the game.
-
-![Lux AI Competition](docs/images//LuxAIDummy.jpg)
-
-## 2023.08.11.
-
-- Fixed the Dockerfile for GPU. It was using the wrong pre-built image and the nVIDIA development libraries were missing.
-- Installed Jax and went through the basics to be able to train an agent on the GPU using it.
-- Added Build and Run scripts for Docker.
-- Fixed project directory hierarchy and decluttered the repository.
-
-## 2023.08.12 - 2023.08.13 (Weekend)
-
-- Trained an RL agent using PPO to bid and place an initial factory and create a heavy robot that could sustain one factory water consumption as long as the episode lasts.
-- Researched the Stable-Baselines3 GitHub repository.
-- Engaged the trained model in self-play.
-
-[Stable Baselines 3](https://github.com/DLR-RM/stable-baselines3)
-
-## 2023.08.14
-
-- Researched novel RL algorithms in the educational resources produced by OpenAI, Spinning-Up
-- Chose algorithms to be used for training a simple heavy robot to survive: DQN, A2C, DDPG, SAC, Twin Delayed DDPG és Truncated Quantile Critics (TQC).
-- Trained a model on GPU using Jax.
-
-## 2023.08.15
-
-- Summarized training evaluation metrics.
-- Chose key evaluation metrics to compare RL baselines.
-- Set Up GitHub Wiki for better managing the research diary.
-- Set Up GitHub projects to track the completion rate of tasks and ideas.
-- Set Up GitHub Actions for CI/CD practices.
-- Changed README in root for a project template.
+I am also thankful to **Eötvös Lóránd University** for providing the necessary resources and environment that facilitated the development of this project.

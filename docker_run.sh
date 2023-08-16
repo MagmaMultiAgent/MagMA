@@ -1,27 +1,29 @@
 #!/bin/bash
 
+usage() { echo "Usage: $0 [-device <cpu|gpu>] [-ver <version>]" 1>&2; exit 1; }
+
 while getopts ":d:v:h" opt; do
     case $opt in
-        device)
+        d)
             device=$OPTARG
             ;;
-        ver)
+        v)
             version=$OPTARG
             ;;
         h)
             echo "Usage: $0 -device <cpu/gpu> -ver <version>"
             exit 0
             ;;
-        \?)
-            echo "Invalid option: -$OPTARG. Use '$0 -h' for usage information." >&2
-            exit 1
+        :) 
+            echo "Option -$OPTARG requires an argument." >&2;;
+        *)
+            usage
             ;;
     esac
 done
 
 if [ -z "$device" ] || [ -z "$version" ]; then
-    echo "Error: Missing arguments. Use '$0 -h' for usage information."
-    exit 1
+    usage
 fi
 
 if [ "$device" = "CPU" ]; then

@@ -1,30 +1,28 @@
 #!/bin/bash
 
-while getopts ":os:device:ver:h" opt; do
+usage() { echo "Usage: $0 [-os <win|max>] [-device <cpu|gpu>] [-ver <version>]" 1>&2; exit 1; }
+
+while getopts "o:d:v:" opt; do
     case $opt in
-        os)
-            os=$OPTARG
+        o)
+            os=${OPTARG}
             ;;
-        device)
-            device=$OPTARG
+        d)
+            device=${OPTARG}
             ;;
-        ver)
-            version=$OPTARG
+        v)
+            version=${OPTARG}
             ;;
-        h)
-            echo "Usage: $0 -os <win/mac> -device <cpu/gpu> -ver <version>"
-            exit 0
-            ;;
-        \?)
-            echo "Invalid option: -$OPTARG. Use '$0 -h' for usage information." >&2
-            exit 1
+        :) 
+            echo "Option -$OPTARG requires an argument." >&2;;
+        *)
+            usage
             ;;
     esac
 done
 
 if [ -z "$os" ] || [ -z "$device" ] || [ -z "$version" ]; then
-    echo "Error: Missing arguments. Use '$0 -h' for usage information."
-    exit 1
+    usage
 fi
 
 if [ "$os" = "mac" ]; then
@@ -33,7 +31,7 @@ else
     platform=""
 fi
 
-if [ "$device" = "CPU" ]; then
+if [ "$device" = "cpu" ]; then
     docker build $platform -t ranuon98/luxai_cpu:"$version" -f Dockerfile.CPU .
 else
     docker build $platform -t ranuon98/luxai_gpu:"$version" -f Dockerfile.GPU .
