@@ -1,6 +1,6 @@
 #!/bin/bash
 
-usage() { echo "Usage: $0 [-device <cpu|gpu>] [-ver <version>]" 1>&2; exit 1; }
+usage() { echo "Usage: $0 [-d <cpu|gpu>] [-v <version>]" 1>&2; exit 1; }
 
 while getopts ":d:v:h" opt; do
     case $opt in
@@ -9,10 +9,6 @@ while getopts ":d:v:h" opt; do
             ;;
         v)
             version=$OPTARG
-            ;;
-        h)
-            echo "Usage: $0 -device <cpu/gpu> -ver <version>"
-            exit 0
             ;;
         :) 
             echo "Option -$OPTARG requires an argument." >&2;;
