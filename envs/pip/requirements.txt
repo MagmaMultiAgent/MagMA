@@ -35,8 +35,6 @@ fqdn==1.5.1
 google-auth==2.22.0
 google-auth-oauthlib==1.0.0
 grpcio==1.57.0
-gym==0.21.0
-gym-notices==0.0.8
 idna==3.4
 importlib-metadata==4.13.0
 importlib-resources==6.0.1
