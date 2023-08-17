@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from lux.cargo import UnitCargo
-from lux.config import EnvConfig, PowerAttributes
+from lux.config import EnvConfig
 
 
 @dataclass

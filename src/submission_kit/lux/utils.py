@@ -22,7 +22,6 @@ def direction_to(src, target):
         if dir_x > 0:
             return 2
         return 4
-    
     if dir_y > 0:
         return 3
     return 1

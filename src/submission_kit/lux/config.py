@@ -16,8 +16,6 @@ def convert_dict_to_ns(dict_x):
         return Namespace(dict_x)
     return Namespace()
 
-from dataclasses import dataclass
-
 @dataclass
 class UnitConfig:
     """Dataclass storing unit information"""
