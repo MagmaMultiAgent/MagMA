@@ -60,7 +60,7 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta_cpu.outputs.tags }}
           labels: ${{ steps.meta_cpu.outputs.labels }}
-          dockerfile: Dockerfile.CPU
+          file: Dockerfile.CPU
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -113,7 +113,7 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta_gpu.outputs.tags }}
           labels: ${{ steps.meta_gpu.outputs.labels }}
-          dockerfile: Dockerfile.GPU
+          file: Dockerfile.GPU
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
