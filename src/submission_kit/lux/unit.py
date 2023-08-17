@@ -6,7 +6,7 @@ from typing import List
 import numpy as np
 
 from lux.cargo import UnitCargo
-from lux.config import EnvConfig
+from lux.config import EnvConfig, UnitConfig
 
 # a[1] = direction (0 = center, 1 = up, 2 = right, 3 = down, 4 = left)
 move_deltas = np.array([[0, 0], [0, -1], [1, 0], [0, 1], [-1, 0]])
@@ -23,7 +23,7 @@ class Unit:
     power: int
     cargo: UnitCargo
     env_cfg: EnvConfig
-    unit_cfg: dict
+    unit_cfg: UnitConfig
     action_queue: List
 
     @property
@@ -35,7 +35,7 @@ class Unit:
 
     def action_queue_cost(self):
         """Function returning the cost of changing action queue"""
-        cost = self.env_cfg.ROBOTS[self.unit_type].ACTION_QUEUE_POWER_COST
+        cost = self.env_cfg.robots[self.unit_type].action_queue_power_cost
         return cost
 
     def move_cost(self, game_state, direction):
@@ -55,13 +55,12 @@ class Unit:
             factory_there not in game_state.teams[self.agent_id].factory_strains
             and factory_there != -1
         ):
-            # print("Warning, tried to get move cost for going onto a opposition factory", file=sys.stderr)
             return None
         rubble_at_target = board.rubble[target_pos[0]][target_pos[1]]
 
         return math.floor(
-            self.unit_cfg.MOVE_COST
-            + self.unit_cfg.RUBBLE_MOVEMENT_COST * rubble_at_target
+            self.unit_cfg.mo
+            + self.unit_cfg.rubble_movement_cost * rubble_at_target
         )
 
     def move(self, direction, repeat=0, num=1):
@@ -74,20 +73,20 @@ class Unit:
         self, transfer_direction, transfer_resource, transfer_amount, repeat=0, num=1
     ):
         """Function implementing the transfer action"""
-        assert transfer_resource < 5 and transfer_resource >= 0
-        assert transfer_direction < 5 and transfer_direction >= 0
+        assert 0 <= transfer_resource < 5
+        assert 0 <= transfer_direction < 5
         return np.array(
             [1, transfer_direction, transfer_resource, transfer_amount, repeat, num]
         )
 
     def pickup(self, pickup_resource, pickup_amount, repeat=0, num=1):
         """Function implementing the pickup action"""
-        assert pickup_resource < 5 and pickup_resource >= 0
+        assert 0 <= pickup_resource < 5
         return np.array([2, 0, pickup_resource, pickup_amount, repeat, num])
 
     def dig_cost(self):
         """Function returning the cost of digging"""
-        return self.unit_cfg.DIG_COST
+        return self.unit_cfg.dig_cost
 
     def dig(self, repeat=0, num=1):
         """Function implementing the dig function"""
@@ -95,7 +94,7 @@ class Unit:
 
     def self_destruct_cost(self):
         """Function returning the cost of self-destruction"""
-        return self.unit_cfg.SELF_DESTRUCT_COST
+        return self.unit_cfg.self_destruct_cost
 
     def self_destruct(self, repeat=0, num=1):
         """Function implementing the self-destruct action"""

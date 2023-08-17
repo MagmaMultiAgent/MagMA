@@ -13,14 +13,14 @@ class Controller:
     def __init__(self, action_space: spaces.Space) -> None:
         self.action_space = action_space
 
-    def action_to_lux_action(self):
+    def action_to_lux_action(self, agent, obs, action):
         """
         Takes as input the current "raw observation" and the parameterized action and returns
         an action formatted for the Lux env
         """
         raise NotImplementedError()
 
-    def action_masks(self):
+    def action_masks(self, agent, obs):
         """
         Generates a boolean action mask indicating in each discrete dimension whether
         it would be valid or not
@@ -55,7 +55,6 @@ class SimpleUnitDiscreteController(Controller):
 
         """
     def __init__(self, env_cfg) -> None:
-        
         self.env_cfg = env_cfg
         self.move_act_dims = 4
         self.transfer_act_dims = 5

@@ -6,7 +6,7 @@ not available during the competition running (ATM)
 
 import copy
 import os.path as osp
-
+import argparse
 import gym
 import torch as th
 from gym.wrappers import TimeLimit
@@ -99,7 +99,6 @@ class CustomEnvWrapper(gym.Wrapper):
 
 def parse_args():
     """Function parsing arguments"""
-    import argparse
 
     parser = argparse.ArgumentParser(
         description="Simple script that simplifies Lux AI Season 2 as a single-agent environment \
@@ -156,10 +155,10 @@ def make_env(env_id: str, rank: int, seed: int = 0, max_episode_steps=100):
         # longer if there are more initial resources
         env = gym.make(env_id, verbose=0, collect_stats=True, MAX_FACTORIES=2)
 
-        # Add a SB3 wrapper to make it work with SB3 and simplify the action space with the controller
-        # this will remove the bidding phase and factory placement phase. For factory placement we use
-        # the provided place_near_random_ice function which will randomly select an ice tile and
-        # place a factory near it.
+        # Add a SB3 wrapper to make it work with SB3 and simplify the action space with the
+        # controller this will remove the bidding phase and factory placement phase.
+        # For factory placement we use the provided place_near_random_ice function which
+        # will randomly select an ice tile and place a factory near it.
 
         env = SB3Wrapper(
             env,
@@ -189,12 +188,12 @@ class TensorboardCallback(BaseCallback):
 
     def _on_step(self) -> bool:
         """Function logging on a given step"""
-        c = 0
+        count = 0
 
         for i, done in enumerate(self.locals["dones"]):
             if done:
                 info = self.locals["infos"][i]
-                c += 1
+                count += 1
                 for k in info["metrics"]:
                     stat = info["metrics"][k]
                     self.logger.record_mean(f"{self.tag}/{k}", stat)
@@ -220,7 +219,7 @@ def evaluate(args, env_id, model):
         osp.join(args.log_path, "eval_videos"),
         record_video_trigger=lambda x: x == 0,
         video_length=video_length,
-        name_prefix=f"evaluation_video",
+        name_prefix="evaluation_video",
     )
     eval_env.reset()
     out = evaluate_policy(model, eval_env, render=False, deterministic=False)
@@ -250,6 +249,7 @@ def train(args, env_id, model: PPO):
 
 
 def main(args):
+    """Main function"""
     print("Training with args", args)
     if args.seed is not None:
         set_random_seed(args.seed)

@@ -16,6 +16,8 @@ def convert_dict_to_ns(dict_x):
         return Namespace(dict_x)
     return Namespace()
 
+from dataclasses import dataclass
+
 @dataclass
 class UnitConfig:
     """Dataclass storing unit information"""
@@ -34,6 +36,7 @@ class UnitConfig:
     self_destruct_cost: int = 10
     rubble_after_destruction: int = 1
     action_queue_power_cost: int = 1
+
 
 @dataclass
 class EnvConfig:
@@ -97,7 +100,7 @@ class EnvConfig:
 
     #### Units ####
     robots: Dict[str, UnitConfig] = dataclasses.field(
-        default_factory=lambda: 
+        default_factory=lambda:
             {"light": UnitConfig(metal_cost=10,
                                  power_cost=50,
                                  init_power=50,
@@ -106,13 +109,13 @@ class EnvConfig:
                                  charge=1,
                                  move_cost=1,
                                  rubble_movement_cost=0.05,
-                                 dig_cost=5, 
-                                 self_destruct_cost=5, 
-                                 dig_rubble_removed=2, 
-                                 dig_resource_gain=2, 
-                                 dig_lichen_removed=10, 
-                                 rubble_after_destruction=1, 
-                                 action_queue_power_cost=1), 
+                                 dig_cost=5,
+                                 self_destruct_cost=5,
+                                 dig_rubble_removed=2,
+                                 dig_resource_gain=2,
+                                 dig_lichen_removed=10,
+                                 rubble_after_destruction=1,
+                                 action_queue_power_cost=1),
             "heavy": UnitConfig( metal_cost=100,
                                  power_cost=500,
                                  init_power=500,
@@ -127,7 +130,7 @@ class EnvConfig:
                                  dig_resource_gain=20,
                                  dig_lichen_removed=100,
                                  rubble_after_destruction=10,
-                                 action_queue_power_cost=10,), 
+                                 action_queue_power_cost=10,),
             }
     )
 

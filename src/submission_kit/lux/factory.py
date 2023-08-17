@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from lux.cargo import UnitCargo
-from lux.config import EnvConfig
+from lux.config import EnvConfig, PowerAttributes
 
 
 @dataclass
@@ -23,19 +23,18 @@ class Factory:
 
     def build_heavy_metal_cost(self):
         """Function returning metal cost of building a heavy"""
-        unit_cfg = self.env_cfg.ROBOTS["HEAVY"]
-        return unit_cfg.METAL_COST
+        unit_cfg = self.env_cfg.robots["heavy"]
+        return unit_cfg.metal_cost
 
     def build_heavy_power_cost(self):
         """Function returning power cost of building a heavy"""
-        unit_cfg = self.env_cfg.ROBOTS["HEAVY"]
-        return unit_cfg.POWER_COST
+        unit_cfg = self.env_cfg.robots["heavy"]
+        return unit_cfg.power_cost
 
-    def can_build_heavy(self, game_state):
+    def can_build_heavy(self):
         """Function returning if metal and power are enough for heavy"""
-        return self.power >= self.build_heavy_power_cost(
-            game_state
-        ) and self.cargo.metal >= self.build_heavy_metal_cost(game_state)
+        return self.power >= self.build_heavy_power_cost() \
+            and self.cargo.metal >= self.build_heavy_metal_cost()
 
     def build_heavy(self):
         """Function returning 1"""
@@ -43,19 +42,18 @@ class Factory:
 
     def build_light_metal_cost(self):
         """Function returning metal cost of building a light"""
-        unit_cfg = self.env_cfg.ROBOTS["LIGHT"]
-        return unit_cfg.METAL_COST
+        unit_cfg = self.env_cfg.robots["light"]
+        return unit_cfg.metal_cost
 
     def build_light_power_cost(self):
         """Function returning power cost of building a light"""
-        unit_cfg = self.env_cfg.ROBOTS["LIGHT"]
-        return unit_cfg.POWER_COST
+        unit_cfg = self.env_cfg.robots["light"]
+        return unit_cfg.power_cost
 
-    def can_build_light(self, game_state):
+    def can_build_light(self):
         """Function returning if metal and power are enough for light"""
-        return self.power >= self.build_light_power_cost(
-            game_state
-        ) and self.cargo.metal >= self.build_light_metal_cost(game_state)
+        return self.power >= self.build_light_power_cost() \
+        and self.cargo.metal >= self.build_light_metal_cost()
 
     def build_light(self):
         """Function returning 0"""
@@ -66,7 +64,7 @@ class Factory:
         Water required to perform water action
         """
         owned_lichen_tiles = (game_state.board.lichen_strains == self.strain_id).sum()
-        return np.ceil(owned_lichen_tiles / self.env_cfg.LICHEN_WATERING_COST_FACTOR)
+        return np.ceil(owned_lichen_tiles / self.env_cfg.lichen_watering_cost_factor)
 
     def can_water(self, game_state):
         """Function returning whether factory has enough water to water"""

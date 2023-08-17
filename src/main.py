@@ -16,32 +16,31 @@ agent_dict = (
 agent_prev_obs = {}
 
 
-def agent_fn(observation, configurations):
+def agent_fn(observ, config):
     """
     agent definition for kaggle submission.
     """
-    global agent_dict
-    step = observation.step
+    step = observ.step
 
-    player = observation.player
-    remaining_overage_time = observation.remaining_overage_time
+    player = observ.player
+    remaining_overage_time = observ.remaining_overage_time
     if step == 0:
-        env_cfg = EnvConfig.from_dict(configurations["env_cfg"])
+        env_cfg = EnvConfig.from_dict(config["env_cfg"])
         agent_dict[player] = Agent(player, env_cfg)
         agent_prev_obs[player] = {}
         agent = agent_dict[player]
     agent = agent_dict[player]
-    obs = process_obs(player, agent_prev_obs[player], step, json.loads(observation.obs))
-    agent_prev_obs[player] = obs
+    obs_tmp = process_obs(agent_prev_obs[player], step, json.loads(observ.obs))
+    agent_prev_obs[player] = obs_tmp
     agent.step = step
     if step == 0:
-        actions = agent.bid_policy(step, obs, remaining_overage_time)
-    elif obs["real_env_steps"] < 0:
-        actions = agent.factory_placement_policy(step, obs, remaining_overage_time)
+        act = agent.bid_policy(step, obs_tmp, remaining_overage_time)
+    elif obs_tmp["real_env_steps"] < 0:
+        act = agent.factory_placement_policy(step, obs_tmp, remaining_overage_time)
     else:
-        actions = agent.act(step, obs, remaining_overage_time)
+        act = agent.act(step, obs_tmp, remaining_overage_time)
 
-    return process_action(actions)
+    return process_action(act)
 
 
 if __name__ == "__main__":
@@ -62,7 +61,7 @@ if __name__ == "__main__":
 
         observation = Namespace(
             {"step": obs['step'], "obs": json.dumps(obs['obs']),
-             "remainingOverageTime": obs['remainingOverageTime'],
+             "remaining_overage_time": obs['remaining_overage_time'],
              "player": obs['player'], "info":obs['info']}
         )
         if i == 0:

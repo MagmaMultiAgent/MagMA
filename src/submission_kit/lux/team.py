@@ -21,11 +21,11 @@ class FactionInfo:
 
 class FactionTypes(Enum):
     """Enum class containing all possible factions"""
-    null = FactionInfo(color="gray", faction_id=0)
-    alpha_strike = FactionInfo(color="yellow", faction_id=1)
-    mother_mars = FactionInfo(color="green", faction_id=2)
-    the_builders = FactionInfo(color="blue", faction_id=3)
-    first_mars = FactionInfo(color="red", faction_id=4)
+    NULL = FactionInfo(color="gray", faction_id=0)
+    ALPHA_STRIKE = FactionInfo(color="yellow", faction_id=1)
+    MOTHER_MARS = FactionInfo(color="green", faction_id=2)
+    THE_BUILDERS = FactionInfo(color="blue", faction_id=3)
+    FIRST_MARS = FactionInfo(color="red", faction_id=4)
 
 
 class Team:
@@ -57,10 +57,10 @@ class Team:
 
     def state_dict(self):
         """Function returning state dictionary"""
-        return {"team_id": self.team_id, 
+        return {"team_id": self.team_id,
          "faction": self.faction.name,
-         "water": self.init_water,
-         "metal": self.init_metal,
+         "water": self.water,
+         "metal": self.metal,
          "factories_to_place": self.factories_to_place,
          "factory_strains": self.factory_strains,
          "place_first": self.place_first

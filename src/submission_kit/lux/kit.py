@@ -7,7 +7,7 @@ import numpy as np
 from lux.cargo import UnitCargo
 from lux.config import EnvConfig
 from lux.factory import Factory
-from lux.team import FactionTypes, Team
+from lux.team import Team
 from lux.unit import Unit
 
 
@@ -38,13 +38,12 @@ def from_json(state):
     """Function converting state from JSON to numpy array"""
     if isinstance(state, list):
         return np.array(state)
-    elif isinstance(state, dict):
+    if isinstance(state, dict):
         out = {}
         for k in state:
             out[k] = from_json(state[k])
         return out
-    else:
-        return state
+    return state
 
 
 def process_obs(game_state, step, obs):
@@ -72,7 +71,7 @@ def process_obs(game_state, step, obs):
 
 
 def obs_to_game_state(step, env_cfg: EnvConfig, obs):
-
+    """Function conversting observation to game state"""
     units = {}
     for agent in obs["units"]:
         units[agent] = {}
@@ -141,7 +140,7 @@ class GameState:
     """
 
     env_steps: int
-    env_cfg: dict
+    env_cfg: EnvConfig
     board: Board
     units: Dict[str, Dict[str, Unit]] = field(default_factory=dict)
     factories: Dict[str, Dict[str, Factory]] = field(default_factory=dict)
@@ -153,7 +152,7 @@ class GameState:
         the actual env step in the environment,
         which subtracts the time spent bidding and placing factories
         """
-        if self.env_cfg.BIDDING_SYSTEM:
+        if self.env_cfg.bidding_system:
             # + 1 for extra factory placement and + 1 for bidding step
             return self.env_steps - (self.board.factories_per_team * 2 + 1)
         return self.env_steps
@@ -161,4 +160,4 @@ class GameState:
     # various utility functions
     def is_day(self):
         """Function returning whether its daytime or not"""
-        return self.real_env_steps % self.env_cfg.CYCLE_LENGTH < self.env_cfg.DAY_LENGTH
+        return self.real_env_steps % self.env_cfg.cycle_length < self.env_cfg.day_length

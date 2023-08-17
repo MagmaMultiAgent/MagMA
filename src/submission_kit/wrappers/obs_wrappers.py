@@ -30,6 +30,7 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
         """Function returning Observation Wrapper"""
         return SimpleUnitObservationWrapper.convert_obs(obs, self.env.state.env_cfg)
 
+
     # we make this method static so the submission/evaluation code can use this as well
     @staticmethod
     def convert_obs(obs: Dict[str, Any], env_cfg: Any) -> Dict[str, npt.NDArray]:
