@@ -26,6 +26,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install pylint 
         pip install -r envs/pip/requirements.txt
+        pip install vec-noise==1.1.4
         pip install gym==0.21
 
     - name: Analysing the code with pylint
