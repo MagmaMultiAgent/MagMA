@@ -1,37 +1,43 @@
+"""
+Module responsible for storing configurations of the game
+"""
 import dataclasses
 from argparse import Namespace
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict
 
-
-def convert_dict_to_ns(x):
-    if isinstance(x, dict):
-        for k in x:
-            x[k] = convert_dict_to_ns(x)
-        return Namespace(x)
-
+def convert_dict_to_ns(dict_x):
+    """
+    Function converting dictionary into namespace
+    """
+    if isinstance(dict_x, dict):
+        for k in dict_x:
+            dict_x[k] = convert_dict_to_ns(dict_x)
+        return Namespace(dict_x)
+    return Namespace()
 
 @dataclass
 class UnitConfig:
-    METAL_COST: int = 100
-    POWER_COST: int = 500
-    CARGO_SPACE: int = 1000
-    BATTERY_CAPACITY: int = 1500
-    CHARGE: int = 1
-    INIT_POWER: int = 50
-    MOVE_COST: int = 1
-    RUBBLE_MOVEMENT_COST: float = 1
-    DIG_COST: int = 5
-    DIG_RUBBLE_REMOVED: int = 1
-    DIG_RESOURCE_GAIN: int = 2
-    DIG_LICHEN_REMOVED: int = 10
-    SELF_DESTRUCT_COST: int = 10
-    RUBBLE_AFTER_DESTRUCTION: int = 1
-    ACTION_QUEUE_POWER_COST: int = 1
-
+    """Dataclass storing unit information"""
+    metal_cost: int = 100
+    power_cost: int = 500
+    cargo_space: int = 1000
+    battery_capacity: int = 1500
+    charge: int = 1
+    init_power: int = 50
+    move_cost: int = 1
+    rubble_movement_cost: float = 1
+    dig_cost: int = 5
+    dig_rubble_removed: int = 1
+    dig_resource_gain: int = 2
+    dig_lichen_removed: int = 10
+    self_destruct_cost: int = 10
+    rubble_after_destruction: int = 1
+    action_queue_power_cost: int = 1
 
 @dataclass
 class EnvConfig:
+    """Dataclass containing environment configurations"""
     ## various options that can be configured if needed
 
     ### Variable parameters that don't affect game logic much ###
@@ -46,91 +52,88 @@ class EnvConfig:
     ### Constants ###
     # you can only ever transfer in/out 1000 as this is the max cargo space.
     max_transfer_amount: int = 10000
-    MIN_FACTORIES: int = 2
-    MAX_FACTORIES: int = 5
-    CYCLE_LENGTH: int = 50
-    DAY_LENGTH: int = 30
-    UNIT_ACTION_QUEUE_SIZE: int = 20  # when set to 1, then no action queue is used
+    min_factories: int = 2
+    max_factories: int = 5
+    cycle_length: int = 50
+    day_length: int = 30
+    unit_action_queue_size: int = 20  # when set to 1, then no action queue is used
 
-    MAX_RUBBLE: int = 100
-    FACTORY_RUBBLE_AFTER_DESTRUCTION: int = 50
-    INIT_WATER_METAL_PER_FACTORY: int = (
+    max_rubble: int = 100
+    factory_rubble_after_destruction: int = 50
+    init_water_metal_per_factory: int = (
         150  # amount of water and metal units given to each factory
     )
-    INIT_POWER_PER_FACTORY: int = 1000
+    init_power_per_factory: int = 1000
 
     #### LICHEN ####
-    MIN_LICHEN_TO_SPREAD: int = 20
-    LICHEN_LOST_WITHOUT_WATER: int = 1
-    LICHEN_GAINED_WITH_WATER: int = 1
-    MAX_LICHEN_PER_TILE: int = 100
-    POWER_PER_CONNECTED_LICHEN_TILE: int = 1
+    min_lichen_to_spread: int = 20
+    lichen_lost_without_water: int = 1
+    lichen_gained_with_water: int = 1
+    max_lichen_per_tile: int = 100
+    power_per_connected_lichen_tile: int = 1
 
     # cost of watering with a factory is `ceil(# of connected lichen tiles) / (this factor) + 1`
-    LICHEN_WATERING_COST_FACTOR: int = 10
+    lichen_watering_cost_factor: int = 10
 
     #### Bidding System ####
-    BIDDING_SYSTEM: bool = True
+    bidding_system: bool = True
 
     #### Factories ####
-    FACTORY_PROCESSING_RATE_WATER: int = 100
-    ICE_WATER_RATIO: int = 4
-    FACTORY_PROCESSING_RATE_METAL: int = 50
-    ORE_METAL_RATIO: int = 5
+    factory_processing_rate_water: int = 100
+    ice_water_ratio: int = 4
+    factory_processing_rate_metal: int = 50
+    ore_metal_ratio: int = 5
     # game design note: Factories close to resource cluster = more resources are refined per turn
     # Then the high ice:water and ore:metal ratios encourages transfer of refined resources between
     # factories dedicated to mining particular clusters which is more possible as it is more compact
 
-    FACTORY_CHARGE: int = 50
-    FACTORY_WATER_CONSUMPTION: int = 1
-    # game design note: with a positve water consumption, game becomes quite hard for new competitors.
+    factory_charge: int = 50
+    factory_water_consumption: int = 1
+    # with a positive water consumption, the game becomes quite hard for new competitors.
     # so we set it to 0
 
     #### Collision Mechanics ####
-    POWER_LOSS_FACTOR: float = 0.5
+    power_loss_factor: float = 0.5
 
     #### Units ####
-    ROBOTS: Dict[str, UnitConfig] = dataclasses.field(
-        default_factory=lambda: dict(
-            LIGHT=UnitConfig(
-                METAL_COST=10,
-                POWER_COST=50,
-                INIT_POWER=50,
-                CARGO_SPACE=100,
-                BATTERY_CAPACITY=150,
-                CHARGE=1,
-                MOVE_COST=1,
-                RUBBLE_MOVEMENT_COST=0.05,
-                DIG_COST=5,
-                SELF_DESTRUCT_COST=5,
-                DIG_RUBBLE_REMOVED=2,
-                DIG_RESOURCE_GAIN=2,
-                DIG_LICHEN_REMOVED=10,
-                RUBBLE_AFTER_DESTRUCTION=1,
-                ACTION_QUEUE_POWER_COST=1,
-            ),
-            HEAVY=UnitConfig(
-                METAL_COST=100,
-                POWER_COST=500,
-                INIT_POWER=500,
-                CARGO_SPACE=1000,
-                BATTERY_CAPACITY=3000,
-                CHARGE=10,
-                MOVE_COST=20,
-                RUBBLE_MOVEMENT_COST=1,
-                DIG_COST=60,
-                SELF_DESTRUCT_COST=100,
-                DIG_RUBBLE_REMOVED=20,
-                DIG_RESOURCE_GAIN=20,
-                DIG_LICHEN_REMOVED=100,
-                RUBBLE_AFTER_DESTRUCTION=10,
-                ACTION_QUEUE_POWER_COST=10,
-            ),
-        )
+    robots: Dict[str, UnitConfig] = dataclasses.field(
+        default_factory=lambda: 
+            {"light": UnitConfig(metal_cost=10,
+                                 power_cost=50,
+                                 init_power=50,
+                                 cargo_space=100,
+                                 battery_capacity=150,
+                                 charge=1,
+                                 move_cost=1,
+                                 rubble_movement_cost=0.05,
+                                 dig_cost=5, 
+                                 self_destruct_cost=5, 
+                                 dig_rubble_removed=2, 
+                                 dig_resource_gain=2, 
+                                 dig_lichen_removed=10, 
+                                 rubble_after_destruction=1, 
+                                 action_queue_power_cost=1), 
+            "heavy": UnitConfig( metal_cost=100,
+                                 power_cost=500,
+                                 init_power=500,
+                                 cargo_space=1000,
+                                 battery_capacity=3000,
+                                 charge=10,
+                                 move_cost=20,
+                                 rubble_movement_cost=1,
+                                 dig_cost=60,
+                                 self_destruct_cost=100,
+                                 dig_rubble_removed=20,
+                                 dig_resource_gain=20,
+                                 dig_lichen_removed=100,
+                                 rubble_after_destruction=10,
+                                 action_queue_power_cost=10,), 
+            }
     )
 
     @classmethod
     def from_dict(cls, data):
-        data["ROBOTS"]["LIGHT"] = UnitConfig(**data["ROBOTS"]["LIGHT"])
-        data["ROBOTS"]["HEAVY"] = UnitConfig(**data["ROBOTS"]["HEAVY"])
+        """Class method"""
+        data["robots"]["light"] = UnitConfig(**data["robots"]["light"])
+        data["robots"]["heavy"] = UnitConfig(**data["robots"]["heavy"])
         return cls(**data)

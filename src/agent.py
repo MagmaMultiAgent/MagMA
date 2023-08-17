@@ -1,14 +1,15 @@
+"""Module containing the running agent"""
 import os.path as osp
 import numpy as np
 import torch as th
 from stable_baselines3.ppo import PPO
-from lux.config import EnvConfig
-from wrappers import SimpleUnitDiscreteController, SimpleUnitObservationWrapper
+from submission_kit.lux.config import EnvConfig
+from submission_kit.wrappers import SimpleUnitDiscreteController, SimpleUnitObservationWrapper
 
 # change this to use weights stored elsewhere
 # make sure the model weights are submitted with the other code files
-# any files in the logs folder are not necessary. 
-# Make sure to exclude the .zip extension here
+# any files in the logs folder are not necessary.
+# Make sure to exclude the .zip extension here.
 MODEL_WEIGHTS_RELATIVE_PATH = "./best_model"
 
 class Agent:
@@ -35,8 +36,8 @@ class Agent:
 
         if obs["teams"][self.player]["metal"] == 0:
             return {}
+
         potential_spawns = list(zip(*np.where(obs["board"]["valid_spawns_mask"] == 1)))
-        potential_spawns_set = set(potential_spawns)
         done_search = False
 
         ice_diff = np.diff(obs["board"]["ice"])
@@ -52,7 +53,7 @@ class Agent:
             for x_coord in range(area):
                 for y_coord in range(area):
                     check_pos = [pos[0] + x_coord - area // 2, pos[1] + y_coord - area // 2]
-                    if tuple(check_pos) in potential_spawns_set:
+                    if tuple(check_pos) in set(potential_spawns):
                         done_search = True
                         pos = check_pos
                         break
@@ -61,8 +62,7 @@ class Agent:
             if done_search:
                 break
             trials -= 1
-        spawn_loc = []
-        spawn_loc = potential_spawns[np.random.randint(0, len(potential_spawns))]
+        spawn_loc = potential_spawns[int(np.random.randint(0, len(potential_spawns)))]
         if not done_search:
             pos = spawn_loc
 
@@ -82,11 +82,12 @@ class Agent:
         with th.no_grad():
 
             action_mask = (
+                # pylint: disable=E1101
                 th.from_numpy(self.controller.action_masks(self.player, raw_obs))
+                # pylint: enable=E1101
                 .unsqueeze(0)
                 .bool()
             )
-            
             features = self.policy.policy.features_extractor(obs.unsqueeze(0))
             x_coord = self.policy.policy.mlp_extractor.shared_net(features)
             logits = self.policy.policy.action_net(x_coord)

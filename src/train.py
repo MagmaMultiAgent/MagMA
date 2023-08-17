@@ -1,5 +1,6 @@
 """
-Implementation of RL agent. Note that luxai_s2 and stable_baselines3 are packages not available during the competition running (ATM)
+Implementation of RL agent. Note that luxai_s2 and stable_baselines3 are packages
+not available during the competition running (ATM)
 """
 
 
@@ -7,48 +8,46 @@ import copy
 import os.path as osp
 
 import gym
-import numpy as np
 import torch as th
-import torch.nn as nn
-from gym import spaces
 from gym.wrappers import TimeLimit
-from luxai_s2.state import ObservationStateDict, StatsStateDict
+from luxai_s2.state import StatsStateDict
 from luxai_s2.utils.heuristics.factory_placement import place_near_random_ice
 from luxai_s2.wrappers import SB3Wrapper
 from stable_baselines3.common.callbacks import (
     BaseCallback,
-    CheckpointCallback,
     EvalCallback,
 )
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.vec_env import (
-    DummyVecEnv,
     SubprocVecEnv,
     VecVideoRecorder,
 )
 from stable_baselines3.ppo import PPO
 
-from wrappers import SimpleUnitDiscreteController, SimpleUnitObservationWrapper
+from submission_kit.wrappers import SimpleUnitDiscreteController, SimpleUnitObservationWrapper
 
 
 class CustomEnvWrapper(gym.Wrapper):
+    """
+    Adds a custom reward and turns the LuxAI_S2 environment into a single-agent
+    environment for easy training
+    """
     def __init__(self, env: gym.Env) -> None:
-        """
-        Adds a custom reward and turns the LuxAI_S2 environment into a single-agent environment for easy training
-        """
         super().__init__(env)
         self.prev_step_metrics = None
 
     def step(self, action):
+        """Function stepping a player"""
         agent = "player_0"
         opp_agent = "player_1"
 
         opp_factories = self.env.state.factories[opp_agent]
         for k in opp_factories.keys():
             factory = opp_factories[k]
-            # set enemy factories to have 1000 water to keep them alive the whole around and treat the game as single-agent
+            # set enemy factories to have 1000 water to keep them alive the whole around and
+            # treat the game as single-agent
             factory.cargo.water = 1000
 
         # submit actions for just one agent to make it single-agent
@@ -58,11 +57,12 @@ class CustomEnvWrapper(gym.Wrapper):
         obs = obs[agent]
         done = done[agent]
 
-        # we collect stats on teams here. These are useful stats that can be used to help generate reward functions
+        # we collect stats on teams here.
+        # These are useful stats that can be used to help generate reward functions
         stats: StatsStateDict = self.env.state.stats[agent]
 
-        info = dict()
-        metrics = dict()
+        info = {}
+        metrics = {}
         metrics["ice_dug"] = (
             stats["generation"]["ice"]["HEAVY"] + stats["generation"]["ice"]["LIGHT"]
         )
@@ -73,7 +73,8 @@ class CustomEnvWrapper(gym.Wrapper):
         metrics["action_queue_updates_success"] = stats["action_queue_updates_success"]
         metrics["action_queue_updates_total"] = stats["action_queue_updates_total"]
 
-        # we can save the metrics to info so we can use tensorboard to log them to get a glimpse into how our agent is behaving
+        # we can save the metrics to info so we can use tensorboard to log them to get
+        # a glimpse into how our agent is behaving
         info["metrics"] = metrics
 
         reward = 0
@@ -90,16 +91,20 @@ class CustomEnvWrapper(gym.Wrapper):
         return obs, reward, done, info
 
     def reset(self, **kwargs):
+        """Function resetting a player"""
         obs = self.env.reset(**kwargs)["player_0"]
         self.prev_step_metrics = None
         return obs
 
 
 def parse_args():
+    """Function parsing arguments"""
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Simple script that simplifies Lux AI Season 2 as a single-agent environment with a reduced observation and action space. It trains a policy that can succesfully control a heavy unit to dig ice and transfer it back to a factory to keep it alive"
+        description="Simple script that simplifies Lux AI Season 2 as a single-agent environment \
+        with a reduced observation and action space. It trains a policy that can succesfully \
+        control a heavy unit to dig ice and transfer it back to a factory to keep it alive"
     )
     parser.add_argument("-s", "--seed", type=int, default=12, help="seed for training")
     parser.add_argument(
@@ -107,7 +112,8 @@ def parse_args():
         "--n-envs",
         type=int,
         default=8,
-        help="Number of parallel envs to run. Note that the rollout size is configured separately and invariant to this value",
+        help="Number of parallel envs to run. Note that the rollout size is configured \
+        separately and invariant to this value",
     )
     parser.add_argument(
         "--max-episode-steps",
@@ -142,15 +148,18 @@ def parse_args():
 
 
 def make_env(env_id: str, rank: int, seed: int = 0, max_episode_steps=100):
+    """Function creating the environment"""
     def _init() -> gym.Env:
         # verbose = 0
         # collect stats so we can create reward functions
-        # max factories set to 2 for simplification and keeping returns consistent as we survive longer if there are more initial resources
+        # max factories set to 2 for simplification and keeping returns consistent as we survive
+        # longer if there are more initial resources
         env = gym.make(env_id, verbose=0, collect_stats=True, MAX_FACTORIES=2)
 
         # Add a SB3 wrapper to make it work with SB3 and simplify the action space with the controller
         # this will remove the bidding phase and factory placement phase. For factory placement we use
-        # the provided place_near_random_ice function which will randomly select an ice tile and place a factory near it.
+        # the provided place_near_random_ice function which will randomly select an ice tile and
+        # place a factory near it.
 
         env = SB3Wrapper(
             env,
@@ -173,11 +182,13 @@ def make_env(env_id: str, rank: int, seed: int = 0, max_episode_steps=100):
 
 
 class TensorboardCallback(BaseCallback):
+    """Class used for Tensorboard callback"""
     def __init__(self, tag: str, verbose=0):
         super().__init__(verbose)
         self.tag = tag
 
     def _on_step(self) -> bool:
+        """Function logging on a given step"""
         c = 0
 
         for i, done in enumerate(self.locals["dones"]):
@@ -191,12 +202,14 @@ class TensorboardCallback(BaseCallback):
 
 
 def save_model_state_dict(save_path, model):
+    """Function saving the model"""
     # save the policy state dict for kaggle competition submission
     state_dict = model.policy.to("cpu").state_dict()
     th.save(state_dict, save_path)
 
 
 def evaluate(args, env_id, model):
+    """Function evaluating agent"""
     model = model.load(args.model_path)
     video_length = 1000  # default horizon
     eval_env = SubprocVecEnv(
@@ -215,6 +228,7 @@ def evaluate(args, env_id, model):
 
 
 def train(args, env_id, model: PPO):
+    """Training function"""
     eval_env = SubprocVecEnv(
         [make_env(env_id, i, max_episode_steps=1000) for i in range(4)]
     )
@@ -248,7 +262,7 @@ def main(args):
     )
     env.reset()
     rollout_steps = 4000
-    policy_kwargs = dict(net_arch=(128, 128))
+    policy_kwargs = {"net_arch": (128, 128)}
     model = PPO(
         "MlpPolicy",
         env,

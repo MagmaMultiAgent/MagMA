@@ -1,3 +1,4 @@
+"""Wrapper module for observations"""
 from typing import Any, Dict
 
 import gym
@@ -10,7 +11,8 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
     """
     A simple state based observation to work with in pair with the SimpleUnitDiscreteController
 
-    It contains info only on the first robot, the first factory you own, and some useful features. If there are no owned robots the observation is just zero.
+    It contains info only on the first robot, the first factory you own, and some useful features.
+    If there are no owned robots the observation is just zero.
     No information about the opponent is included. This will generate observations for all teams.
 
     Included features:
@@ -25,12 +27,14 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
         self.observation_space = spaces.Box(-999, 999, shape=(13,))
 
     def observation(self, obs):
+        """Function returning Observation Wrapper"""
         return SimpleUnitObservationWrapper.convert_obs(obs, self.env.state.env_cfg)
 
     # we make this method static so the submission/evaluation code can use this as well
     @staticmethod
     def convert_obs(obs: Dict[str, Any], env_cfg: Any) -> Dict[str, npt.NDArray]:
-        observation = dict()
+        """Static method converting observation into dictionary"""
+        observation = {}
         shared_obs = obs["player_0"]
         ice_map = shared_obs["board"]["ice"]
         ice_tile_locations = np.argwhere(ice_map == 1)

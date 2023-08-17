@@ -1,4 +1,4 @@
-import sys
+"""Module for representing a Controller wrapper"""
 from typing import Any, Dict
 
 import numpy as np
@@ -6,32 +6,33 @@ import numpy.typing as npt
 from gym import spaces
 
 
-# Controller class copied here since you won't have access to the luxai_s2 package directly on the competition server
+# Controller class copied here since you won't have access to the luxai_s2
+# package directly on the competition server
 class Controller:
+    """Class representing the controller"""
     def __init__(self, action_space: spaces.Space) -> None:
         self.action_space = action_space
 
-    def action_to_lux_action(
-        self, agent: str, obs: Dict[str, Any], action: npt.NDArray
-    ):
+    def action_to_lux_action(self):
         """
         Takes as input the current "raw observation" and the parameterized action and returns
         an action formatted for the Lux env
         """
         raise NotImplementedError()
 
-    def action_masks(self, agent: str, obs: Dict[str, Any]):
+    def action_masks(self):
         """
-        Generates a boolean action mask indicating in each discrete dimension whether it would be valid or not
+        Generates a boolean action mask indicating in each discrete dimension whether
+        it would be valid or not
         """
         raise NotImplementedError()
 
 
 class SimpleUnitDiscreteController(Controller):
-    def __init__(self, env_cfg) -> None:
-        """
+    """
         A simple controller that controls only the robot that will get spawned.
-        Moreover, it will always try to spawn one heavy robot if there are none regardless of action given
+        Moreover, it will always try to spawn one heavy robot if there are
+        none regardless of action given
 
         For the robot unit
         - 4 cardinal direction movement (4 dims)
@@ -48,10 +49,13 @@ class SimpleUnitDiscreteController(Controller):
         - factory actions
         - transferring power or resources other than ice
 
-        To help understand how to this controller works to map one action space to the original lux action space,
+        To help understand how to this controller works to map one action space to the
+        original lux action space,
         see how the lux action space is defined in luxai_s2/spaces/action.py
 
         """
+    def __init__(self, env_cfg) -> None:
+        
         self.env_cfg = env_cfg
         self.move_act_dims = 4
         self.transfer_act_dims = 5
@@ -69,38 +73,39 @@ class SimpleUnitDiscreteController(Controller):
         action_space = spaces.Discrete(self.total_act_dims)
         super().__init__(action_space)
 
-    def _is_move_action(self, id):
-        return id < self.move_dim_high
+    def _is_move_action(self, i_d):
+        return i_d < self.move_dim_high
 
-    def _get_move_action(self, id):
-        # move direction is id + 1 since we don't allow move center here
-        return np.array([0, id + 1, 0, 0, 0, 1])
+    def _get_move_action(self, i_d):
+        # move direction is i_d + 1 since we don't allow move center here
+        return np.array([0, i_d + 1, 0, 0, 0, 1])
 
-    def _is_transfer_action(self, id):
-        return id < self.transfer_dim_high
+    def _is_transfer_action(self, i_d):
+        return i_d < self.transfer_dim_high
 
-    def _get_transfer_action(self, id):
-        id = id - self.move_dim_high
-        transfer_dir = id % 5
+    def _get_transfer_action(self, i_d):
+        i_d = i_d - self.move_dim_high
+        transfer_dir = i_d % 5
         return np.array([1, transfer_dir, 0, self.env_cfg.max_transfer_amount, 0, 1])
 
-    def _is_pickup_action(self, id):
-        return id < self.pickup_dim_high
+    def _is_pickup_action(self, i_d):
+        return i_d < self.pickup_dim_high
 
-    def _get_pickup_action(self, id):
+    def _get_pickup_action(self):
         return np.array([2, 0, 4, self.env_cfg.max_transfer_amount, 0, 1])
 
-    def _is_dig_action(self, id):
-        return id < self.dig_dim_high
+    def _is_dig_action(self, i_d):
+        return i_d < self.dig_dim_high
 
-    def _get_dig_action(self, id):
+    def _get_dig_action(self):
         return np.array([3, 0, 0, 0, 0, 1])
 
     def action_to_lux_action(
         self, agent: str, obs: Dict[str, Any], action: npt.NDArray
     ):
+        """Function converting action to a LUX action"""
         shared_obs = obs["player_0"]
-        lux_action = dict()
+        lux_action = {}
         units = shared_obs["units"][agent]
         for unit_id in units.keys():
             unit = units[unit_id]
@@ -150,9 +155,9 @@ class SimpleUnitDiscreteController(Controller):
         factory_occupancy_map = (
             np.ones_like(shared_obs["board"]["rubble"], dtype=int) * -1
         )
-        factories = dict()
+        factories = {}
         for player in shared_obs["factories"]:
-            factories[player] = dict()
+            factories[player] = {}
             for unit_id in shared_obs["factories"][player]:
                 f_data = shared_obs["factories"][player][unit_id]
                 f_pos = f_data["pos"]

@@ -1,5 +1,5 @@
+"""Module representing a unit"""
 import math
-import sys
 from dataclasses import dataclass
 from typing import List
 
@@ -14,6 +14,8 @@ move_deltas = np.array([[0, 0], [0, -1], [1, 0], [0, 1], [-1, 0]])
 
 @dataclass
 class Unit:
+    """Dataclass representing unit config"""
+
     team_id: int
     unit_id: str
     unit_type: str  # "LIGHT" or "HEAVY"
@@ -26,15 +28,18 @@ class Unit:
 
     @property
     def agent_id(self):
+        """Property containing which player a unit belongs to"""
         if self.team_id == 0:
             return "player_0"
         return "player_1"
 
-    def action_queue_cost(self, game_state):
+    def action_queue_cost(self):
+        """Function returning the cost of changing action queue"""
         cost = self.env_cfg.ROBOTS[self.unit_type].ACTION_QUEUE_POWER_COST
         return cost
 
     def move_cost(self, game_state, direction):
+        """Function calculating the cost of moving"""
         board = game_state.board
         target_pos = self.pos + move_deltas[direction]
         if (
@@ -59,40 +64,46 @@ class Unit:
             + self.unit_cfg.RUBBLE_MOVEMENT_COST * rubble_at_target
         )
 
-    def move(self, direction, repeat=0, n=1):
-        if isinstance(direction, int):
-            direction = direction
-        else:
+    def move(self, direction, repeat=0, num=1):
+        """Function implementing the move action"""
+        if not isinstance(direction, int):
             pass
-        return np.array([0, direction, 0, 0, repeat, n])
+        return np.array([0, direction, 0, 0, repeat, num])
 
     def transfer(
-        self, transfer_direction, transfer_resource, transfer_amount, repeat=0, n=1
+        self, transfer_direction, transfer_resource, transfer_amount, repeat=0, num=1
     ):
+        """Function implementing the transfer action"""
         assert transfer_resource < 5 and transfer_resource >= 0
         assert transfer_direction < 5 and transfer_direction >= 0
         return np.array(
-            [1, transfer_direction, transfer_resource, transfer_amount, repeat, n]
+            [1, transfer_direction, transfer_resource, transfer_amount, repeat, num]
         )
 
-    def pickup(self, pickup_resource, pickup_amount, repeat=0, n=1):
+    def pickup(self, pickup_resource, pickup_amount, repeat=0, num=1):
+        """Function implementing the pickup action"""
         assert pickup_resource < 5 and pickup_resource >= 0
-        return np.array([2, 0, pickup_resource, pickup_amount, repeat, n])
+        return np.array([2, 0, pickup_resource, pickup_amount, repeat, num])
 
-    def dig_cost(self, game_state):
+    def dig_cost(self):
+        """Function returning the cost of digging"""
         return self.unit_cfg.DIG_COST
 
-    def dig(self, repeat=0, n=1):
-        return np.array([3, 0, 0, 0, repeat, n])
+    def dig(self, repeat=0, num=1):
+        """Function implementing the dig function"""
+        return np.array([3, 0, 0, 0, repeat, num])
 
-    def self_destruct_cost(self, game_state):
+    def self_destruct_cost(self):
+        """Function returning the cost of self-destruction"""
         return self.unit_cfg.SELF_DESTRUCT_COST
 
-    def self_destruct(self, repeat=0, n=1):
-        return np.array([4, 0, 0, 0, repeat, n])
+    def self_destruct(self, repeat=0, num=1):
+        """Function implementing the self-destruct action"""
+        return np.array([4, 0, 0, 0, repeat, num])
 
-    def recharge(self, x, repeat=0, n=1):
-        return np.array([5, 0, 0, x, repeat, n])
+    def recharge(self, x_coord, repeat=0, num=1):
+        """Function implementing the recharge function"""
+        return np.array([5, 0, 0, x_coord, repeat, num])
 
     def __str__(self) -> str:
         out = f"[{self.team_id}] {self.unit_id} {self.unit_type} at {self.pos}"
