@@ -27,8 +27,10 @@ jobs:
         pip install pylint 
         pip install -r envs/pip/requirements.txt
         pip install vec-noise==1.1.4
+        pip install stable_baselines3==1.7.0
         pip install gym==0.21
-
+        pip install --upgrade luxai_s2
+        
     - name: Analysing the code with pylint
       run: |
         pylint $(git ls-files '*.py')
