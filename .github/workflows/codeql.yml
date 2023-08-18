@@ -37,10 +37,14 @@ jobs:
         miniconda-version: 'latest'
         conda-environment-file: envs/conda/environment.yml
 
-    - name: Install dependencies
+    - name: Activate Conda
       run: |
         conda init bash
+        source ~/.bashrc
         conda activate luxai_s2
+
+    - name: Install dependencies
+      run: |
         pip install --no-cache-dir --upgrade pip
         sudo apt-get update -y
         sudo apt-get upgrade -y
