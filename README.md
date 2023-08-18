@@ -3,7 +3,7 @@
     <img width="100%"  src="docs/images/logo.png" />
 </p>
 
-[![Docker Publish](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/docker-publish.yml/badge.svg?branch=main)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/docker-publish.yml)[![Pylint](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pylint.yml/badge.svg)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pylint.yml)[![CodeQL](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/github-code-scanning/codeql/badge.svg?branch=main)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/github-code-scanning/codeql)
+[![Docker Publish](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/docker-publish.yml/badge.svg?branch=main)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/docker-publish.yml)&nbsp; &nbsp;[![Pylint](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pylint.yml/badge.svg)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pylint.yml)&nbsp; &nbsp;[![CodeQL](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/github-code-scanning/codeql/badge.svg?branch=main)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/github-code-scanning/codeql)
 
 # VigIL - Lux AI Competition
 
