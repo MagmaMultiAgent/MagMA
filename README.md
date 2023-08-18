@@ -79,7 +79,7 @@ This will turn on logging to level 2, and store the replay file at *replay.json*
 To use the training code, run [train.py](https://github.com/Getlar/VigIL-Game-Validation/blob/main/src/Lux-Agents-S2/train.py) --help for help and to train an agent run:
 
 ```bash
-python src/Lux-Agents-S2/train.py --n-envs 4 --log-path logs/exp_1  --seed 660
+python train.py --n-envs 4 --log-path logs/exp_1  --seed 660
 ```
 
 Set your `--n-envs` according to your available CPU cores. This will train an RL agent using the PPO algorithm with 4 parallel environments to sample from.

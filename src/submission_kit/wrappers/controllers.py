@@ -116,9 +116,9 @@ class SimpleUnitDiscreteController(Controller):
             elif self._is_transfer_action(choice):
                 action_queue = [self._get_transfer_action(choice)]
             elif self._is_pickup_action(choice):
-                action_queue = [self._get_pickup_action(choice)]
+                action_queue = [self._get_pickup_action()]
             elif self._is_dig_action(choice):
-                action_queue = [self._get_dig_action(choice)]
+                action_queue = [self._get_dig_action()]
             else:
                 # action is a no_op, so we don't update the action queue
                 no_op = True
