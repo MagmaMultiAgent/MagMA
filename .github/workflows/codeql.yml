@@ -38,7 +38,7 @@ jobs:
 
     - name: Activate Conda
       run: |
-        conda env create --name myenv --file path/to/environment.yml
+        conda env create --name myenv --file envs/conda/environment.yml
         conda init bash
         source ~/.bashrc
         conda activate luxai_s2
