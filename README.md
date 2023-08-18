@@ -3,6 +3,8 @@
     <img width="100%"  src="docs/images/logo.png" />
 </p>
 
+[![Docker Publish](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/docker-publish.yml/badge.svg?branch=main)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/docker-publish.yml)[![Pylint](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pylint.yml/badge.svg)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pylint.yml)[![CodeQL](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/github-code-scanning/codeql/badge.svg?branch=main)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/github-code-scanning/codeql)
+
 # VigIL - Lux AI Competition
 
 This repository is a record of my research journey, starting from brainstorming **RL and IL** solutions in game environments, diving into RL competitions, and eventually crafting agents for the 2023 Lux AI competition held during the yearly **NeurIPS conference**.

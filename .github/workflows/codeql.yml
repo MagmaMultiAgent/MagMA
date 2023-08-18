@@ -39,6 +39,7 @@ jobs:
 
     - name: Install dependencies
       run: |
+        conda init bash
         conda activate luxai_s2
         pip install --no-cache-dir --upgrade pip
         sudo apt-get update -y
