@@ -3,8 +3,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from lux.cargo import UnitCargo
-from lux.config import EnvConfig
+from .cargo import UnitCargo
+from .config import EnvConfig
 
 
 @dataclass
@@ -23,13 +23,13 @@ class Factory:
 
     def build_heavy_metal_cost(self):
         """Function returning metal cost of building a heavy"""
-        unit_cfg = self.env_cfg.robots["heavy"]
-        return unit_cfg.metal_cost
+        unit_cfg = self.env_cfg.ROBOTS["heavy"]
+        return unit_cfg.METAL_COST
 
     def build_heavy_power_cost(self):
         """Function returning power cost of building a heavy"""
-        unit_cfg = self.env_cfg.robots["heavy"]
-        return unit_cfg.power_cost
+        unit_cfg = self.env_cfg.ROBOTS["heavy"]
+        return unit_cfg.POWER_COST
 
     def can_build_heavy(self):
         """Function returning if metal and power are enough for heavy"""
@@ -42,13 +42,13 @@ class Factory:
 
     def build_light_metal_cost(self):
         """Function returning metal cost of building a light"""
-        unit_cfg = self.env_cfg.robots["light"]
-        return unit_cfg.metal_cost
+        unit_cfg = self.env_cfg.ROBOTS["light"]
+        return unit_cfg.METAL_COST
 
     def build_light_power_cost(self):
         """Function returning power cost of building a light"""
-        unit_cfg = self.env_cfg.robots["light"]
-        return unit_cfg.power_cost
+        unit_cfg = self.env_cfg.ROBOTS["light"]
+        return unit_cfg.POWER_COST
 
     def can_build_light(self):
         """Function returning if metal and power are enough for light"""
@@ -64,7 +64,7 @@ class Factory:
         Water required to perform water action
         """
         owned_lichen_tiles = (game_state.board.lichen_strains == self.strain_id).sum()
-        return np.ceil(owned_lichen_tiles / self.env_cfg.lichen_watering_cost_factor)
+        return np.ceil(owned_lichen_tiles / self.env_cfg.LICHEN_WATERING_COST_FACTOR)
 
     def can_water(self, game_state):
         """Function returning whether factory has enough water to water"""

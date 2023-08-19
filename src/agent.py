@@ -10,7 +10,7 @@ from submission_kit.wrappers import SimpleUnitDiscreteController, SimpleUnitObse
 # make sure the model weights are submitted with the other code files
 # any files in the logs folder are not necessary.
 # Make sure to exclude the .zip extension here.
-MODEL_WEIGHTS_RELATIVE_PATH = "./best_model"
+MODEL_WEIGHTS_RELATIVE_PATH = "./logs/exp_2/models/best_model"
 
 class Agent:
     """Class representing an agent"""
@@ -71,7 +71,7 @@ class Agent:
 
     def act(self, obs):
         """Function used for action selection by the agent"""
-
+        
         raw_obs = {"player_0": obs, "player_1": obs}
         obs = SimpleUnitObservationWrapper.convert_obs(raw_obs, env_cfg=self.env_cfg)
         obs = obs[self.player]

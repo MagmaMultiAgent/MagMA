@@ -23,22 +23,25 @@ def agent_fn(observ, config):
     step = observ.step
 
     player = observ.player
-    remaining_overage_time = observ.remaining_overage_time
     if step == 0:
         env_cfg = EnvConfig.from_dict(config["env_cfg"])
         agent_dict[player] = Agent(player, env_cfg)
         agent_prev_obs[player] = {}
         agent = agent_dict[player]
     agent = agent_dict[player]
+
+
     obs_tmp = process_obs(agent_prev_obs[player], step, json.loads(observ.obs))
+
+    #print(obs_tmp['units']['player_1'])
     agent_prev_obs[player] = obs_tmp
     agent.step = step
     if step == 0:
-        act = agent.bid_policy(step, obs_tmp, remaining_overage_time)
+        act = agent.bid_policy()
     elif obs_tmp["real_env_steps"] < 0:
-        act = agent.factory_placement_policy(step, obs_tmp, remaining_overage_time)
+        act = agent.factory_placement_policy(obs_tmp)
     else:
-        act = agent.act(step, obs_tmp, remaining_overage_time)
+        act = agent.act(obs_tmp)
 
     return process_action(act)
 
@@ -58,10 +61,9 @@ if __name__ == "__main__":
     while True:
         inputs = read_input()
         obs = json.loads(inputs)
-
         observation = Namespace(
-            {"step": obs['step'], "obs": json.dumps(obs['obs']),
-             "remaining_overage_time": obs['remaining_overage_time'],
+            **{"step": obs['step'], "obs": json.dumps(obs['obs']),
+             "remaining_overage_time": obs['remainingOverageTime'],
              "player": obs['player'], "info":obs['info']}
         )
         if i == 0:

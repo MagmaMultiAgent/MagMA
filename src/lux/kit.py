@@ -4,11 +4,11 @@ from typing import Dict
 
 import numpy as np
 
-from lux.cargo import UnitCargo
-from lux.config import EnvConfig
-from lux.factory import Factory
-from lux.team import Team
-from lux.unit import Unit
+from .cargo import UnitCargo
+from .config import EnvConfig
+from .factory import Factory
+from .team import Team
+from .unit import Unit
 
 
 def process_action(action):
@@ -48,6 +48,7 @@ def from_json(state):
 
 def process_obs(game_state, step, obs):
     """Function processing an observation"""
+
     if step == 0:
         # at step 0 we get the entire map information
         game_state = from_json(obs)
@@ -80,7 +81,7 @@ def obs_to_game_state(step, env_cfg: EnvConfig, obs):
             cargo = UnitCargo(**unit_data["cargo"])
             units[agent][unit_id] = Unit(
                 **unit_data,
-                unit_cfg=env_cfg.robots[unit_data["unit_type"]],
+                unit_cfg=env_cfg.ROBOTS[unit_data["unit_type"]],
                 env_cfg=env_cfg,
                 cargo=cargo
             )
@@ -152,7 +153,7 @@ class GameState:
         the actual env step in the environment,
         which subtracts the time spent bidding and placing factories
         """
-        if self.env_cfg.bidding_system:
+        if self.env_cfg.BIDDING_SYSTEM:
             # + 1 for extra factory placement and + 1 for bidding step
             return self.env_steps - (self.board.factories_per_team * 2 + 1)
         return self.env_steps

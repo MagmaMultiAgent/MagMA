@@ -5,8 +5,9 @@ from typing import List
 
 import numpy as np
 
-from lux.cargo import UnitCargo
-from lux.config import EnvConfig, UnitConfig
+from .cargo import UnitCargo
+from .config import UnitConfig
+from .config import EnvConfig
 
 # a[1] = direction (0 = center, 1 = up, 2 = right, 3 = down, 4 = left)
 move_deltas = np.array([[0, 0], [0, -1], [1, 0], [0, 1], [-1, 0]])
@@ -35,7 +36,7 @@ class Unit:
 
     def action_queue_cost(self):
         """Function returning the cost of changing action queue"""
-        cost = self.env_cfg.robots[self.unit_type].action_queue_power_cost
+        cost = self.env_cfg.ROBOTS[self.unit_type].ACTION_QUEUE_POWER_COST
         return cost
 
     def move_cost(self, game_state, direction):
@@ -59,8 +60,8 @@ class Unit:
         rubble_at_target = board.rubble[target_pos[0]][target_pos[1]]
 
         return math.floor(
-            self.unit_cfg.mo
-            + self.unit_cfg.rubble_movement_cost * rubble_at_target
+            self.unit_cfg.MOVE_COST
+            + self.unit_cfg.RUBBLE_MOVEMENT_COST  * rubble_at_target
         )
 
     def move(self, direction, repeat=0, num=1):
@@ -86,7 +87,7 @@ class Unit:
 
     def dig_cost(self):
         """Function returning the cost of digging"""
-        return self.unit_cfg.dig_cost
+        return self.unit_cfg.DIG_COST
 
     def dig(self, repeat=0, num=1):
         """Function implementing the dig function"""
@@ -94,7 +95,7 @@ class Unit:
 
     def self_destruct_cost(self):
         """Function returning the cost of self-destruction"""
-        return self.unit_cfg.self_destruct_cost
+        return self.unit_cfg.SELF_DESTRUCT_COST
 
     def self_destruct(self, repeat=0, num=1):
         """Function implementing the self-destruct action"""
