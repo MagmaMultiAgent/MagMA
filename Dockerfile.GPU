@@ -51,11 +51,11 @@ RUN pip install --no-cache-dir setuptools==57.1.0 psutil==5.7.0 \
     pygame termcolor wheel==0.38.4 notebook tensorboard
 
 # Install Lux, RL baselines and Jax
-RUN pip install stable_baselines3==1.7.0 gym==0.21 --upgrade luxai_s2
+RUN pip install --no-cache-dir stable_baselines3==1.7.0 gym==0.21 --upgrade luxai_s2
 
 # Install Jax with Lux
 
-RUN pip install juxai-s2
+RUN pip install --no-cache-dir juxai-s2
 
 # Switch back to bash
 SHELL ["/bin/bash","-c"]
