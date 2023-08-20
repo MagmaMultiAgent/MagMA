@@ -1,0 +1,16 @@
+{
+    "name": "Thesis Development",
+    "build": {
+        "dockerfile": "../Dockerfile.GPU"
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": ["ms-python.python", "ms-toolsai.jupyter"]
+        }
+    },
+    "workspaceFolder": "/usr/src/luxai",
+    "mounts": [
+        "source=${localEnv:HOME}/Thesis/src,target=/usr/src/luxai,type=bind,consistency=cached"
+    ],
+    "forwardPorts": [ 8888 ]
+}
