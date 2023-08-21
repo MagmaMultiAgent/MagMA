@@ -3,16 +3,15 @@ Implementation of RL agent. Note that luxai_s2 and stable_baselines3 are package
 not available during the competition running (ATM)
 """
 
-
 import copy
 import os.path as osp
 import argparse
 import gym
 import torch as th
 from gym.wrappers import TimeLimit
-from luxai_s2.state import StatsStateDict
-from luxai_s2.utils.heuristics.factory_placement import place_near_random_ice
-from luxai_s2.wrappers import SB3Wrapper
+from lux_kit.luxai_s2.luxai_s2.state import StatsStateDict
+from wrappers import place_near_random_ice, zero_bid
+from wrappers import SB3Wrapper
 from stable_baselines3.common.callbacks import (
     BaseCallback,
     EvalCallback,
@@ -26,7 +25,7 @@ from stable_baselines3.common.vec_env import (
 )
 from stable_baselines3.ppo import PPO
 
-from submission_kit.wrappers import SimpleUnitDiscreteController, SimpleUnitObservationWrapper
+from wrappers import SimpleUnitDiscreteController, SimpleUnitObservationWrapper
 
 
 class CustomEnvWrapper(gym.Wrapper):
@@ -117,13 +116,13 @@ def parse_args():
     parser.add_argument(
         "--max-episode-steps",
         type=int,
-        default=200,
+        default=1000,
         help="Max steps per episode before truncating them",
     )
     parser.add_argument(
         "--total-timesteps",
         type=int,
-        default=3_000_000,
+        default=6_000_000,
         help="Total timesteps for training",
     )
 
@@ -162,6 +161,7 @@ def make_env(env_id: str, rank: int, seed: int = 0, max_episode_steps=100):
 
         env = SB3Wrapper(
             env,
+            bid_policy=zero_bid,
             factory_placement_policy=place_near_random_ice,
             controller=SimpleUnitDiscreteController(env.env_cfg),
         )
@@ -283,5 +283,4 @@ def main(args):
 
 
 if __name__ == "__main__":
-    # python ../examples/sb3.py -l logs/exp_1 -s 42 -n 1
     main(parse_args())

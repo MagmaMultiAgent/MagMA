@@ -161,4 +161,4 @@ class GameState:
     # various utility functions
     def is_day(self):
         """Function returning whether its daytime or not"""
-        return self.real_env_steps % self.env_cfg.cycle_length < self.env_cfg.day_length
+        return self.real_env_steps % self.env_cfg.CYCLE_LENGTH < self.env_cfg.DAY_LENGTH

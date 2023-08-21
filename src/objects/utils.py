@@ -1,4 +1,5 @@
 """Module containing utility functions"""
+
 def my_turn_to_place_factory(place_first: bool, step: int):
     """Function returning if it is player's turn to place factory"""
     if place_first:

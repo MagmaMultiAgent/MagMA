@@ -1,0 +1,4 @@
+[submodule "src/lux_kit"]
+    path = src/lux_kit
+    url = https://github.com/Lux-AI-Challenge/Lux-Design-S2.git
+    branch = main
