@@ -1,3 +1,7 @@
+"""
+Module responsible for creating a wrapper for stable baselines"
+"""
+
 from typing import Callable, Dict
 
 import gym
@@ -26,26 +30,26 @@ class SB3Wrapper(gym.Wrapper):
         A environment wrapper for Stable Baselines 3. It reduces the LuxAI_S2 env
         into a single phase game and places the first two phases
         (bidding and factory placement) into the env.reset function so that
-        interacting agents directly start generating actions to play the third
-        phase of the game.
+        interacting agents directly start generating actions to play the
+        third phase of the game.
 
-        It also accepts a Controller that translates action's in one action space
-        to a Lux S2 compatible action
+        It also accepts a Controller that translates action's in one action
+        space to a Lux S2 compatible action
 
         Parameters
         ----------
         bid_policy: Function
-            A function accepting player: str and obs: ObservationStateDict as
-            input that returns a bid action
-            such as dict(bid=10, faction="AlphaStrike"). By default will bid 0
+            A function accepting player: str and obs: ObservationStateDict
+            as input that returns a bid action such as
+            dict(bid=10, faction="AlphaStrike"). By default will bid 0
         factory_placement_policy: Function
-            A function accepting player: str and obs: ObservationStateDict as
-            input that returns a factory placement action such as
+            A function accepting player: str and obs: ObservationStateDict
+            as input that returns a factory placement action such as
             dict(spawn=np.array([2, 4]), metal=150, water=150).
             By default will spawn in a random valid location with metal=150, water=150
         controller : Controller
-            A controller that parameterizes the action space into something more
-            usable and converts parameterized actions to lux actions.
+            A controller that parameterizes the action space into something
+            more usable and converts parameterized actions to lux actions.
             See luxai_s2/wrappers/controllers.py for available controllers
             and how to make your own
         """
@@ -58,8 +62,7 @@ class SB3Wrapper(gym.Wrapper):
         self.controller = controller
         self.action_space = controller.action_space
 
-        # The simplified wrapper removes the first two phases of the
-        # game by using predefined policies (trained or heuristic)
+        # The simplified wrapper removes the first two phases of the game by using predefined policies (trained or heuristic)
         # to handle those two phases during each reset
         if factory_placement_policy is None:
             def factory_placement_policy(player, obs: ObservationStateDict):
@@ -77,14 +80,14 @@ class SB3Wrapper(gym.Wrapper):
                 faction = "AlphaStrike"
                 if player == "player_1":
                     faction = "MotherMars"
-                return {"bid": 0, "factin": faction}
+                return {"bid": 0, "faction": faction}
 
         self.bid_policy = bid_policy
 
         self.prev_obs = None
 
     def step(self, action: Dict[str, npt.NDArray]):
-        
+
         # here, for each agent in the game we translate their action into a Lux S2 action
         lux_action = {}
         for agent in self.env.agents:
