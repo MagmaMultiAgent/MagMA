@@ -21,8 +21,9 @@ from stable_baselines3.common.vec_env import (
     VecVideoRecorder,
 )
 from stable_baselines3.ppo import PPO
-from stable_baselines3.sac import SAC
 from stable_baselines3.a2c import A2C
+from stable_baselines3.her import HerReplayBuffer
+from stable_baselines3.dqn import DQN
 from lux_kit.luxai_s2.luxai_s2.state import StatsStateDict
 from wrappers import SimpleUnitDiscreteController, SimpleUnitObservationWrapper
 from wrappers import place_near_random_ice
@@ -279,30 +280,32 @@ def main(args):
     #     gamma=0.99,
     #     tensorboard_log=osp.join(args.log_path),
     # )
-    # model = SAC(
+    # model = A2C(
     #     "MlpPolicy",
     #     env,
-    #     learning_rate=3e-4,
-    #     buffer_size=1e6,
-    #     learning_starts=100,
-    #     batch_size=800,
-    #     tau = 0.005,
+    #     learning_rate = 3e-4,
+    #     n_steps = rollout_steps // args.n_envs,
     #     gamma = 0.99,
+    #     gae_lambda = 1.0,
+    #     ent_coef = 0.0,
+    #     vf_coef = 0.5,
+    #     max_grad_norm = 0.5,
+    #     rms_prop_eps = 1e-5,
     #     policy_kwargs=policy_kwargs,
     #     tensorboard_log=osp.join(args.log_path),
     #     verbose=1,
     # )
-    model = A2C(
+    # model = HerReplayBuffer(
+    #     env = env,
+    #     buffer_size =  
+    # )
+    model = DQN(
         "MlpPolicy",
         env,
         learning_rate = 3e-4,
-        n_steps = rollout_steps // args.n_envs,
+        learning_starts = 50000,
+        batch_size = 800,
         gamma = 0.99,
-        gae_lambda = 1.0,
-        ent_coef = 0.0,
-        vf_coef = 0.5,
-        max_grad_norm = 0.5,
-        rms_prop_eps = 1e-5,
         policy_kwargs=policy_kwargs,
         tensorboard_log=osp.join(args.log_path),
         verbose=1,
