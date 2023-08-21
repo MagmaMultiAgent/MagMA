@@ -21,7 +21,7 @@ def agent_fn(observation, configurations):
     if step == 0:
         env_cfg = EnvConfig.from_dict(configurations["env_cfg"])
         agent_dict[player] = Agent(player, env_cfg)
-        agent_prev_obs[player] = dict()
+        agent_prev_obs[player] = {}
         agent = agent_dict[player]
     
     agent = agent_dict[player]
@@ -50,8 +50,6 @@ if __name__ == "__main__":
         except EOFError as eof:
             raise SystemExit(eof) from eof
 
-    step = 0
-    configurations = None
     i = 0
     while True:
         inputs = read_input()

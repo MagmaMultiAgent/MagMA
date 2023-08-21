@@ -9,7 +9,6 @@ import argparse
 import gym
 import torch as th
 from gym.wrappers import TimeLimit
-from lux_kit.luxai_s2.luxai_s2.state import StatsStateDict
 from wrappers import place_near_random_ice, zero_bid
 from wrappers import SB3Wrapper
 from stable_baselines3.common.callbacks import (
@@ -24,7 +23,7 @@ from stable_baselines3.common.vec_env import (
     VecVideoRecorder,
 )
 from stable_baselines3.ppo import PPO
-
+from lux_kit.luxai_s2.luxai_s2.state import StatsStateDict
 from wrappers import SimpleUnitDiscreteController, SimpleUnitObservationWrapper
 
 

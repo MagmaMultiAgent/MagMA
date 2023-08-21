@@ -18,7 +18,7 @@ def convert_dict_to_ns(dict_x):
 @dataclass
 class UnitConfig:
     """Dataclass containing unit configurations"""
-    # pylint: disable=E1101
+    # pylint: disable=C0103
     METAL_COST: int = 100
     POWER_COST: int = 500
     CARGO_SPACE: int = 1000
@@ -34,7 +34,7 @@ class UnitConfig:
     SELF_DESTRUCT_COST: int = 10
     RUBBLE_AFTER_DESTRUCTION: int = 1
     ACTION_QUEUE_POWER_COST: int = 1
-    # pylint: enable=E1101
+    # pylint: enable=C0103
 
 @dataclass
 class EnvConfig:
@@ -52,7 +52,7 @@ class EnvConfig:
 
     ### Constants ###
     # you can only ever transfer in/out 1000 as this is the max cargo space.
-    # pylint: disable=E1101
+    # pylint: disable=C0103
     max_transfer_amount: int = 10000
     MIN_FACTORIES: int = 2
     MAX_FACTORIES: int = 5
@@ -136,7 +136,7 @@ class EnvConfig:
             )
         }
     )
-    # pylint: enable=E1101
+    # pylint: enable=C0103
 
     @classmethod
     def from_dict(cls, data):

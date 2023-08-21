@@ -11,7 +11,7 @@ def zero_bid(player, obs):
     faction = "AlphaStrike"
     if player == "player_1":
         faction = "MotherMars"
-    return dict(bid=0, faction=faction)
+    return {"bid": 0, "factin": faction}
 
 def place_near_random_ice(player, obs):
     """
@@ -20,7 +20,7 @@ def place_near_random_ice(player, obs):
     """
 
     if obs["teams"][player]["metal"] == 0:
-        return dict()
+        return {}
     potential_spawns = list(zip(*np.where(obs["board"]["valid_spawns_mask"] == 1)))
     potential_spawns_set = set(potential_spawns)
     done_search = False
@@ -37,9 +37,9 @@ def place_near_random_ice(player, obs):
         pos_idx = np.random.randint(0, len(pot_ice_spots))
         pos = pot_ice_spots[pos_idx]
         area = 3
-        for x in range(area):
-            for y in range(area):
-                check_pos = [pos[0] + x - area // 2, pos[1] + y - area // 2]
+        for x_coord in range(area):
+            for y_coord in range(area):
+                check_pos = [pos[0] + x_coord - area // 2, pos[1] + y_coord - area // 2]
                 if tuple(check_pos) in potential_spawns_set:
                     done_search = True
                     pos = check_pos
@@ -56,4 +56,4 @@ def place_near_random_ice(player, obs):
     
     # this will spawn a factory at pos and with all the starting metal and water
     metal = obs["teams"][player]["metal"]
-    return dict(spawn=pos, metal=metal, water=metal)
+    return {"spawn": pos, "metal": metal, "water": metal}
