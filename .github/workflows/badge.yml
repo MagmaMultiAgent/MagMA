@@ -1,9 +1,23 @@
-- name: Badge Updater
-  uses: schneegans/dynamic-badges-action@v1.6.0
-  with:
-    auth: ${{ secrets.GIST_SECRET }}
-    gistID: <gist-ID>
-    filename: test.json
-    label: Hello
-    message: World
-    color: orange
+name: "Badge Updater"
+on: 
+  push:
+    branches:
+      - main
+    paths:
+      - README.md
+      - package.json
+      - .github/workflows/demo.yml
+jobs:
+  build:
+    name: Badges
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Update Version Badge"
+        uses: schneegans/dynamic-badges-action@v1.6.0
+        with:
+          auth: ${{ secrets.GIST_SECRET }}
+          gistID: <gist-ID>
+          filename: test.json
+          label: Hello
+          message: World
+          color: orange
