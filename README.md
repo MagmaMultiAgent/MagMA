@@ -3,11 +3,11 @@
     <img width="100%"  src="docs/images/logo.png" />
 </p>
 
-[![Docker Publish](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/docker-publish.yml/badge.svg?branch=main)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/docker-publish.yml)&nbsp; &nbsp;[![Pylint](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pylint.yml/badge.svg)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pylint.yml)&nbsp; &nbsp;[![CodeQL](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/github-code-scanning/codeql/badge.svg?branch=main)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/github-code-scanning/codeql)
+[![Docker Publish](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/docker-publish.yml/badge.svg?branch=main)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/docker-publish.yml)&nbsp;[![Pylint](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pylint.yml/badge.svg)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pylint.yml)&nbsp;[![CodeQL](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/github-code-scanning/codeql/badge.svg?branch=main)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/github-code-scanning/codeql)&nbsp;![Version](https://img.shields.io/badge/python-v3.8-blue)&nbsp;![GitHub issues](https://img.shields.io/github/issues/Getlar/VigIL-Game-Validation)&nbsp;![GitHub](https://img.shields.io/github/license/Getlar/VigIL-Game-Validation)![GitHub release (with filter)](https://img.shields.io/github/v/release/Getlar/VigIL-Game-Validation)&nbsp;![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Getlar/5a256487d767cc5d606d29bd521a18ae/raw/algo.json)
 
 # VigIL - Lux AI Competition
 
-This repository is a record of my research journey, starting from brainstorming **RL and IL** solutions in game environments, diving into RL competitions, and eventually crafting agents for the 2023 Lux AI competition held during the yearly **NeurIPS conference**.
+This repository contains a thesis research exploring **AI-based Game Validation**, along with a partial submission and template for the second edition of the annual **NeurIPS** conference in 2023.
 
 The **Lux AI Challenge** is a competition where competitors design agents to tackle a multi-variable optimization, resource gathering, and allocation problem in a 1v1 scenario against other competitors. In addition to optimization, successful agents must be capable of analyzing their opponents and developing appropriate policies to get the upper hand.
 
@@ -35,9 +35,19 @@ To employ [JAX](https://github.com/google/jax) as the backend and execute the en
 bash ./docker_run.sh -d gpu -v latest
 ```
 
+### DevContainers
+
+Efficiently develop and test code within a Visual Studio Container by cloning the project and using `Ctrl+Shift+P` in VS Code's command palette.
+
+```bash
+> Dev Containers: Reopen in Container
+```
+
+On a Mac, using a Dev Container can lead to problems due to image incompatibility with `ARM processors`. For Macs, it's better to utilize [dockerRun](https://github.com/Getlar/VigIL-Game-Validation/blob/main/docker_run.sh). If you're on an `x86-64 processor`, opt for the `VS Code` dev container.
+
 ## Binary
 
-You will need Python >=3.7, <3.11 installed on your system. Once installed, you can install the Lux AI season 2 environment and optionally the GPU version with:
+You will need `Python 3.8` installed on your system. Once installed, you can install the Lux AI season 2 environment and optionally the GPU version with:
 
 ```bash
 pip install --upgrade luxai_s2
@@ -55,49 +65,38 @@ conda activate luxai_s2
 
 To install **additional packages** required to train and run specific agents run the following commands:
 
+#### Devtools:
 ```bash
 apt update -y && apt upgrade -y && apt install -y build-essential && apt-get install -y manpages-dev # Required if dev tools are missing.
 ```
+#### Base packages:
 ```bash
-pip install --no-cache-dir setuptools==57.1.0 psutil==5.7.0 pettingzoo==1.12.0 vec_noise==1.1.4 ipykernel pygame termcolor wheel==0.38.4 notebook tensorboard
+pip install setuptools==57.1.0 psutil==5.7.0 \ 
+    pettingzoo==1.12.0 vec_noise==1.1.4 ipykernel moviepy \
+    pygame termcolor wheel==0.38.4 notebook tensorboard
 ```
+#### Lux packages:
 ```bash
-pip install stable_baselines3==1.7.0 gym==0.21 --upgrade luxai_s2 
-```
-# Run
-
-To verify your installation, you can run the CLI tool by replacing `path/to/bot/main.py` with a path to a bot.
-
-```bash
-luxai-s2 path/to/bot/main.py path/to/bot/main.py -v 2 -o replay.json
+pip install stable_baselines3==1.7.0 gym==0.21 --upgrade luxai_s2
 ```
 
-This will turn on logging to level 2, and store the replay file at *replay.json*.
-
-# Train
-
-To use the training code, run [train.py](https://github.com/Getlar/VigIL-Game-Validation/blob/main/src/Lux-Agents-S2/train.py) --help for help and to train an agent run:
-
+#### Install JAX support: (Optional)
 ```bash
-python train.py --n-envs 4 --log-path logs/exp_1  --seed 660
+pip install --no-cache-dir juxai-s2
 ```
-
-Set your `--n-envs` according to your available CPU cores. This will train an RL agent using the PPO algorithm with 4 parallel environments to sample from.
-
-# Evaluation
-
-To start evaluating with the CLI tool and eventually submit to the competition, we need to save our best model (stored in <log_path>/models/best_model.zip) to the root directory. Alternatively you can modify `MODEL_WEIGHTS_RELATIVE_PATH` in [agent.py](https://github.com/Getlar/VigIL-Game-Validation/blob/main/src/Lux-Agents-S2/agent.py) to point to where the model file is. If you ran the training script above it will save the trained agent to `logs/exp_1/models/best_model.zip`.
-
-Once that is setup, you can test and watch your trained agent on the nice HTML visualizer by running the following:
-
-```bash
-luxai-s2 main.py main.py --out=replay.html
-```
-
-Open up `replay.html` and you can look at what your agent is doing.
 
 # Core Contributors
 
 I would like to extend my heartfelt gratitude to [Gulyás László](https://github.com/lesIII) for their invaluable guidance and insightful mentorship throughout the course of this project.
 
 I am also thankful to **Eötvös Lóránd University** for providing the necessary resources and environment that facilitated the development of this project.
+
+@software{Lux_AI_Challenge_S1,
+  author = {Tao, Stone and Doerschuk-Tiberi, Bovard},
+  doi = {https://doi.org/10.5281/zenodo.7988163},
+  month = {10},
+  title = {{Lux AI Challenge Season 2}},
+  url = {https://github.com/Lux-AI-Challenge/Lux-Design-S2},
+  version = {1.0.0},
+  year = {2023}
+}
