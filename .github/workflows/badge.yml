@@ -16,7 +16,7 @@ jobs:
         with:
           auth: ${{ secrets.GIST_SECRET }}
           gistID: 5a256487d767cc5d606d29bd521a18ae
-          filename: test.json
-          label: Hello
-          message: World
+          filename: algo.json
+          label: algorithm
+          message: PPO
           color: orange
