@@ -10,7 +10,7 @@
     },
     "workspaceFolder": "/usr/src/luxai",
     "mounts": [
-        "source=${localEnv:PWD},target=/usr/src/luxai,type=bind,consistency=cached"
+        "source=${localWorkspaceFolder},target=/usr/src/luxai,type=bind,consistency=cached"
     ],
     "forwardPorts": [ 8888 ]
 }

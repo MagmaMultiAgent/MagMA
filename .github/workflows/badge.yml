@@ -1,0 +1,22 @@
+name: Badge Updater
+on: 
+  push:
+    branches:
+      - main
+    paths:
+      - README.md
+      - .github/workflows/badge.yml
+jobs:
+  build:
+    name: Badges
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update Version Badge
+        uses: schneegans/dynamic-badges-action@v1.6.0
+        with:
+          auth: ${{ secrets.GIST_SECRET }}
+          gistID: 5a256487d767cc5d606d29bd521a18ae
+          filename: algo.json
+          label: algorithm
+          message: PPO
+          color: orange

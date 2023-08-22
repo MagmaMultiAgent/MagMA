@@ -9,8 +9,6 @@ import argparse
 import gym
 import torch as th
 from gym.wrappers import TimeLimit
-from wrappers import place_near_random_ice, zero_bid
-from wrappers import SB3Wrapper
 from stable_baselines3.common.callbacks import (
     BaseCallback,
     EvalCallback,
@@ -23,9 +21,13 @@ from stable_baselines3.common.vec_env import (
     VecVideoRecorder,
 )
 from stable_baselines3.ppo import PPO
+from stable_baselines3.a2c import A2C
+from stable_baselines3.her import HerReplayBuffer
+from stable_baselines3.dqn import DQN
 from lux_kit.luxai_s2.luxai_s2.state import StatsStateDict
 from wrappers import SimpleUnitDiscreteController, SimpleUnitObservationWrapper
-
+from wrappers import place_near_random_ice
+from wrappers import SB3Wrapper
 
 class CustomEnvWrapper(gym.Wrapper):
     """
@@ -160,7 +162,6 @@ def make_env(env_id: str, rank: int, seed: int = 0, max_episode_steps=100):
 
         env = SB3Wrapper(
             env,
-            bid_policy=zero_bid,
             factory_placement_policy=place_near_random_ice,
             controller=SimpleUnitDiscreteController(env.env_cfg),
         )
@@ -249,6 +250,10 @@ def train(args, env_id, model: PPO):
 
 def main(args):
     """Main function"""
+
+    if "LuxAI_S2-v0" in gym.envs.registry.env_specs:
+        del gym.envs.registry.env_specs["LuxAI_S2-v0"]
+        
     print("Training with args", args)
     if args.seed is not None:
         set_random_seed(args.seed)
@@ -262,19 +267,50 @@ def main(args):
     env.reset()
     rollout_steps = 4000
     policy_kwargs = {"net_arch": (128, 128)}
-    model = PPO(
+    # model = PPO(
+    #     "MlpPolicy",
+    #     env,
+    #     n_steps=rollout_steps // args.n_envs,
+    #     batch_size=800,
+    #     learning_rate=3e-4,
+    #     policy_kwargs=policy_kwargs,
+    #     verbose=1,
+    #     n_epochs=2,
+    #     target_kl=0.05,
+    #     gamma=0.99,
+    #     tensorboard_log=osp.join(args.log_path),
+    # )
+    # model = A2C(
+    #     "MlpPolicy",
+    #     env,
+    #     learning_rate = 3e-4,
+    #     n_steps = rollout_steps // args.n_envs,
+    #     gamma = 0.99,
+    #     gae_lambda = 1.0,
+    #     ent_coef = 0.0,
+    #     vf_coef = 0.5,
+    #     max_grad_norm = 0.5,
+    #     rms_prop_eps = 1e-5,
+    #     policy_kwargs=policy_kwargs,
+    #     tensorboard_log=osp.join(args.log_path),
+    #     verbose=1,
+    # )
+    # model = HerReplayBuffer(
+    #     env = env,
+    #     buffer_size =  
+    # )
+    model = DQN(
         "MlpPolicy",
         env,
-        n_steps=rollout_steps // args.n_envs,
-        batch_size=800,
-        learning_rate=3e-4,
+        learning_rate = 3e-4,
+        learning_starts = 50000,
+        batch_size = 800,
+        gamma = 0.99,
         policy_kwargs=policy_kwargs,
-        verbose=1,
-        n_epochs=2,
-        target_kl=0.05,
-        gamma=0.99,
         tensorboard_log=osp.join(args.log_path),
+        verbose=1,
     )
+    
     if args.eval:
         evaluate(args, env_id, model)
     else:
