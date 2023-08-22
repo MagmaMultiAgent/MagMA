@@ -85,18 +85,10 @@ pip install stable_baselines3==1.7.0 gym==0.21 --upgrade luxai_s2
 pip install --no-cache-dir juxai-s2
 ```
 
+To test the existing implementation check out the [running docs](https://github.com/Getlar/VigIL-Game-Validation/blob/main/src/README.MD).
+
 # Core Contributors
 
 I would like to extend my heartfelt gratitude to [Gulyás László](https://github.com/lesIII) for their invaluable guidance and insightful mentorship throughout the course of this project.
 
 I am also thankful to **Eötvös Lóránd University** for providing the necessary resources and environment that facilitated the development of this project.
-
-@software{Lux_AI_Challenge_S1,
-  author = {Tao, Stone and Doerschuk-Tiberi, Bovard},
-  doi = {https://doi.org/10.5281/zenodo.7988163},
-  month = {10},
-  title = {{Lux AI Challenge Season 2}},
-  url = {https://github.com/Lux-AI-Challenge/Lux-Design-S2},
-  version = {1.0.0},
-  year = {2023}
-}
