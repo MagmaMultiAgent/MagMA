@@ -31,7 +31,7 @@ from sb3_contrib.trpo import TRPO
 from sb3_contrib.ppo_mask import MaskablePPO
 from lux_kit.luxai_s2.luxai_s2.state import StatsStateDict
 from wrappers import SimpleUnitDiscreteController, SimpleUnitObservationWrapper
-from wrappers import place_near_random_ice
+from utils import place_near_random_ice
 from wrappers import SB3Wrapper
 
 class CustomEnvWrapper(gym.Wrapper):
@@ -270,12 +270,10 @@ def main(args):
         ]
     )
     env.reset()
-    rollout_steps = 4000
     policy_kwargs = {"net_arch": (128, 128)}
     model = PPO(
         "MlpPolicy",
         env,
-        n_steps=rollout_steps // args.n_envs,
         batch_size=800,
         policy_kwargs=policy_kwargs,
         verbose=1,
@@ -370,6 +368,7 @@ def main(args):
         evaluate(args, env_id, model)
     else:
         train(args, env_id, model)
+    
 
 
 if __name__ == "__main__":
