@@ -11,7 +11,7 @@ def zero_bid(player):
     faction = "AlphaStrike"
     if player == "player_1":
         faction = "MotherMars"
-    return {"bid": 0, "factin": faction}
+    return {"bid": 0, "faction": faction}
 
 def place_near_random_ice(player, obs):
     """
