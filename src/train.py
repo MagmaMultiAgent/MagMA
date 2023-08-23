@@ -271,14 +271,14 @@ def main(args):
     )
     env.reset()
     policy_kwargs = {"net_arch": (128, 128)}
-    model = PPO(
-        "MlpPolicy",
-        env,
-        batch_size=800,
-        policy_kwargs=policy_kwargs,
-        verbose=1,
-        tensorboard_log=osp.join(args.log_path),
-    )
+    # model = PPO(
+    #     "MlpPolicy",
+    #     env,
+    #     batch_size=800,
+    #     policy_kwargs=policy_kwargs,
+    #     verbose=1,
+    #     tensorboard_log=osp.join(args.log_path),
+    # )
     # model = A2C(
     #     "MlpPolicy",
     #     env,
@@ -294,17 +294,15 @@ def main(args):
     #     tensorboard_log=osp.join(args.log_path),
     #     verbose=1,
     # )
-    # model = DQN(
-    #     "MlpPolicy",
-    #     env,
-    #     learning_rate = 3e-4,
-    #     learning_starts = 50000,
-    #     batch_size = 800,
-    #     gamma = 0.99,
-    #     policy_kwargs=policy_kwargs,
-    #     tensorboard_log=osp.join(args.log_path),
-    #     verbose=1,
-    # )
+    model = DQN(
+        "MlpPolicy",
+        env,
+        learning_rate = 3e-4,
+        batch_size = 800,
+        policy_kwargs=policy_kwargs,
+        tensorboard_log=osp.join(args.log_path),
+        verbose=1,
+    )
     # model = ARS(
     #     "MlpPolicy",
     #     env,

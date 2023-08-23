@@ -40,7 +40,7 @@ def process_and_save_plots(directory_path):
         sns.lineplot(y=data_frame['Value'], x=data_frame['Step'], label=label, linewidth=2)
 
         # Customize the plot
-        plt.title("Beautiful Line Plot with Seaborn")
+        plt.title(f"Line Plot showing: {csv_file[:len(csv_file)-4]}/rollout")
         plt.xlabel("X-axis")
         plt.ylabel("Y-axis")
         plt.legend()
