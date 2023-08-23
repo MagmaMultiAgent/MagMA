@@ -267,19 +267,15 @@ def main(args):
     env.reset()
     rollout_steps = 4000
     policy_kwargs = {"net_arch": (128, 128)}
-    # model = PPO(
-    #     "MlpPolicy",
-    #     env,
-    #     n_steps=rollout_steps // args.n_envs,
-    #     batch_size=800,
-    #     learning_rate=3e-4,
-    #     policy_kwargs=policy_kwargs,
-    #     verbose=1,
-    #     n_epochs=2,
-    #     target_kl=0.05,
-    #     gamma=0.99,
-    #     tensorboard_log=osp.join(args.log_path),
-    # )
+    model = PPO(
+        "MlpPolicy",
+        env,
+        n_steps=rollout_steps // args.n_envs,
+        batch_size=800,
+        policy_kwargs=policy_kwargs,
+        verbose=1,
+        tensorboard_log=osp.join(args.log_path),
+    )
     # model = A2C(
     #     "MlpPolicy",
     #     env,
@@ -299,17 +295,17 @@ def main(args):
     #     env = env,
     #     buffer_size =  
     # )
-    model = DQN(
-        "MlpPolicy",
-        env,
-        learning_rate = 3e-4,
-        learning_starts = 50000,
-        batch_size = 800,
-        gamma = 0.99,
-        policy_kwargs=policy_kwargs,
-        tensorboard_log=osp.join(args.log_path),
-        verbose=1,
-    )
+    # model = DQN(
+    #     "MlpPolicy",
+    #     env,
+    #     learning_rate = 3e-4,
+    #     learning_starts = 50000,
+    #     batch_size = 800,
+    #     gamma = 0.99,
+    #     policy_kwargs=policy_kwargs,
+    #     tensorboard_log=osp.join(args.log_path),
+    #     verbose=1,
+    # )
     
     if args.eval:
         evaluate(args, env_id, model)
