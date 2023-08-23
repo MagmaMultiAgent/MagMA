@@ -198,7 +198,6 @@ class TensorboardCallback(BaseCallback):
             for i, done in enumerate(self.locals["dones"]):
                 if done:
                     info = self.locals["infos"][i]
-                    print(info)
                     count += 1
                     for k in info["metrics"]:
                         stat = info["metrics"][k]
@@ -320,22 +319,21 @@ def main(args):
     #     tensorboard_log=osp.join(args.log_path),
     #     verbose=1,
     # )
-    model = MaskablePPO(
-        "MlpPolicy",
-        env,
-        n_steps=rollout_steps // args.n_envs,
-        batch_size=800,
-        learning_rate=3e-4,
-        policy_kwargs=policy_kwargs,
-        verbose=1,
-        gae_lambda = 0.95,
-        n_epochs=2,
-        target_kl=0.05,
-        gamma=0.99,
-        tensorboard_log=osp.join(args.log_path),
-    )
-    # model = RecurrentPPO(
+    # model = MaskablePPO(
     #     "MlpPolicy",
+    #     env,
+    #     n_steps=rollout_steps // args.n_envs,
+    #     batch_size=800,
+    #     learning_rate=3e-4,
+    #     policy_kwargs=policy_kwargs,
+    #     verbose=1,
+    #     gae_lambda = 0.95,
+    #     target_kl=0.05,
+    #     gamma=0.99,
+    #     tensorboard_log=osp.join(args.log_path),
+    # )
+    # model = RecurrentPPO(
+    #     "MlpLstmPolicy",
     #     env,
     #     n_steps=rollout_steps // args.n_envs,
     #     batch_size=800,
@@ -361,21 +359,17 @@ def main(args):
     #     tensorboard_log=osp.join(args.log_path),
     #     verbose=1,
     # )
-    # model = TRPO(
-    #     "MlpPolicy",
-    #     env,
-    #     n_steps=rollout_steps // args.n_envs,
-    #     batch_size=800,
-    #     cg_max_steps = 20,
-    #     learning_rate=3e-4,
-    #     gae_lambda = 15,
-    #     n_critic_updates = 15,
-    #     policy_kwargs=policy_kwargs,
-    #     verbose=1,
-    #     target_kl=0.05,
-    #     gamma=0.99,
-    #     tensorboard_log=osp.join(args.log_path),
-    # )
+    model = TRPO(
+        "MlpPolicy",
+        env,
+        n_steps=rollout_steps // args.n_envs,
+        batch_size=800,
+        cg_max_steps = 20,
+        n_critic_updates = 15,
+        policy_kwargs=policy_kwargs,
+        verbose=1,
+        tensorboard_log=osp.join(args.log_path),
+    )
     if args.eval:
         evaluate(args, env_id, model)
     else:
