@@ -26,49 +26,6 @@ class Agent:
 
         self.controller = SimpleUnitDiscreteController(self.env_cfg)
 
-    def bid_policy(self):
-        """Function used for factory bidding"""
-
-        return {"faction": 'AlphaStrike', "bid": 0}
-
-    def factory_placement_policy(self, obs):
-        """Function used for placing the actual factory after bidding"""
-
-        if obs["teams"][self.player]["metal"] == 0:
-            return {}
-
-        potential_spawns = list(zip(*np.where(obs["board"]["valid_spawns_mask"] == 1)))
-        done_search = False
-
-        ice_diff = np.diff(obs["board"]["ice"])
-        pot_ice_spots = np.argwhere(ice_diff == 1)
-        if len(pot_ice_spots) == 0:
-            pot_ice_spots = potential_spawns
-        trials = 5
-        while trials > 0:
-            pos_idx = np.random.randint(0, len(pot_ice_spots))
-            pos = pot_ice_spots[pos_idx]
-
-            area = 3
-            for x_coord in range(area):
-                for y_coord in range(area):
-                    check_pos = [pos[0] + x_coord - area // 2, pos[1] + y_coord - area // 2]
-                    if tuple(check_pos) in set(potential_spawns):
-                        done_search = True
-                        pos = check_pos
-                        break
-                if done_search:
-                    break
-            if done_search:
-                break
-            trials -= 1
-        spawn_loc = potential_spawns[int(np.random.randint(0, len(potential_spawns)))]
-        if not done_search:
-            pos = spawn_loc
-
-        metal = obs["teams"][self.player]["metal"]
-        return {"spawn": pos, "metal": metal, "water": metal}
-
     def act(self, step: int, obs):
         """Function used for action selection by the agent"""
         

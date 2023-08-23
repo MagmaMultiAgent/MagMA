@@ -128,7 +128,7 @@ def parse_args():
     parser.add_argument(
         "--total-timesteps",
         type=int,
-        default=6_000_000,
+        default=3_000_000,
         help="Total timesteps for training",
     )
 
@@ -355,17 +355,17 @@ def main(args):
     #     tensorboard_log=osp.join(args.log_path),
     #     verbose=1,
     # )
-    model = TRPO(
-        "MlpPolicy",
-        env,
-        n_steps=rollout_steps // args.n_envs,
-        batch_size=800,
-        cg_max_steps = 20,
-        n_critic_updates = 15,
-        policy_kwargs=policy_kwargs,
-        verbose=1,
-        tensorboard_log=osp.join(args.log_path),
-    )
+    # model = TRPO(
+    #     "MlpPolicy",
+    #     env,
+    #     n_steps=rollout_steps // args.n_envs,
+    #     batch_size=800,
+    #     cg_max_steps = 20,
+    #     n_critic_updates = 15,
+    #     policy_kwargs=policy_kwargs,
+    #     verbose=1,
+    #     tensorboard_log=osp.join(args.log_path),
+    # )
     if args.eval:
         evaluate(args, env_id, model)
     else:
