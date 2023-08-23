@@ -24,6 +24,11 @@ from stable_baselines3.ppo import PPO
 from stable_baselines3.a2c import A2C
 from stable_baselines3.her import HerReplayBuffer
 from stable_baselines3.dqn import DQN
+from sb3_contrib.ars import ARS
+from sb3_contrib.ppo_recurrent import RecurrentPPO
+from sb3_contrib.qrdqn import QRDQN
+from sb3_contrib.trpo import TRPO
+from sb3_contrib.ppo_mask import MaskablePPO
 from lux_kit.luxai_s2.luxai_s2.state import StatsStateDict
 from wrappers import SimpleUnitDiscreteController, SimpleUnitObservationWrapper
 from wrappers import place_near_random_ice
@@ -189,14 +194,15 @@ class TensorboardCallback(BaseCallback):
     def _on_step(self) -> bool:
         """Function logging on a given step"""
         count = 0
-
-        for i, done in enumerate(self.locals["dones"]):
-            if done:
-                info = self.locals["infos"][i]
-                count += 1
-                for k in info["metrics"]:
-                    stat = info["metrics"][k]
-                    self.logger.record_mean(f"{self.tag}/{k}", stat)
+        if "dones" in self.locals:
+            for i, done in enumerate(self.locals["dones"]):
+                if done:
+                    info = self.locals["infos"][i]
+                    print(info)
+                    count += 1
+                    for k in info["metrics"]:
+                        stat = info["metrics"][k]
+                        self.logger.record_mean(f"{self.tag}/{k}", stat)
         return True
 
 
@@ -291,10 +297,6 @@ def main(args):
     #     tensorboard_log=osp.join(args.log_path),
     #     verbose=1,
     # )
-    # model = HerReplayBuffer(
-    #     env = env,
-    #     buffer_size =  
-    # )
     # model = DQN(
     #     "MlpPolicy",
     #     env,
@@ -306,7 +308,70 @@ def main(args):
     #     tensorboard_log=osp.join(args.log_path),
     #     verbose=1,
     # )
-    
+    # model = ARS(
+    #     "MlpPolicy",
+    #     env,
+    #     learning_rate = 3e-4,
+    #     policy_kwargs=policy_kwargs,
+    #     tensorboard_log=osp.join(args.log_path),
+    #     verbose=1,
+    # )
+    model = MaskablePPO(
+        "MlpPolicy",
+        env,
+        n_steps=rollout_steps // args.n_envs,
+        batch_size=800,
+        learning_rate=3e-4,
+        policy_kwargs=policy_kwargs,
+        verbose=1,
+        gae_lambda = 0.95,
+        n_epochs=2,
+        target_kl=0.05,
+        gamma=0.99,
+        tensorboard_log=osp.join(args.log_path),
+    )
+    # model = RecurrentPPO(
+    #     "MlpPolicy",
+    #     env,
+    #     n_steps=rollout_steps // args.n_envs,
+    #     batch_size=800,
+    #     learning_rate=3e-4,
+    #     policy_kwargs=policy_kwargs,
+    #     verbose=1,
+    #     gae_lambda = 0.95,
+    #     n_epochs=2,
+    #     target_kl=0.05,
+    #     gamma=0.99,
+    #     tensorboard_log=osp.join(args.log_path),
+    # )
+    # model = QRDQN(
+    #     "MlpPolicy",
+    #     env,
+    #     learning_rate = 3e-4,
+    #     learning_starts = 50000,
+    #     buffer_size = 1000000,
+    #     batch_size = 800,
+    #     gamma = 0.99,
+    #     tau = 1,
+    #     policy_kwargs=policy_kwargs,
+    #     tensorboard_log=osp.join(args.log_path),
+    #     verbose=1,
+    # )
+    # model = TRPO(
+    #     "MlpPolicy",
+    #     env,
+    #     n_steps=rollout_steps // args.n_envs,
+    #     batch_size=800,
+    #     cg_max_steps = 20,
+    #     learning_rate=3e-4,
+    #     gae_lambda = 15,
+    #     n_critic_updates = 15,
+    #     policy_kwargs=policy_kwargs,
+    #     verbose=1,
+    #     target_kl=0.05,
+    #     gamma=0.99,
+    #     tensorboard_log=osp.join(args.log_path),
+    # )
     if args.eval:
         evaluate(args, env_id, model)
     else:
