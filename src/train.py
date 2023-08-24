@@ -294,15 +294,15 @@ def main(args):
     #     tensorboard_log=osp.join(args.log_path),
     #     verbose=1,
     # )
-    model = DQN(
-        "MlpPolicy",
-        env,
-        learning_rate = 3e-4,
-        batch_size = 800,
-        policy_kwargs=policy_kwargs,
-        tensorboard_log=osp.join(args.log_path),
-        verbose=1,
-    )
+    # model = DQN(
+    #     "MlpPolicy",
+    #     env,
+    #     learning_rate = 3e-4,
+    #     batch_size = 800,
+    #     policy_kwargs=policy_kwargs,
+    #     tensorboard_log=osp.join(args.log_path),
+    #     verbose=1,
+    # )
     # model = ARS(
     #     "MlpPolicy",
     #     env,
@@ -338,19 +338,15 @@ def main(args):
     #     gamma=0.99,
     #     tensorboard_log=osp.join(args.log_path),
     # )
-    # model = QRDQN(
-    #     "MlpPolicy",
-    #     env,
-    #     learning_rate = 3e-4,
-    #     learning_starts = 50000,
-    #     buffer_size = 1000000,
-    #     batch_size = 800,
-    #     gamma = 0.99,
-    #     tau = 1,
-    #     policy_kwargs=policy_kwargs,
-    #     tensorboard_log=osp.join(args.log_path),
-    #     verbose=1,
-    # )
+    model = QRDQN(
+        "MlpPolicy",
+        env,
+        learning_rate = 3e-4,
+        batch_size = 800,
+        policy_kwargs=policy_kwargs,
+        tensorboard_log=osp.join(args.log_path),
+        verbose=1,
+    )
     # model = TRPO(
     #     "MlpPolicy",
     #     env,
