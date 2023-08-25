@@ -279,15 +279,15 @@ def main(args):
     #     verbose=1,
     #     tensorboard_log=osp.join(args.log_path),
     # )
-    model = A2C(
-        "MlpPolicy",
-        env,
-        n_steps = 50, # So batch size will be 50*16=800
-        policy_kwargs=policy_kwargs,
-        tensorboard_log=osp.join(args.log_path),
-        verbose=1,
-        gae_lambda=0.95,
-    )
+    # model = A2C(
+    #     "MlpPolicy",
+    #     env,
+    #     n_steps = 50, # So batch size will be 50*16=800
+    #     policy_kwargs=policy_kwargs,
+    #     tensorboard_log=osp.join(args.log_path),
+    #     verbose=1,
+    #     gae_lambda=0.95,
+    # )
     # model = DQN(
     #     "MlpPolicy",
     #     env,
@@ -297,14 +297,14 @@ def main(args):
     #     tensorboard_log=osp.join(args.log_path),
     #     verbose=1,
     # )
-    # model = ARS(
-    #     "MlpPolicy",
-    #     env,
-    #     learning_rate = 3e-4,
-    #     policy_kwargs=policy_kwargs,
-    #     tensorboard_log=osp.join(args.log_path),
-    #     verbose=1,
-    # )
+    model = ARS(
+        "MlpPolicy",
+        env,
+        policy_kwargs=policy_kwargs,
+        tensorboard_log=osp.join(args.log_path),
+        verbose=1,
+        n_delta = 50
+    )
     # model = MaskablePPO(
     #     "MlpPolicy",
     #     env,
