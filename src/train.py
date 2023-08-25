@@ -332,25 +332,22 @@ def main(args):
     #     gamma=0.99,
     #     tensorboard_log=osp.join(args.log_path),
     # )
-    model = QRDQN(
-        "MlpPolicy",
-        env,
-        learning_rate = 7e-4,
-        batch_size = 800,
-        policy_kwargs=policy_kwargs,
-        tensorboard_log=osp.join(args.log_path),
-        verbose=1,
-        exploration_final_eps=0.1,
-        exploration_fraction=0.01,
-        tau=0.95,
-    )
+    # model = QRDQN(
+    #     "MlpPolicy",
+    #     env,
+    #     learning_rate = 7e-4,
+    #     batch_size = 800,
+    #     policy_kwargs=policy_kwargs,
+    #     tensorboard_log=osp.join(args.log_path),
+    #     verbose=1,
+    #     exploration_final_eps=0.1,
+    #     exploration_fraction=0.01,
+    #     tau=0.95,
+    # )
     # model = TRPO(
     #     "MlpPolicy",
     #     env,
-    #     n_steps=rollout_steps // args.n_envs,
     #     batch_size=800,
-    #     cg_max_steps = 20,
-    #     n_critic_updates = 15,
     #     policy_kwargs=policy_kwargs,
     #     verbose=1,
     #     tensorboard_log=osp.join(args.log_path),
