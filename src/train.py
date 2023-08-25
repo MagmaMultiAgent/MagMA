@@ -297,14 +297,14 @@ def main(args):
     #     tensorboard_log=osp.join(args.log_path),
     #     verbose=1,
     # )
-    model = ARS(
-        "MlpPolicy",
-        env,
-        policy_kwargs=policy_kwargs,
-        tensorboard_log=osp.join(args.log_path),
-        verbose=1,
-        n_delta = 50
-    )
+    # model = ARS(
+    #     "MlpPolicy",
+    #     env,
+    #     policy_kwargs=policy_kwargs,
+    #     tensorboard_log=osp.join(args.log_path),
+    #     verbose=1,
+    #     n_delta = 50
+    # )
     # model = MaskablePPO(
     #     "MlpPolicy",
     #     env,
@@ -332,15 +332,18 @@ def main(args):
     #     gamma=0.99,
     #     tensorboard_log=osp.join(args.log_path),
     # )
-    # model = QRDQN(
-    #     "MlpPolicy",
-    #     env,
-    #     learning_rate = 3e-4,
-    #     batch_size = 800,
-    #     policy_kwargs=policy_kwargs,
-    #     tensorboard_log=osp.join(args.log_path),
-    #     verbose=1,
-    # )
+    model = QRDQN(
+        "MlpPolicy",
+        env,
+        learning_rate = 7e-4,
+        batch_size = 800,
+        policy_kwargs=policy_kwargs,
+        tensorboard_log=osp.join(args.log_path),
+        verbose=1,
+        exploration_final_eps=0.1,
+        exploration_fraction=0.01,
+        tau=0.95,
+    )
     # model = TRPO(
     #     "MlpPolicy",
     #     env,
