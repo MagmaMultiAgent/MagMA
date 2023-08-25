@@ -279,21 +279,15 @@ def main(args):
     #     verbose=1,
     #     tensorboard_log=osp.join(args.log_path),
     # )
-    # model = A2C(
-    #     "MlpPolicy",
-    #     env,
-    #     learning_rate = 3e-4,
-    #     n_steps = rollout_steps // args.n_envs,
-    #     gamma = 0.99,
-    #     gae_lambda = 1.0,
-    #     ent_coef = 0.0,
-    #     vf_coef = 0.5,
-    #     max_grad_norm = 0.5,
-    #     rms_prop_eps = 1e-5,
-    #     policy_kwargs=policy_kwargs,
-    #     tensorboard_log=osp.join(args.log_path),
-    #     verbose=1,
-    # )
+    model = A2C(
+        "MlpPolicy",
+        env,
+        n_steps = 50, # So batch size will be 50*16=800
+        policy_kwargs=policy_kwargs,
+        tensorboard_log=osp.join(args.log_path),
+        verbose=1,
+        gae_lambda=0.95,
+    )
     # model = DQN(
     #     "MlpPolicy",
     #     env,
@@ -338,15 +332,15 @@ def main(args):
     #     gamma=0.99,
     #     tensorboard_log=osp.join(args.log_path),
     # )
-    model = QRDQN(
-        "MlpPolicy",
-        env,
-        learning_rate = 3e-4,
-        batch_size = 800,
-        policy_kwargs=policy_kwargs,
-        tensorboard_log=osp.join(args.log_path),
-        verbose=1,
-    )
+    # model = QRDQN(
+    #     "MlpPolicy",
+    #     env,
+    #     learning_rate = 3e-4,
+    #     batch_size = 800,
+    #     policy_kwargs=policy_kwargs,
+    #     tensorboard_log=osp.join(args.log_path),
+    #     verbose=1,
+    # )
     # model = TRPO(
     #     "MlpPolicy",
     #     env,
