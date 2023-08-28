@@ -19,6 +19,7 @@ from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.vec_env import (
     SubprocVecEnv,
     VecVideoRecorder,
+    DummyVecEnv,
 )
 from stable_baselines3.ppo import PPO
 from stable_baselines3.a2c import A2C
@@ -33,6 +34,7 @@ from lux_kit.luxai_s2.luxai_s2.state import StatsStateDict
 from wrappers import SimpleUnitDiscreteController, SimpleUnitObservationWrapper
 from utils import place_near_random_ice
 from wrappers import SB3Wrapper
+from wrappers import SB3InvalidActionWrapper
 
 class CustomEnvWrapper(gym.Wrapper):
     """
@@ -164,12 +166,18 @@ def make_env(env_id: str, rank: int, seed: int = 0, max_episode_steps=100):
         # controller this will remove the bidding phase and factory placement phase.
         # For factory placement we use the provided place_near_random_ice function which
         # will randomly select an ice tile and place a factory near it.
-
-        env = SB3Wrapper(
+        
+        ## For Invalid action Masking
+        env = SB3InvalidActionWrapper(
             env,
             factory_placement_policy=place_near_random_ice,
             controller=SimpleUnitDiscreteController(env.env_cfg),
         )
+        # env = SB3Wrapper(
+        #     env,
+        #     factory_placement_policy=place_near_random_ice,
+        #     controller=SimpleUnitDiscreteController(env.env_cfg),
+        # )
         env = SimpleUnitObservationWrapper(
             env
         )  # changes observation to include a few simple features
@@ -231,11 +239,13 @@ def evaluate(args, env_id, model):
     print(out)
 
 
-def train(args, env_id, model: PPO):
+def train(args, env_id, model: PPO, invalid_action_masking):
     """Training function"""
-    eval_env = SubprocVecEnv(
-        [make_env(env_id, i, max_episode_steps=1000) for i in range(4)]
-    )
+
+    eval_environments = [make_env(env_id, i, max_episode_steps=1000) for i in range(4)]
+    eval_env = DummyVecEnv(eval_environments) if invalid_action_masking else SubprocVecEnv(eval_environments)
+    eval_env.reset()
+
     eval_callback = EvalCallback(
         eval_env,
         best_model_save_path=osp.join(args.log_path, "models"),
@@ -255,20 +265,18 @@ def train(args, env_id, model: PPO):
 
 def main(args):
     """Main function"""
-
-    if "LuxAI_S2-v0" in gym.envs.registry.env_specs:
-        del gym.envs.registry.env_specs["LuxAI_S2-v0"]
         
     print("Training with args", args)
     if args.seed is not None:
         set_random_seed(args.seed)
+
+    invalid_action_masking=True
+
     env_id = "LuxAI_S2-v0"
-    env = SubprocVecEnv(
-        [
-            make_env(env_id, i, max_episode_steps=args.max_episode_steps)
-            for i in range(args.n_envs)
-        ]
-    )
+    
+    environments = [make_env(env_id, i, max_episode_steps=args.max_episode_steps) for i in range(args.n_envs)]
+    env = DummyVecEnv(environments) if invalid_action_masking else SubprocVecEnv(environments)
+
     env.reset()
     policy_kwargs = {"net_arch": (128, 128)}
     # model = PPO(
@@ -305,31 +313,39 @@ def main(args):
     #     verbose=1,
     #     n_delta = 50
     # )
-    # model = MaskablePPO(
-    #     "MlpPolicy",
-    #     env,
-    #     n_steps=rollout_steps // args.n_envs,
-    #     batch_size=800,
-    #     learning_rate=3e-4,
-    #     policy_kwargs=policy_kwargs,
-    #     verbose=1,
-    #     gae_lambda = 0.95,
-    #     target_kl=0.05,
-    #     gamma=0.99,
-    #     tensorboard_log=osp.join(args.log_path),
-    # )
+    rollout_steps = 4000
+    model = MaskablePPO(
+        "MlpPolicy",
+        env,
+        n_steps=rollout_steps // args.n_envs,
+        batch_size=800,
+        learning_rate=3e-4,
+        policy_kwargs=policy_kwargs,
+        verbose=1,
+        gae_lambda = 0.95,
+        target_kl=0.05,
+        gamma=0.99,
+        tensorboard_log=osp.join(args.log_path),
+    )
+    # policy_kwargs = dict(
+    #         enable_critic_lstm=True,
+    #         net_arch=dict(vf=[64], pi=[]),
+    #         lstm_hidden_size=4,
+    #         lstm_kwargs=dict(dropout=0.5),
+    #         n_lstm_layers=2,
+    #     )
     # model = RecurrentPPO(
     #     "MlpLstmPolicy",
     #     env,
-    #     n_steps=rollout_steps // args.n_envs,
     #     batch_size=800,
-    #     learning_rate=3e-4,
+    #     n_steps = 16,
+    #     clip_range_vf=0.1,
+    #     learning_rate=7e4,
+    #     n_epochs=10,
+    #     gae_lambda=0.98,
+    #     ent_coef=0.01,
     #     policy_kwargs=policy_kwargs,
     #     verbose=1,
-    #     gae_lambda = 0.95,
-    #     n_epochs=2,
-    #     target_kl=0.05,
-    #     gamma=0.99,
     #     tensorboard_log=osp.join(args.log_path),
     # )
     # model = QRDQN(
@@ -355,7 +371,7 @@ def main(args):
     if args.eval:
         evaluate(args, env_id, model)
     else:
-        train(args, env_id, model)
+        train(args, env_id, model, invalid_action_masking)
     
 
 
