@@ -11,6 +11,7 @@ import sys
 import numpy as np
 import torch as th
 from stable_baselines3.ppo import PPO
+from sb3_contrib.ppo_mask import MaskablePPO
 from lux.config import EnvConfig
 from wrappers import SimpleUnitDiscreteController, SimpleUnitObservationWrapper
 
@@ -27,7 +28,7 @@ class Agent:
         self.env_cfg: EnvConfig = env_cfg
 
         directory = osp.dirname(__file__)
-        self.policy = PPO.load(osp.join(directory, MODEL_WEIGHTS_RELATIVE_PATH))
+        self.policy = MaskablePPO.load(osp.join(directory, MODEL_WEIGHTS_RELATIVE_PATH))
 
         self.controller = SimpleUnitDiscreteController(self.env_cfg)
 

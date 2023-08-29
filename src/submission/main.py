@@ -29,8 +29,6 @@ def agent_fn(observation, configurations):
     step = observation.step
 
     player = observation.player
-
-    print('AAAAAAAAAA')
     remainingOverageTime = observation.remainingOverageTime
     if step == 0:
         env_cfg = EnvConfig.from_dict(configurations["env_cfg"])
@@ -53,22 +51,26 @@ def agent_fn(observation, configurations):
 
 
 if __name__ == "__main__":
-
+    #print('ANYAD')
     def read_input():
         """
         Reads input from stdin
         """
         try:
+            print(input())
             return input()
         except EOFError as eof:
             raise SystemExit(eof)
+
     step = 0
     player_id = 0
     configurations = None
     i = 0
+    #print('SHITSITT')
     while True:
         inputs = read_input()
         obs = json.loads(inputs)
+
         observation = Namespace(
             **dict(
                 step=obs["step"],
@@ -83,4 +85,5 @@ if __name__ == "__main__":
         i += 1
         actions = agent_fn(observation, dict(env_cfg=configurations))
         # send actions to engine
+        print(actions)
         print(json.dumps(actions))

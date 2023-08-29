@@ -26,6 +26,7 @@ from stable_baselines3.a2c import A2C
 from stable_baselines3.her import HerReplayBuffer
 from stable_baselines3.dqn import DQN
 from sb3_contrib.ars import ARS
+from sb3_contrib.ars.policies import ARSPolicy
 from sb3_contrib.ppo_recurrent import RecurrentPPO
 from sb3_contrib.qrdqn import QRDQN
 from sb3_contrib.trpo import TRPO
@@ -278,7 +279,7 @@ def main(args):
     env = DummyVecEnv(environments) if invalid_action_masking else SubprocVecEnv(environments)
 
     env.reset()
-    policy_kwargs = {"net_arch": (128, 128)}
+    policy_kwargs = {"net_arch": (256, 256, 256)}
     # model = PPO(
     #     "MlpPolicy",
     #     env,
@@ -286,33 +287,6 @@ def main(args):
     #     policy_kwargs=policy_kwargs,
     #     verbose=1,
     #     tensorboard_log=osp.join(args.log_path),
-    # )
-    # model = A2C(
-    #     "MlpPolicy",
-    #     env,
-    #     n_steps = 50, # So batch size will be 50*16=800
-    #     policy_kwargs=policy_kwargs,
-    #     tensorboard_log=osp.join(args.log_path),
-    #     verbose=1,
-    #     gae_lambda=0.95,
-    # )
-    # model = DQN(
-    #     "MlpPolicy",
-    #     env,
-    #     learning_rate = 3e-4,
-    #     batch_size = 800,
-    #     policy_kwargs=policy_kwargs,
-    #     tensorboard_log=osp.join(args.log_path),
-    #     verbose=1,
-    # )
-    # model = ARS(
-    #     "MlpPolicy",
-    #     env,
-    #     policy_kwargs=policy_kwargs,
-    #     tensorboard_log=osp.join(args.log_path),
-    #     verbose=1,
-    #     n_delta = 50
-    # )
     rollout_steps = 4000
     model = MaskablePPO(
         "MlpPolicy",
@@ -327,47 +301,6 @@ def main(args):
         gamma=0.99,
         tensorboard_log=osp.join(args.log_path),
     )
-    # policy_kwargs = dict(
-    #         enable_critic_lstm=True,
-    #         net_arch=dict(vf=[64], pi=[]),
-    #         lstm_hidden_size=4,
-    #         lstm_kwargs=dict(dropout=0.5),
-    #         n_lstm_layers=2,
-    #     )
-    # model = RecurrentPPO(
-    #     "MlpLstmPolicy",
-    #     env,
-    #     batch_size=800,
-    #     n_steps = 16,
-    #     clip_range_vf=0.1,
-    #     learning_rate=7e4,
-    #     n_epochs=10,
-    #     gae_lambda=0.98,
-    #     ent_coef=0.01,
-    #     policy_kwargs=policy_kwargs,
-    #     verbose=1,
-    #     tensorboard_log=osp.join(args.log_path),
-    # )
-    # model = QRDQN(
-    #     "MlpPolicy",
-    #     env,
-    #     learning_rate = 7e-4,
-    #     batch_size = 800,
-    #     policy_kwargs=policy_kwargs,
-    #     tensorboard_log=osp.join(args.log_path),
-    #     verbose=1,
-    #     exploration_final_eps=0.1,
-    #     exploration_fraction=0.01,
-    #     tau=0.95,
-    # )
-    # model = TRPO(
-    #     "MlpPolicy",
-    #     env,
-    #     batch_size=800,
-    #     policy_kwargs=policy_kwargs,
-    #     verbose=1,
-    #     tensorboard_log=osp.join(args.log_path),
-    # )
     if args.eval:
         evaluate(args, env_id, model)
     else:
