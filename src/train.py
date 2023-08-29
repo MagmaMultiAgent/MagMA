@@ -279,7 +279,7 @@ def main(args):
     env = DummyVecEnv(environments) if invalid_action_masking else SubprocVecEnv(environments)
 
     env.reset()
-    policy_kwargs = {"net_arch": (256, 256, 256)}
+    policy_kwargs = {"net_arch": (128, 128)}
     # model = PPO(
     #     "MlpPolicy",
     #     env,
