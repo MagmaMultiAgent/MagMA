@@ -8,10 +8,10 @@ import gym
 import numpy as np
 import numpy.typing as npt
 
-from lux_kit.luxai_s2.luxai_s2.env import LuxAI_S2
-from lux_kit.luxai_s2.luxai_s2.state import ObservationStateDict
-from lux_kit.luxai_s2.luxai_s2.unit import BidActionType, FactoryPlacementActionType
-from lux_kit.luxai_s2.luxai_s2.utils import my_turn_to_place_factory
+from luxai_s2.env import LuxAI_S2
+from luxai_s2.state import ObservationStateDict
+from luxai_s2.unit import BidActionType, FactoryPlacementActionType
+from luxai_s2.utils import my_turn_to_place_factory
 from .controllers import Controller
 
 class SB3Wrapper(gym.Wrapper):

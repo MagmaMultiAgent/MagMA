@@ -1,24 +1,18 @@
-"""
-Module responsible for storing configurations of the game
-"""
+import dataclasses
 from argparse import Namespace
-from dataclasses import dataclass, field
-from typing import Dict
+from dataclasses import dataclass
+from typing import Dict, List
 
-def convert_dict_to_ns(dict_x):
-    """
-    Function converting dictionary into namespace
-    """
-    if isinstance(dict_x, dict):
-        for k in dict_x:
-            dict_x[k] = convert_dict_to_ns(dict_x)
-        return Namespace(**dict_x)
-    return Namespace()
+
+def convert_dict_to_ns(x):
+    if isinstance(x, dict):
+        for k in x:
+            x[k] = convert_dict_to_ns(x)
+        return Namespace(x)
+
 
 @dataclass
 class UnitConfig:
-    """Dataclass containing unit configurations"""
-    # pylint: disable=C0103
     METAL_COST: int = 100
     POWER_COST: int = 500
     CARGO_SPACE: int = 1000
@@ -34,11 +28,10 @@ class UnitConfig:
     SELF_DESTRUCT_COST: int = 10
     RUBBLE_AFTER_DESTRUCTION: int = 1
     ACTION_QUEUE_POWER_COST: int = 1
-    # pylint: enable=C0103
+
 
 @dataclass
 class EnvConfig:
-    """Dataclass containing environment configurations"""
     ## various options that can be configured if needed
 
     ### Variable parameters that don't affect game logic much ###
@@ -52,7 +45,6 @@ class EnvConfig:
 
     ### Constants ###
     # you can only ever transfer in/out 1000 as this is the max cargo space.
-    # pylint: disable=C0103
     max_transfer_amount: int = 10000
     MIN_FACTORIES: int = 2
     MAX_FACTORIES: int = 5
@@ -91,56 +83,54 @@ class EnvConfig:
 
     FACTORY_CHARGE: int = 50
     FACTORY_WATER_CONSUMPTION: int = 1
-    # game design note: with a positve water consumption, game becomes quite hard for
-    # new competitors so we set it to 0.
+    # game design note: with a positve water consumption, game becomes quite hard for new competitors.
+    # so we set it to 0
 
     #### Collision Mechanics ####
     POWER_LOSS_FACTOR: float = 0.5
 
     #### Units ####
-    ROBOTS: Dict[str, UnitConfig] = field(
-    default_factory=lambda: {
-        "light": UnitConfig(
-            METAL_COST=10,
-            POWER_COST=50,
-            INIT_POWER=50,
-            CARGO_SPACE=100,
-            BATTERY_CAPACITY=150,
-            CHARGE=1,
-            MOVE_COST=1,
-            RUBBLE_MOVEMENT_COST=0.05,
-            DIG_COST=5,
-            SELF_DESTRUCT_COST=5,
-            DIG_RUBBLE_REMOVED=2,
-            DIG_RESOURCE_GAIN=2,
-            DIG_LICHEN_REMOVED=10,
-            RUBBLE_AFTER_DESTRUCTION=1,
-            ACTION_QUEUE_POWER_COST=1
-        ),
-        "heavy": UnitConfig(
-            METAL_COST=100,
-            POWER_COST=500,
-            INIT_POWER=500,
-            CARGO_SPACE=1000,
-            BATTERY_CAPACITY=3000,
-            CHARGE=10,
-            MOVE_COST=20,
-            RUBBLE_MOVEMENT_COST=1,
-            DIG_COST=60,
-            SELF_DESTRUCT_COST=100,
-            DIG_RUBBLE_REMOVED=20,
-            DIG_RESOURCE_GAIN=20,
-            DIG_LICHEN_REMOVED=100,
-            RUBBLE_AFTER_DESTRUCTION=10,
-            ACTION_QUEUE_POWER_COST=10
-            )
-        }
+    ROBOTS: Dict[str, UnitConfig] = dataclasses.field(
+        default_factory=lambda: dict(
+            LIGHT=UnitConfig(
+                METAL_COST=10,
+                POWER_COST=50,
+                INIT_POWER=50,
+                CARGO_SPACE=100,
+                BATTERY_CAPACITY=150,
+                CHARGE=1,
+                MOVE_COST=1,
+                RUBBLE_MOVEMENT_COST=0.05,
+                DIG_COST=5,
+                SELF_DESTRUCT_COST=5,
+                DIG_RUBBLE_REMOVED=2,
+                DIG_RESOURCE_GAIN=2,
+                DIG_LICHEN_REMOVED=10,
+                RUBBLE_AFTER_DESTRUCTION=1,
+                ACTION_QUEUE_POWER_COST=1,
+            ),
+            HEAVY=UnitConfig(
+                METAL_COST=100,
+                POWER_COST=500,
+                INIT_POWER=500,
+                CARGO_SPACE=1000,
+                BATTERY_CAPACITY=3000,
+                CHARGE=10,
+                MOVE_COST=20,
+                RUBBLE_MOVEMENT_COST=1,
+                DIG_COST=60,
+                SELF_DESTRUCT_COST=100,
+                DIG_RUBBLE_REMOVED=20,
+                DIG_RESOURCE_GAIN=20,
+                DIG_LICHEN_REMOVED=100,
+                RUBBLE_AFTER_DESTRUCTION=10,
+                ACTION_QUEUE_POWER_COST=10,
+            ),
+        )
     )
-    # pylint: enable=C0103
 
     @classmethod
     def from_dict(cls, data):
-        """Class method"""
         data["ROBOTS"]["LIGHT"] = UnitConfig(**data["ROBOTS"]["LIGHT"])
         data["ROBOTS"]["HEAVY"] = UnitConfig(**data["ROBOTS"]["HEAVY"])
         return cls(**data)
