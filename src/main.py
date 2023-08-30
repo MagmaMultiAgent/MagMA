@@ -1,17 +1,29 @@
-"""Module containing the main loop"""
 import json
+import sys
 from argparse import Namespace
-from objects.config import EnvConfig
-from objects.kit import process_action, process_obs
-from agent import Agent
+from typing import Dict
+
+from src.agent import Agent
+from lux.config import EnvConfig
+from lux.kit import (
+    GameState,
+    from_json,
+    obs_to_game_state,
+    process_action,
+    process_obs,
+    to_json,
+)
 
 ### DO NOT REMOVE THE FOLLOWING CODE ###
-agent_dict = ({})  # store potentially multiple dictionaries as kaggle imports code directly
-agent_prev_obs = {}
+agent_dict = (
+    dict()
+)  # store potentially multiple dictionaries as kaggle imports code directly
+agent_prev_obs = dict()
+
 
 def agent_fn(observation, configurations):
     """
-    Agent definition for kaggle submission.
+    agent definition for kaggle submission.
     """
     global agent_dict
     step = observation.step
@@ -21,9 +33,9 @@ def agent_fn(observation, configurations):
     if step == 0:
         env_cfg = EnvConfig.from_dict(configurations["env_cfg"])
         agent_dict[player] = Agent(player, env_cfg)
-        agent_prev_obs[player] = {}
+        agent_prev_obs[player] = dict()
         agent = agent_dict[player]
-
+    
     agent = agent_dict[player]
     obs = process_obs(player, agent_prev_obs[player], step, json.loads(observation.obs))
     agent_prev_obs[player] = obs
@@ -42,26 +54,33 @@ if __name__ == "__main__":
 
     def read_input():
         """
-        Reads input from stdin.
+        Reads input from stdin
         """
-
         try:
             return input()
         except EOFError as eof:
-            raise SystemExit(eof) from eof
+            raise SystemExit(eof)
 
+    step = 0
+    player_id = 0
+    configurations = None
     i = 0
     while True:
         inputs = read_input()
         obs = json.loads(inputs)
+
         observation = Namespace(
-            **{"step": obs['step'], "obs": json.dumps(obs['obs']),
-             "remaining_overage_time": obs['remainingOverageTime'],
-             "player": obs['player'], "info":obs['info']}
+            **dict(
+                step=obs["step"],
+                obs=json.dumps(obs["obs"]),
+                remainingOverageTime=obs["remainingOverageTime"],
+                player=obs["player"],
+                info=obs["info"],
+            )
         )
         if i == 0:
             configurations = obs["info"]["env_cfg"]
         i += 1
-        actions = agent_fn(observation, {"env_cfg": configurations})
+        actions = agent_fn(observation, dict(env_cfg=configurations))
         # send actions to engine
         print(json.dumps(actions))
