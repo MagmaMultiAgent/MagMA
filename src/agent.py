@@ -17,7 +17,7 @@ from wrappers import SimpleUnitDiscreteController, SimpleUnitObservationWrapper
 # change this to use weights stored elsewhere
 # make sure the model weights are submitted with the other code files
 # any files in the logs folder are not necessary. Make sure to exclude the .zip extension here
-MODEL_WEIGHTS_RELATIVE_PATH = "./best_model"
+MODEL_WEIGHTS_RELATIVE_PATH = "../results/MPPO/2023.08.28./MPPO_1/models/best_model"
 
 class Agent:
     def __init__(self, player: str, env_cfg: EnvConfig) -> None:
