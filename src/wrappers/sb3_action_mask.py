@@ -1,4 +1,4 @@
-from .sb3 import SB3Wrapper
+from luxai_s2.wrappers import SB3Wrapper
 # Common imports 
 import copy
 from typing import Dict, Callable

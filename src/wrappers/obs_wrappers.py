@@ -86,5 +86,4 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
                 )
                 break
             observation[agent] = obs_vec
-
         return observation

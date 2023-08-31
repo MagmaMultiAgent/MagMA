@@ -14,7 +14,8 @@ from gym import spaces
 from gym.wrappers import TimeLimit
 from luxai_s2.state import ObservationStateDict, StatsStateDict
 from luxai_s2.utils.heuristics.factory_placement import place_near_random_ice
-from luxai_s2.wrappers import SB3Wrapper
+from wrappers.sb3 import SB3Wrapper
+from wrappers.sb3_action_mask import SB3InvalidActionWrapper
 from stable_baselines3.common.callbacks import (
     BaseCallback,
     CheckpointCallback,
@@ -28,9 +29,42 @@ from stable_baselines3.common.vec_env import (
     SubprocVecEnv,
     VecVideoRecorder,
 )
+from sb3_contrib.ppo_mask import MaskablePPO
 from stable_baselines3.ppo import PPO
-
+from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from wrappers import SimpleUnitDiscreteController, SimpleUnitObservationWrapper
+
+class CustomCNN(BaseFeaturesExtractor):
+    def __init__(self, observation_space: gym.Space, features_dim: int = 0) -> None:
+        super().__init__(observation_space, features_dim)
+
+        self.cnn = nn.Sequential(
+            nn.Conv1d(in_channels=1, out_channels=32, kernel_size=3),
+            nn.MaxPool1d(kernel_size=2),
+            nn.ReLU(),
+        )
+        
+        # Calculate the size of the flattened output after CNN layers
+        with th.no_grad():
+            n_flatten = self._get_flattened_size(observation_space)
+        
+        self.fc = nn.Sequential(
+            nn.Linear(n_flatten, 128),
+            nn.ReLU(),
+            nn.Linear(128, features_dim),
+        )
+
+    def _get_flattened_size(self, observation_space: gym.Space) -> int:
+        dummy_input = th.zeros(1, 1, observation_space.shape[0])  # Batch size of 1, 1 channel
+        cnn_output = self.cnn(dummy_input)
+        return cnn_output.view(1, -1).shape[1]
+
+    def forward(self, observations: th.Tensor) -> th.Tensor:
+        # Reshape observations to (batch_size, channels, sequence_length)
+        observations = observations.unsqueeze(1)
+        cnn_output = self.cnn(observations)
+        flattened = cnn_output.view(cnn_output.size(0), -1)
+        return self.fc(flattened)
 
 
 class CustomEnvWrapper(gym.Wrapper):
@@ -152,11 +186,18 @@ def make_env(env_id: str, rank: int, seed: int = 0, max_episode_steps=100):
         # this will remove the bidding phase and factory placement phase. For factory placement we use
         # the provided place_near_random_ice function which will randomly select an ice tile and place a factory near it.
 
-        env = SB3Wrapper(
+        # env = SB3Wrapper(
+        #     env,
+        #     factory_placement_policy=place_near_random_ice,
+        #     controller=SimpleUnitDiscreteController(env.env_cfg),
+        # )
+
+        env = SB3InvalidActionWrapper(
             env,
             factory_placement_policy=place_near_random_ice,
             controller=SimpleUnitDiscreteController(env.env_cfg),
         )
+
         env = SimpleUnitObservationWrapper(
             env
         )  # changes observation to include a few simple features
@@ -214,10 +255,13 @@ def evaluate(args, env_id, model):
     print(out)
 
 
-def train(args, env_id, model: PPO):
-    eval_env = SubprocVecEnv(
-        [make_env(env_id, i, max_episode_steps=1000) for i in range(4)]
-    )
+def train(args, env_id, model: PPO, invalid_action_masking):
+    # eval_env = SubprocVecEnv(
+    #     [make_env(env_id, i, max_episode_steps=1000) for i in range(4)]
+    # )
+    eval_environments = [make_env(env_id, i, max_episode_steps=1000) for i in range(4)]
+    eval_env = DummyVecEnv(eval_environments) if invalid_action_masking else SubprocVecEnv(eval_environments)
+    eval_env.reset()
     eval_callback = EvalCallback(
         eval_env,
         best_model_save_path=osp.join(args.log_path, "models"),
@@ -240,24 +284,31 @@ def main(args):
     if args.seed is not None:
         set_random_seed(args.seed)
     env_id = "LuxAI_S2-v0"
-    env = SubprocVecEnv(
-        [
-            make_env(env_id, i, max_episode_steps=args.max_episode_steps)
-            for i in range(args.n_envs)
-        ]
-    )
+    invalid_action_masking=True
+    # env = SubprocVecEnv(
+    #     [
+    #         make_env(env_id, i, max_episode_steps=args.max_episode_steps)
+    #         for i in range(args.n_envs)
+    #     ]
+    # )
+    environments = [make_env(env_id, i, max_episode_steps=args.max_episode_steps) for i in range(args.n_envs)]
+    env = DummyVecEnv(environments) if invalid_action_masking else SubprocVecEnv(environments)
     env.reset()
+
+    policy_kwargs = dict(
+        features_extractor_class=CustomCNN,
+        features_extractor_kwargs=dict(features_dim=128),
+    )
     rollout_steps = 4000
-    policy_kwargs = dict(net_arch=(128, 128))
-    model = PPO(
-        "MlpPolicy",
+    #policy_kwargs = dict(net_arch=(128, 128))
+    model = MaskablePPO(
+        "CnnPolicy",
         env,
         n_steps=rollout_steps // args.n_envs,
         batch_size=800,
         learning_rate=3e-4,
         policy_kwargs=policy_kwargs,
         verbose=1,
-        n_epochs=2,
         target_kl=0.05,
         gamma=0.99,
         tensorboard_log=osp.join(args.log_path),
@@ -265,7 +316,7 @@ def main(args):
     if args.eval:
         evaluate(args, env_id, model)
     else:
-        train(args, env_id, model)
+        train(args, env_id, model, invalid_action_masking)
 
 
 if __name__ == "__main__":
