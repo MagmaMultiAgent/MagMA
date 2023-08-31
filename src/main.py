@@ -3,7 +3,7 @@ import sys
 from argparse import Namespace
 from typing import Dict
 
-from src.agent import Agent
+from agent import Agent
 from lux.config import EnvConfig
 from lux.kit import (
     GameState,
