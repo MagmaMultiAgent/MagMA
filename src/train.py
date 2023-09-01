@@ -3,6 +3,7 @@ Implementation of RL agent. Note that luxai_s2 and stable_baselines3 \
 are packages not available during the competition running (ATM)
 """
 
+# pylint: disable=E0401
 import copy
 import argparse
 import os.path as osp

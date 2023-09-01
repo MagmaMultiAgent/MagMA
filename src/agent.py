@@ -9,6 +9,7 @@ Note that like the other kits, you can only debug print to standard \
 error e.g. print("message", file=sys.stderr)
 """
 
+# pylint: disable=E0401
 import os.path as osp
 import numpy as np
 import torch as th
@@ -107,8 +108,8 @@ class Agent:
             )
 
             features = self.policy.policy.features_extractor(obs.unsqueeze(0))
-            x = self.policy.policy.mlp_extractor.shared_net(features)
-            logits = self.policy.policy.action_net(x)
+            x_step = self.policy.policy.mlp_extractor.shared_net(features)
+            logits = self.policy.policy.action_net(x_step)
 
             logits[~action_mask] = -1e8
             dist = th.distributions.Categorical(logits=logits)

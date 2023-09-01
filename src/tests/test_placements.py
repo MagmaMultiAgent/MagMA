@@ -67,7 +67,9 @@ def test_factory_placement_policy(obs):
     '''
     mock_agent = Agent(None, None)
     mock_agent.player = "player_1"
-    assert mock_agent.factory_placement_policy(0, obs, 60) == {'spawn': [2, 1], 'metal': 1, 'water': 1}
+    assert mock_agent.factory_placement_policy(0, obs, 60) == \
+        {'spawn': [2, 1], 'metal': 1, 'water': 1}
     mock_agent.player = "player_2"
-    assert mock_agent.factory_placement_policy(0, obs, 60) == {'spawn': [2, 1], 'metal': 2, 'water': 2}
+    assert mock_agent.factory_placement_policy(0, obs, 60) == \
+        {'spawn': [2, 1], 'metal': 2, 'water': 2}
 

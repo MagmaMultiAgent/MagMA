@@ -2,6 +2,7 @@
 Main function for the agent. This is the file that is run when the agent is started.
 """
 
+# pylint: disable=E0401
 import json
 from argparse import Namespace
 from typing import Dict
