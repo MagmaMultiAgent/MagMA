@@ -33,4 +33,4 @@ jobs:
         pip install sb3-contrib
     - name: Run PyTest
       run: |
-        pytest src/tests
+        PYTHONPATH=src/. pytest
