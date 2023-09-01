@@ -1,7 +1,9 @@
+'''
+Tests for the placement policies
+'''
 import pytest
 import numpy as np
-
-from src.utils import place_near_random_ice
+from src.agent import Agent
 
 @pytest.mark.parametrize("obs", [
     {
@@ -26,9 +28,15 @@ from src.utils import place_near_random_ice
         "player_2": {"metal": 0, "water": 0},
     },},]
 )
-def test_place_near_random_ice2(obs):
-    assert place_near_random_ice("player_1", obs) == {}
-    assert place_near_random_ice("player_2", obs) == {}
+def test_factory_placement_policy2(obs):
+    '''
+    Test that the factory placement policy returns a valid placement.
+    '''
+    mock_agent = Agent(None, None)
+    mock_agent.player = "player_1"
+    assert mock_agent.factory_placement_policy(0, obs, 60) == {}
+    mock_agent.player = "player_2"
+    assert mock_agent.factory_placement_policy(0, obs, 60) == {}
 
 @pytest.mark.parametrize("obs", [
     {
@@ -53,7 +61,13 @@ def test_place_near_random_ice2(obs):
         "player_2": {"metal": 2, "water": 3},
     },},]
 )
-def test_place_near_random_ice(obs):
-    assert place_near_random_ice("player_1", obs) == {'spawn': [2, 1], 'metal': 1, 'water': 1}
-    assert place_near_random_ice("player_2", obs) == {'spawn': [2, 1], 'metal': 2, 'water': 2}
+def test_factory_placement_policy(obs):
+    '''
+    Test that the factory placement policy returns a valid placement.
+    '''
+    mock_agent = Agent(None, None)
+    mock_agent.player = "player_1"
+    assert mock_agent.factory_placement_policy(0, obs, 60) == {'spawn': [2, 1], 'metal': 1, 'water': 1}
+    mock_agent.player = "player_2"
+    assert mock_agent.factory_placement_policy(0, obs, 60) == {'spawn': [2, 1], 'metal': 2, 'water': 2}
 

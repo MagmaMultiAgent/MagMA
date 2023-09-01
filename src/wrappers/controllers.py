@@ -1,13 +1,16 @@
-import sys
-from typing import Any, Dict
+"""
+Controller Wrapper for the Competition
+"""
 
+from typing import Any, Dict
 import numpy as np
 import numpy.typing as npt
 from gym import spaces
 
-
-# Controller class copied here since you won't have access to the luxai_s2 package directly on the competition server
 class Controller:
+    """
+    A controller is a class that takes in an action space and converts it into a lux action
+    """
     def __init__(self, action_space: spaces.Space) -> None:
         self.action_space = action_space
 
@@ -22,12 +25,18 @@ class Controller:
 
     def action_masks(self, agent: str, obs: Dict[str, Any]):
         """
-        Generates a boolean action mask indicating in each discrete dimension whether it would be valid or not
+        Generates a boolean action mask indicating in each \
+        discrete dimension whether it would be valid or not
         """
         raise NotImplementedError()
 
 
 class SimpleUnitDiscreteController(Controller):
+    """
+    A simple controller that controls only the robot \
+    that will get spawned.
+    """
+
     def __init__(self, env_cfg) -> None:
         """
         A simple controller that controls only the robot that will get spawned.
@@ -48,7 +57,8 @@ class SimpleUnitDiscreteController(Controller):
         - factory actions
         - transferring power or resources other than ice
 
-        To help understand how to this controller works to map one action space to the original lux action space,
+        To help understand how to this controller works to map one \
+        action space to the original lux action space,
         see how the lux action space is defined in luxai_s2/spaces/action.py
 
         """
@@ -70,37 +80,63 @@ class SimpleUnitDiscreteController(Controller):
         super().__init__(action_space)
 
     def _is_move_action(self, id):
+        """
+        Checks if the action id corresponds to a move action
+        """
         return id < self.move_dim_high
 
     def _get_move_action(self, id):
-        # move direction is id + 1 since we don't allow move center here
+        """
+        Converts the action id to a move action
+        """
         return np.array([0, id + 1, 0, 0, 0, 1])
 
     def _is_transfer_action(self, id):
+        """
+        Checks if the action id corresponds to a transfer action
+        """
         return id < self.transfer_dim_high
 
     def _get_transfer_action(self, id):
+        """
+        Converts the action id to a transfer action
+        """
         id = id - self.move_dim_high
         transfer_dir = id % 5
         return np.array([1, transfer_dir, 0, self.env_cfg.max_transfer_amount, 0, 1])
 
     def _is_pickup_action(self, id):
+        """
+        Checks if the action id corresponds to a pickup action
+        """
         return id < self.pickup_dim_high
 
     def _get_pickup_action(self, id):
+        """
+        Converts the action id to a pickup action
+        """
         return np.array([2, 0, 4, self.env_cfg.max_transfer_amount, 0, 1])
 
     def _is_dig_action(self, id):
+        """
+        Checks if the action id corresponds to a dig action
+        """
         return id < self.dig_dim_high
 
     def _get_dig_action(self, id):
+        """
+        Converts the action id to a dig action
+        """
         return np.array([3, 0, 0, 0, 0, 1])
 
     def action_to_lux_action(
         self, agent: str, obs: Dict[str, Any], action: npt.NDArray
     ):
+        """
+        Converts the action to a lux action
+        """
         shared_obs = obs["player_0"]
-        lux_action = dict()
+        lux_action = {}
         units = shared_obs["units"][agent]
         for unit_id in units.keys():
             unit = units[unit_id]
@@ -116,11 +152,8 @@ class SimpleUnitDiscreteController(Controller):
             elif self._is_dig_action(choice):
                 action_queue = [self._get_dig_action(choice)]
             else:
-                # action is a no_op, so we don't update the action queue
                 no_op = True
 
-            # simple trick to help agents conserve power is to avoid updating the action queue
-            # if the agent was previously trying to do that particular action already
             if len(unit["action_queue"]) > 0 and len(action_queue) > 0:
                 same_actions = (unit["action_queue"][0] == action_queue[0]).all()
                 if same_actions:
@@ -133,7 +166,7 @@ class SimpleUnitDiscreteController(Controller):
         factories = shared_obs["factories"][agent]
         if len(units) == 0:
             for unit_id in factories.keys():
-                lux_action[unit_id] = 1  # build a single heavy
+                lux_action[unit_id] = 1
 
         return lux_action
 
@@ -144,15 +177,13 @@ class SimpleUnitDiscreteController(Controller):
         Doesn't account for whether robot has enough power
         """
 
-        # compute a factory occupancy map that will be useful for checking if a board tile
-        # has a factory and which team's factory it is.
         shared_obs = obs[agent]
         factory_occupancy_map = (
             np.ones_like(shared_obs["board"]["rubble"], dtype=int) * -1
         )
-        factories = dict()
+        factories = {}
         for player in shared_obs["factories"]:
-            factories[player] = dict()
+            factories[player] = {}
             for unit_id in shared_obs["factories"][player]:
                 f_data = shared_obs["factories"][player][unit_id]
                 f_pos = f_data["pos"]

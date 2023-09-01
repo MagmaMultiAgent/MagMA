@@ -1,77 +1,92 @@
+"""
+This file contains the GameState class, which is the main object \
+that contains all the information about the game state.
+"""
+
+# pylint: disable=E0401
 from dataclasses import dataclass, field
 from typing import Dict
-
 import numpy as np
-
 from lux.cargo import UnitCargo
 from lux.config import EnvConfig
 from lux.factory import Factory
 from lux.team import FactionTypes, Team
 from lux.unit import Unit
 
-
 def process_action(action):
+    """
+    Converts action to json
+    """
+
     return to_json(action)
 
 
 def to_json(obj):
+    """
+    Converts object to json
+    """
+
     if isinstance(obj, np.ndarray):
         return obj.tolist()
-    elif isinstance(obj, np.integer):
+    if isinstance(obj, np.integer):
         return int(obj)
-    elif isinstance(obj, np.floating):
+    if isinstance(obj, np.floating):
         return float(obj)
-    elif isinstance(obj, list) or isinstance(obj, tuple):
+    if isinstance(obj, (list, tuple)):
         return [to_json(s) for s in obj]
-    elif isinstance(obj, dict):
+    if isinstance(obj, dict):
         out = {}
-        for k in obj:
-            out[k] = to_json(obj[k])
+        for key in obj:
+            out[key] = to_json(obj[key])
         return out
-    else:
-        return obj
-
+    return obj
 
 def from_json(state):
+    """
+    Converts json to object
+    """
+
     if isinstance(state, list):
         return np.array(state)
-    elif isinstance(state, dict):
+    if isinstance(state, dict):
         out = {}
-        for k in state:
-            out[k] = from_json(state[k])
+        for key in state:
+            out[key] = from_json(state[key])
         return out
-    else:
-        return state
-
+    return state
 
 def process_obs(player, game_state, step, obs):
+    """
+    Converts obs to game state
+    """
+
     if step == 0:
-        # at step 0 we get the entire map information
         game_state = from_json(obs)
     else:
-        # use delta changes to board to update game state
         obs = from_json(obs)
-        for k in obs:
-            if k != "board":
-                game_state[k] = obs[k]
+        for key in obs:
+            if key != "board":
+                game_state[key] = obs[key]
             else:
-                if "valid_spawns_mask" in obs[k]:
-                    game_state["board"]["valid_spawns_mask"] = obs[k][
+                if "valid_spawns_mask" in obs[key]:
+                    game_state["board"]["valid_spawns_mask"] = obs[key][
                         "valid_spawns_mask"
                     ]
         for item in ["rubble", "lichen", "lichen_strains"]:
-            for k, v in obs["board"][item].items():
-                k = k.split(",")
-                x, y = int(k[0]), int(k[1])
-                game_state["board"][item][x, y] = v
+            for key, value in obs["board"][item].items():
+                key = key.split(",")
+                x_coor, y_coord = int(key[0]), int(key[1])
+                game_state["board"][item][x_coor, y_coord] = value
     return game_state
 
-
 def obs_to_game_state(step, env_cfg: EnvConfig, obs):
+    """
+    Converts obs to game state
+    """
 
-    units = dict()
+    units = {}
     for agent in obs["units"]:
-        units[agent] = dict()
+        units[agent] = {}
         for unit_id in obs["units"][agent]:
             unit_data = obs["units"][agent][unit_id]
             cargo = UnitCargo(**unit_data["cargo"])
@@ -84,9 +99,9 @@ def obs_to_game_state(step, env_cfg: EnvConfig, obs):
             units[agent][unit_id] = unit
 
     factory_occupancy_map = np.ones_like(obs["board"]["rubble"], dtype=int) * -1
-    factories = dict()
+    factories = {}
     for agent in obs["factories"]:
-        factories[agent] = dict()
+        factories[agent] = {}
         for unit_id in obs["factories"][agent]:
             f_data = obs["factories"][agent][unit_id]
             cargo = UnitCargo(**f_data["cargo"])
@@ -94,7 +109,7 @@ def obs_to_game_state(step, env_cfg: EnvConfig, obs):
             factory.cargo = cargo
             factories[agent][unit_id] = factory
             factory_occupancy_map[factory.pos_slice] = factory.strain_id
-    teams = dict()
+    teams = {}
     for agent in obs["teams"]:
         team_data = obs["teams"][agent]
         faction = FactionTypes[team_data["faction"]]
@@ -118,9 +133,12 @@ def obs_to_game_state(step, env_cfg: EnvConfig, obs):
         teams=teams,
     )
 
-
 @dataclass
 class Board:
+    """
+    Board class
+    """
+
     rubble: np.ndarray
     ice: np.ndarray
     ore: np.ndarray
@@ -130,7 +148,6 @@ class Board:
     factories_per_team: int
     valid_spawns_mask: np.ndarray
 
-
 @dataclass
 class GameState:
     """
@@ -138,7 +155,7 @@ class GameState:
     """
 
     env_steps: int
-    env_cfg: dict
+    env_cfg: EnvConfig
     board: Board
     units: Dict[str, Dict[str, Unit]] = field(default_factory=dict)
     factories: Dict[str, Dict[str, Factory]] = field(default_factory=dict)
@@ -147,14 +164,16 @@ class GameState:
     @property
     def real_env_steps(self):
         """
-        the actual env step in the environment, which subtracts the time spent bidding and placing factories
+        the actual env step in the environment, which subtracts the time \
+        spent bidding and placing factories
         """
         if self.env_cfg.BIDDING_SYSTEM:
-            # + 1 for extra factory placement and + 1 for bidding step
             return self.env_steps - (self.board.factories_per_team * 2 + 1)
-        else:
-            return self.env_steps
+        return self.env_steps
 
-    # various utility functions
     def is_day(self):
+        """
+        Returns true if it is day
+        """
+
         return self.real_env_steps % self.env_cfg.CYCLE_LENGTH < self.env_cfg.DAY_LENGTH

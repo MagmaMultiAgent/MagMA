@@ -1,27 +1,32 @@
 """
-This file is where your agent's logic is kept. Define a bidding policy, factory placement policy, as well as a policy for playing the normal phase of the game
+This file is where your agent's logic is kept. Define a bidding policy, \
+factory placement policy, as well as a policy for playing the normal phase of the game
 
-The tutorial will learn an RL agent to play the normal phase and use heuristics for the other two phases.
+The tutorial will learn an RL agent to play the normal phase and \
+use heuristics for the other two phases.
 
-Note that like the other kits, you can only debug print to standard error e.g. print("message", file=sys.stderr)
+Note that like the other kits, you can only debug print to standard \
+error e.g. print("message", file=sys.stderr)
 """
 
 import os.path as osp
-import sys
 import numpy as np
 import torch as th
-from stable_baselines3.ppo import PPO
 from sb3_contrib.ppo_mask import MaskablePPO
 from lux.config import EnvConfig
 from wrappers import SimpleUnitDiscreteController, SimpleUnitObservationWrapper
 
-# change this to use weights stored elsewhere
-# make sure the model weights are submitted with the other code files
-# any files in the logs folder are not necessary. Make sure to exclude the .zip extension here
 MODEL_WEIGHTS_RELATIVE_PATH = "best_model"
 
 class Agent:
+    """
+    Agent for the RL tutorial. This agent uses a trained PPO agent to play the game.
+    """
+
     def __init__(self, player: str, env_cfg: EnvConfig) -> None:
+        """
+        Initialize the agent
+        """
         self.player = player
         self.opp_player = "player_1" if self.player == "player_0" else "player_0"
         np.random.seed(0)
@@ -33,13 +38,21 @@ class Agent:
         self.controller = SimpleUnitDiscreteController(self.env_cfg)
 
     def bid_policy(self, step: int, obs, remainingOverageTime: int = 60):
-        # the policy here is the same one used in the RL tutorial: https://www.kaggle.com/code/stonet2000/rl-with-lux-2-rl-problem-solving
-        return dict(faction="AlphaStrike", bid=0)
+        """
+        The bid policy is a function that takes in the current step, observation, \
+        and remaining overage time and returns a dictionary of bids for each resource
+        """
+
+        return {"faction": 'AlphaStrike', "bid": 0}
 
     def factory_placement_policy(self, step: int, obs, remainingOverageTime: int = 60):
-        # the policy here is the same one used in the RL tutorial: https://www.kaggle.com/code/stonet2000/rl-with-lux-2-rl-problem-solving
+        """
+        The factory placement policy is a function that takes in the current step, observation, \
+        and remaining overage time and returns a dictionary of factory placement actions
+        """
+
         if obs["teams"][self.player]["metal"] == 0:
-            return dict()
+            return {}
         potential_spawns = list(zip(*np.where(obs["board"]["valid_spawns_mask"] == 1)))
         potential_spawns_set = set(potential_spawns)
         done_search = False
@@ -54,9 +67,9 @@ class Agent:
             pos = pot_ice_spots[pos_idx]
 
             area = 3
-            for x in range(area):
-                for y in range(area):
-                    check_pos = [pos[0] + x - area // 2, pos[1] + y - area // 2]
+            for x_coord in range(area):
+                for y_coord in range(area):
+                    check_pos = [pos[0] + x_coord - area // 2, pos[1] + y_coord - area // 2]
                     if tuple(check_pos) in potential_spawns_set:
                         done_search = True
                         pos = check_pos
@@ -71,36 +84,35 @@ class Agent:
             pos = spawn_loc
 
         metal = obs["teams"][self.player]["metal"]
-        return dict(spawn=pos, metal=metal, water=metal)
+        return {"spawn": pos, "metal": metal, "water": metal}
 
     def act(self, step: int, obs, remainingOverageTime: int = 60):
-        # first convert observations using the same observation wrapper you used for training
-        # note that SimpleUnitObservationWrapper takes input as the full observation for both players and returns an obs for players
-        raw_obs = dict(player_0=obs, player_1=obs)
+        """
+        The act policy is a function that takes in the current step, observation, \
+        and remaining overage time and returns a dictionary of actions for each unit
+        """
+
+        raw_obs = {"player_0": obs, "player_1": obs}
         obs = SimpleUnitObservationWrapper.convert_obs(raw_obs, env_cfg=self.env_cfg)
         obs = obs[self.player]
 
         obs = th.from_numpy(obs).float()
         with th.no_grad():
 
-            # to improve performance, we have a rule based action mask generator for the controller used
-            # which will force the agent to generate actions that are valid only.
             action_mask = (
                 th.from_numpy(self.controller.action_masks(self.player, raw_obs))
                 .unsqueeze(0)
                 .bool()
             )
-            
-            # SB3 doesn't support invalid action masking. So we do it ourselves here
+
             features = self.policy.policy.features_extractor(obs.unsqueeze(0))
             x = self.policy.policy.mlp_extractor.shared_net(features)
-            logits = self.policy.policy.action_net(x) # shape (1, N) where N=12 for the default controller
+            logits = self.policy.policy.action_net(x)
 
-            logits[~action_mask] = -1e8 # mask out invalid actions
+            logits[~action_mask] = -1e8
             dist = th.distributions.Categorical(logits=logits)
-            actions = dist.sample().cpu().numpy() # shape (1, 1)
+            actions = dist.sample().cpu().numpy()
 
-        # use our controller which we trained with in train.py to generate a Lux S2 compatible action
         lux_action = self.controller.action_to_lux_action(
             self.player, raw_obs, actions[0]
         )
