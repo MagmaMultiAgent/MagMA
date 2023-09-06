@@ -10,7 +10,7 @@ from luxai_s2.env import LuxAI_S2
 from luxai_s2.state import ObservationStateDict
 from luxai_s2.unit import BidActionType, FactoryPlacementActionType
 from luxai_s2.utils import my_turn_to_place_factory
-from .controllers import Controller
+from wrappers.controllers import Controller
 
 class SB3Wrapper(gym.Wrapper):
     """
