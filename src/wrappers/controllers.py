@@ -162,7 +162,6 @@ class SimpleUnitDiscreteController(Controller):
                 lux_action[unit_id] = action_queue
 
             break
-
         factories = shared_obs["factories"][agent]
         if len(units) == 0:
             for unit_id in factories.keys():
