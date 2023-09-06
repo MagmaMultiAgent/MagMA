@@ -2,7 +2,7 @@ name: luxai_s2
 channels:
   - conda-forge
 dependencies:
-  - python=3.8
+  - python=3.7
   - numpy
   - matplotlib
   - scipy

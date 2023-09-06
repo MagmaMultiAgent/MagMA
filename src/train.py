@@ -327,7 +327,7 @@ def main(args):
     if args.seed is not None:
         set_random_seed(args.seed)
     env_id = "LuxAI_S2-v0"
-    invalid_action_masking=True
+    invalid_action_masking = True
     # env = SubprocVecEnv(
     #     [
     #         make_env(env_id, i, max_episode_steps=args.max_episode_steps)
@@ -340,16 +340,16 @@ def main(args):
         else SubprocVecEnv(environments)
     env.reset()
 
-    policy_kwargs = {
-        "features_extractor_class": CustomCNN,
-        "features_extractor_kwargs": {
-            "features_dim": 128
-            }
-        }
+    # policy_kwargs = {
+    #     "features_extractor_class": CustomCNN,
+    #     "features_extractor_kwargs": {
+    #         "features_dim": 128
+    #         }
+    #     }
     rollout_steps = 4000
-    #policy_kwargs = dict(net_arch=(128, 128))
+    policy_kwargs = dict(net_arch=(256, 256, 256))
     model = MaskablePPO(
-        "CnnPolicy",
+        "MlpPolicy",
         env,
         n_steps=rollout_steps // args.n_envs,
         batch_size=800,
