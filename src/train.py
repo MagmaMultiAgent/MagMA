@@ -152,7 +152,7 @@ def parse_args():
         "-n",
         "--n-envs",
         type=int,
-        default=8,
+        default=16,
         help="Number of parallel envs to run. Note that the rollout \
         size is configured separately and invariant to this value",
     )
@@ -201,12 +201,6 @@ def make_env(env_id: str, rank: int, seed: int = 0, max_episode_steps=100):
         """
 
         env = gym.make(env_id, verbose=0, collect_stats=True, MAX_FACTORIES=2)
-
-        # env = SB3Wrapper(
-        #     env,
-        #     factory_placement_policy=place_near_random_ice,
-        #     controller=SimpleUnitDiscreteController(env.env_cfg),
-        # )
 
         env = SB3InvalidActionWrapper(
             env,
@@ -294,9 +288,6 @@ def train(args, env_id, model: PPO, invalid_action_masking):
     Trains the model
     """
 
-    # eval_env = SubprocVecEnv(
-    #     [make_env(env_id, i, max_episode_steps=1000) for i in range(4)]
-    # )
     eval_environments = [make_env(env_id, i, max_episode_steps=1000) for i in range(4)]
     eval_env = DummyVecEnv(eval_environments) if invalid_action_masking \
         else SubprocVecEnv(eval_environments)
@@ -328,28 +319,22 @@ def main(args):
         set_random_seed(args.seed)
     env_id = "LuxAI_S2-v0"
     invalid_action_masking = True
-    # env = SubprocVecEnv(
-    #     [
-    #         make_env(env_id, i, max_episode_steps=args.max_episode_steps)
-    #         for i in range(args.n_envs)
-    #     ]
-    # )
+
     environments = [make_env(env_id, i, max_episode_steps=args.max_episode_steps) \
                     for i in range(args.n_envs)]
     env = DummyVecEnv(environments) if invalid_action_masking \
         else SubprocVecEnv(environments)
     env.reset()
 
-    # policy_kwargs = {
-    #     "features_extractor_class": CustomCNN,
-    #     "features_extractor_kwargs": {
-    #         "features_dim": 128
-    #         }
-    #     }
+    policy_kwargs = {
+        "features_extractor_class": CustomCNN,
+        "features_extractor_kwargs": {
+            "features_dim": 128
+            }
+        }
     rollout_steps = 4000
-    policy_kwargs = dict(net_arch=(256, 256, 256))
     model = MaskablePPO(
-        "MlpPolicy",
+        "CnnPolicy",
         env,
         n_steps=rollout_steps // args.n_envs,
         batch_size=800,
