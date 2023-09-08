@@ -1,7 +1,7 @@
 {
     "name": "Thesis Development",
     "build": {
-        "dockerfile": "../Dockerfile.GPU"
+        "dockerfile": "../Dockerfile.CPU"
     },
     "customizations": {
         "vscode": {

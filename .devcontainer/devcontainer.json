@@ -1,7 +1,7 @@
 {
     "name": "Thesis Development",
     "build": {
-        "dockerfile": "../Dockerfile.CPU"
+        "dockerfile": "../Dockerfile.GPU"
     },
     "customizations": {
         "vscode": {
@@ -12,5 +12,9 @@
     "mounts": [
         "source=${localWorkspaceFolder},target=/usr/src/luxai,type=bind,consistency=cached"
     ],
-    "forwardPorts": [ 8888 ]
+    "forwardPorts": [ 8888 ],
+    "runArgs": [
+        "--gpus",
+        "device=0"
+    ]
 }
