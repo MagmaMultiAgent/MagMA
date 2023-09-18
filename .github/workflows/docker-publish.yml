@@ -32,7 +32,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt-get update -y 
+          sudo apt-get update -y --fix-missing
           sudo apt-get upgrade -y
           
       - name: Setup Docker buildx
