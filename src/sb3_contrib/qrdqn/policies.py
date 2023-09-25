@@ -1,7 +1,7 @@
 from typing import Any, Dict, List, Optional, Type
 
 import torch as th
-from gym import spaces
+from gymnasium import spaces
 from stable_baselines3.common.policies import BasePolicy
 from stable_baselines3.common.torch_layers import (
     BaseFeaturesExtractor,
@@ -27,11 +27,13 @@ class QuantileNetwork(BasePolicy):
          dividing by 255.0 (True by default)
     """
 
+    action_space: spaces.Discrete
+
     def __init__(
         self,
         observation_space: spaces.Space,
-        action_space: spaces.Space,
-        features_extractor: nn.Module,
+        action_space: spaces.Discrete,
+        features_extractor: BaseFeaturesExtractor,
         features_dim: int,
         n_quantiles: int = 200,
         net_arch: Optional[List[int]] = None,
@@ -50,10 +52,9 @@ class QuantileNetwork(BasePolicy):
 
         self.net_arch = net_arch
         self.activation_fn = activation_fn
-        self.features_extractor = features_extractor
         self.features_dim = features_dim
         self.n_quantiles = n_quantiles
-        action_dim = self.action_space.n  # number of actions
+        action_dim = int(self.action_space.n)  # number of actions
         quantile_net = create_mlp(self.features_dim, action_dim * self.n_quantiles, self.net_arch, self.activation_fn)
         self.quantile_net = nn.Sequential(*quantile_net)
 
@@ -65,7 +66,7 @@ class QuantileNetwork(BasePolicy):
         :return: The estimated quantiles for each action.
         """
         quantiles = self.quantile_net(self.extract_features(obs, self.features_extractor))
-        return quantiles.view(-1, self.n_quantiles, self.action_space.n)
+        return quantiles.view(-1, self.n_quantiles, int(self.action_space.n))
 
     def _predict(self, observation: th.Tensor, deterministic: bool = True) -> th.Tensor:
         q_values = self(observation).mean(dim=1)
@@ -109,10 +110,13 @@ class QRDQNPolicy(BasePolicy):
         excluding the learning rate, to pass to the optimizer
     """
 
+    quantile_net: QuantileNetwork
+    quantile_net_target: QuantileNetwork
+
     def __init__(
         self,
         observation_space: spaces.Space,
-        action_space: spaces.Space,
+        action_space: spaces.Discrete,
         lr_schedule: Schedule,
         n_quantiles: int = 200,
         net_arch: Optional[List[int]] = None,
@@ -123,7 +127,6 @@ class QRDQNPolicy(BasePolicy):
         optimizer_class: Type[th.optim.Optimizer] = th.optim.Adam,
         optimizer_kwargs: Optional[Dict[str, Any]] = None,
     ):
-
         super().__init__(
             observation_space,
             action_space,
@@ -152,8 +155,6 @@ class QRDQNPolicy(BasePolicy):
             "activation_fn": self.activation_fn,
             "normalize_images": normalize_images,
         }
-
-        self.quantile_net, self.quantile_net_target = None, None
         self._build(lr_schedule)
 
     def _build(self, lr_schedule: Schedule) -> None:
@@ -169,7 +170,11 @@ class QRDQNPolicy(BasePolicy):
         self.quantile_net_target.set_training_mode(False)
 
         # Setup optimizer with initial learning rate
-        self.optimizer = self.optimizer_class(self.parameters(), lr=lr_schedule(1), **self.optimizer_kwargs)
+        self.optimizer = self.optimizer_class(  # type: ignore[call-arg]
+            self.parameters(),
+            lr=lr_schedule(1),
+            **self.optimizer_kwargs,
+        )
 
     def make_quantile_net(self) -> QuantileNetwork:
         # Make sure we always have separate networks for features extractors etc
@@ -234,7 +239,7 @@ class CnnPolicy(QRDQNPolicy):
     def __init__(
         self,
         observation_space: spaces.Space,
-        action_space: spaces.Space,
+        action_space: spaces.Discrete,
         lr_schedule: Schedule,
         n_quantiles: int = 200,
         net_arch: Optional[List[int]] = None,
@@ -282,7 +287,7 @@ class MultiInputPolicy(QRDQNPolicy):
     def __init__(
         self,
         observation_space: spaces.Space,
-        action_space: spaces.Space,
+        action_space: spaces.Discrete,
         lr_schedule: Schedule,
         n_quantiles: int = 200,
         net_arch: Optional[List[int]] = None,

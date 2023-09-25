@@ -1,6 +1,6 @@
 #!/bin/bash
 
-usage() { echo "Usage: $0 [-d <cpu|gpu>] [-v <version>]" 1>&2; exit 1; }
+usage() { echo "Usage: $0 [-d <cpu|gpu>] [-v <version|latest>]" 1>&2; exit 1; }
 
 while getopts ":d:v:h" opt; do
     case $opt in

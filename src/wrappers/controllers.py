@@ -5,7 +5,7 @@ Controller Wrapper for the Competition
 from typing import Any, Dict
 import numpy as np
 import numpy.typing as npt
-from gym import spaces
+from gymnasium import spaces
 
 class Controller:
     """

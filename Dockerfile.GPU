@@ -46,16 +46,13 @@ RUN pip install --no-cache-dir --upgrade pip
 RUN apt update -y && apt upgrade -y && apt install -y build-essential && apt-get install -y manpages-dev
 
 # Intall prerequisites for LUX
-RUN pip install --no-cache-dir setuptools==57.1.0 psutil==5.7.0 \ 
-    pettingzoo==1.12.0 vec_noise==1.1.4 ipykernel moviepy pytest\
-    pygame termcolor wheel==0.38.4 notebook tensorboard seaborn
-
-# Install Lux, RL baselines and Jax
-RUN pip install --no-cache-dir stable_baselines3==1.7.0 gym==0.21 sb3-contrib --upgrade luxai_s2
+RUN pip install --no-cache-dir pettingzoo vec_noise stable_baselines3 sb3-contrib --upgrade luxai_s2
 
 # Install Jax with Lux
 
-RUN pip install --no-cache-dir juxai-s2
+RUN pip install -U "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+
+RUN pip install git+https://github.com/RoboEden/jux.git@dev
 
 # Switch back to bash
 SHELL ["/bin/bash","-c"]

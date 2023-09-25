@@ -3,7 +3,7 @@ from typing import Callable, Generator, Optional, Tuple, Union
 
 import numpy as np
 import torch as th
-from gym import spaces
+from gymnasium import spaces
 from stable_baselines3.common.buffers import DictRolloutBuffer, RolloutBuffer
 from stable_baselines3.common.vec_env import VecNormalize
 
@@ -229,7 +229,7 @@ class RecurrentRolloutBuffer(RolloutBuffer):
 
         return RecurrentRolloutBufferSamples(
             # (batch_size, obs_dim) -> (n_seq, max_length, obs_dim) -> (n_seq * max_length, obs_dim)
-            observations=self.pad(self.observations[batch_inds]).reshape((padded_batch_size,) + self.obs_shape),
+            observations=self.pad(self.observations[batch_inds]).reshape((padded_batch_size, *self.obs_shape)),
             actions=self.pad(self.actions[batch_inds]).reshape((padded_batch_size,) + self.actions.shape[1:]),
             old_values=self.pad_and_flatten(self.values[batch_inds]),
             old_log_prob=self.pad_and_flatten(self.log_probs[batch_inds]),

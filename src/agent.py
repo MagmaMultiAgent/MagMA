@@ -108,7 +108,7 @@ class Agent:
             )
 
             features = self.policy.policy.features_extractor(obs.unsqueeze(0))
-            x_step = self.policy.policy.mlp_extractor.shared_net(features)
+            x_step = self.policy.policy.mlp_extractor.policy_net(features)
             logits = self.policy.policy.action_net(x_step)
 
             logits[~action_mask] = -1e8
@@ -119,12 +119,11 @@ class Agent:
             self.player, raw_obs, actions[0]
         )
 
-        # commented code below adds watering lichen which can easily improve your agent
-        # shared_obs = raw_obs[self.player]
-        # factories = shared_obs["factories"][self.player]
-        # for unit_id in factories.keys():
-        #     factory = factories[unit_id]
-        #     if 1000 - step < 50 and factory["cargo"]["water"] > 100:
-        #         lux_action[unit_id] = 2 # water and grow lichen at the very end of the game
+        shared_obs = raw_obs[self.player]
+        factories = shared_obs["factories"][self.player]
+        for unit_id in factories.keys():
+            factory = factories[unit_id]
+            if 1000 - step < 50 and factory["cargo"]["water"] > 100:
+                lux_action[unit_id] = 2
 
         return lux_action

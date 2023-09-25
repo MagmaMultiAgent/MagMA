@@ -2,10 +2,10 @@
 Wrapper for Observation Space
 """
 from typing import Any, Dict
-import gym
+import gymnasium as gym
 import numpy as np
 import numpy.typing as npt
-from gym import spaces
+from gymnasium import spaces
 
 class SimpleUnitObservationWrapper(gym.ObservationWrapper):
     """

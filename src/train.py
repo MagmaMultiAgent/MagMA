@@ -7,68 +7,25 @@ are packages not available during the competition running (ATM)
 import copy
 import argparse
 import os.path as osp
-import gym
+import gymnasium as gym
 import torch as th
 from torch import nn
-from gym.wrappers import TimeLimit
+from gymnasium.wrappers import TimeLimit
 from luxai_s2.state import StatsStateDict
 from luxai_s2.utils.heuristics.factory_placement import place_near_random_ice
-from stable_baselines3.common.callbacks import BaseCallback, EvalCallback
+from stable_baselines3.common.callbacks import (
+    BaseCallback,
+    EvalCallback,
+)
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecVideoRecorder
 from stable_baselines3.ppo import PPO
-from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from sb3_contrib.ppo_mask import MaskablePPO
 from wrappers.controllers import SimpleUnitDiscreteController
 from wrappers.obs_wrappers import SimpleUnitObservationWrapper
 from wrappers.sb3_action_mask import SB3InvalidActionWrapper
-
-class CustomCNN(BaseFeaturesExtractor):
-    """
-    Custom CNN for extracting features from the observation space
-    """
-    def __init__(self, observation_space: gym.Space, features_dim: int = 0) -> None:
-        """
-        Initializes the CNN
-        """
-
-        super().__init__(observation_space, features_dim)
-
-        self.cnn = nn.Sequential(
-            nn.Conv1d(in_channels=1, out_channels=32, kernel_size=3),
-            nn.MaxPool1d(kernel_size=2),
-            nn.ReLU(),
-        )
-
-        with th.no_grad():
-            n_flatten = self._get_flattened_size(observation_space)
-
-        self.fully_conv = nn.Sequential(
-            nn.Linear(n_flatten, 128),
-            nn.ReLU(),
-            nn.Linear(128, features_dim),
-        )
-
-    def _get_flattened_size(self, observation_space: gym.Space) -> int:
-        """
-        Returns the size of the flattened output of the CNN
-        """
-
-        dummy_input = th.zeros(1, 1, observation_space.shape[0])
-        cnn_output = self.cnn(dummy_input)
-        return cnn_output.view(1, -1).shape[1]
-
-    def forward(self, observations: th.Tensor) -> th.Tensor:
-        '''
-        Forward pass of the CNN
-        '''
-        observations = observations.unsqueeze(1)
-        cnn_output = self.cnn(observations)
-        flattened = cnn_output.view(cnn_output.size(0), -1)
-        return self.fully_conv(flattened)
-
 
 class CustomEnvWrapper(gym.Wrapper):
     """
@@ -84,57 +41,67 @@ class CustomEnvWrapper(gym.Wrapper):
         self.prev_step_metrics = None
 
     def step(self, action):
-        """
-        Steps the environment
-        """
-
         agent = "player_0"
         opp_agent = "player_1"
 
         opp_factories = self.env.state.factories[opp_agent]
         for k in opp_factories.keys():
             factory = opp_factories[k]
+            # set enemy factories to have 1000 water to keep them alive the whole around and treat the game as single-agent
             factory.cargo.water = 1000
 
+        # submit actions for just one agent to make it single-agent
+        # and save single-agent versions of the data below
         action = {agent: action}
-        obs, _, done, info = self.env.step(action)
+        obs, _, termination, truncation, info = self.env.step(action)
+        done = dict()
+        for k in termination:
+            done[k] = termination[k] | truncation[k]
         obs = obs[agent]
-        done = done[agent]
 
+        # we collect stats on teams here. These are useful stats that can be used to help generate reward functions
         stats: StatsStateDict = self.env.state.stats[agent]
 
-        info = {}
-        metrics = {}
+
+        # Below is where you get to have some fun with reward design! we provide a simple reward function that rewards digging ice and producing water
+
+        info = dict()
+        metrics = dict()
         metrics["ice_dug"] = (
             stats["generation"]["ice"]["HEAVY"] + stats["generation"]["ice"]["LIGHT"]
         )
         metrics["water_produced"] = stats["generation"]["water"]
+
+        # we save these two to see how often the agent updates robot action queues and how often the robot has enough
+        # power to do so and succeed (less frequent updates = more power is saved)
         metrics["action_queue_updates_success"] = stats["action_queue_updates_success"]
         metrics["action_queue_updates_total"] = stats["action_queue_updates_total"]
 
+        # we can save the metrics to info so we can use tensorboard to log them to get a glimpse into how our agent is behaving
         info["metrics"] = metrics
 
         reward = 0
         if self.prev_step_metrics is not None:
-
+            # we check how much ice and water is produced and reward the agent for generating both
             ice_dug_this_step = metrics["ice_dug"] - self.prev_step_metrics["ice_dug"]
             water_produced_this_step = (
                 metrics["water_produced"] - self.prev_step_metrics["water_produced"]
             )
-
+            # we reward water production more as it is the most important resource for survival
             reward = ice_dug_this_step / 100 + water_produced_this_step
 
         self.prev_step_metrics = copy.deepcopy(metrics)
-        return obs, reward, done, info
+        return obs, reward, termination[agent], truncation[agent], info
 
     def reset(self, **kwargs):
         """
         Resets the environment
         """
 
-        obs = self.env.reset(**kwargs)["player_0"]
+        obs, reset_info = self.env.reset(**kwargs)
         self.prev_step_metrics = None
-        return obs
+        return obs["player_0"], reset_info
+
 
 def parse_args():
     """
@@ -165,7 +132,7 @@ def parse_args():
     parser.add_argument(
         "--total-timesteps",
         type=int,
-        default=3_000_000,
+        default=5_000_000,
         help="Total timesteps for training",
     )
 
@@ -200,7 +167,7 @@ def make_env(env_id: str, rank: int, seed: int = 0, max_episode_steps=100):
         Initializes the environment
         """
 
-        env = gym.make(env_id, verbose=0, collect_stats=True, MAX_FACTORIES=2)
+        env = gym.make(env_id, verbose=0, collect_stats=True, MAX_FACTORIES=4, disable_env_checker=True)
 
         # env = SB3Wrapper(
         #     env,
@@ -340,13 +307,7 @@ def main(args):
         else SubprocVecEnv(environments)
     env.reset()
 
-    # policy_kwargs = {
-    #     "features_extractor_class": CustomCNN,
-    #     "features_extractor_kwargs": {
-    #         "features_dim": 128
-    #         }
-    #     }
-    rollout_steps = 4000
+    rollout_steps = 8000
     policy_kwargs = dict(net_arch=(256, 256, 256))
     model = MaskablePPO(
         "MlpPolicy",
