@@ -73,7 +73,6 @@ jupyterlab-pygments==0.2.2
 jupyterlab_server==2.25.0
 kiwisolver==1.4.5
 lit==16.0.6
-luxai-s2==3.0.1
 Markdown==3.4.4
 MarkupSafe==2.1.3
 matplotlib==3.8.0
@@ -109,7 +108,6 @@ pandas==2.1.1
 pandocfilters==1.5.0
 parso==0.8.3
 patsy==0.5.3
-pettingzoo==1.24.1
 pexpect==4.8.0
 pickleshare==0.7.5
 Pillow==10.0.1
@@ -150,7 +148,6 @@ rfc3339-validator==0.1.4
 rfc3986-validator==0.1.1
 rpds-py==0.10.3
 rsa==4.9
-sb3-contrib==2.1.0
 scipy==1.11.2
 seaborn==0.12.2
 Send2Trash==1.8.2
@@ -159,7 +156,6 @@ sip==6.7.11
 six==1.16.0
 sniffio==1.3.0
 soupsieve==2.5
-stable-baselines3==2.1.0
 stack-data==0.6.2
 statsmodels==0.14.0
 sympy==1.12
@@ -181,7 +177,6 @@ tzdata==2023.3
 unicodedata2==15.0.0
 uri-template==1.3.0
 urllib3==1.26.15
-vec-noise==1.1.4
 wcwidth==0.2.6
 webcolors==1.13
 webencodings==0.5.1
