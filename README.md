@@ -3,7 +3,7 @@
     <img width="100%"  src="docs/images/logo.png" />
 </p>
 
-[![Docker Publish](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/docker-publish.yml/badge.svg?branch=main)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/docker-publish.yml)&nbsp;[![Pylint](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pylint.yml/badge.svg)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pylint.yml)&nbsp;[![CodeQL](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/github-code-scanning/codeql/badge.svg?branch=main)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/github-code-scanning/codeql)&nbsp;[![PyTest](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pytest.yml/badge.svg?branch=main)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pytest.yml)&nbsp;![Version](https://img.shields.io/badge/python-v3.7-blue)&nbsp;![GitHub issues](https://img.shields.io/github/issues/Getlar/VigIL-Game-Validation)&nbsp;![GitHub](https://img.shields.io/github/license/Getlar/VigIL-Game-Validation)&nbsp;![GitHub release (with filter)](https://img.shields.io/github/v/release/Getlar/VigIL-Game-Validation)&nbsp;![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Getlar/5a256487d767cc5d606d29bd521a18ae/raw/algo.json)
+[![Docker Publish](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/docker-publish.yml/badge.svg?branch=main)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/docker-publish.yml)&nbsp;[![Pylint](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pylint.yml/badge.svg)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pylint.yml)&nbsp;[![CodeQL](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/github-code-scanning/codeql/badge.svg?branch=main)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/github-code-scanning/codeql)&nbsp;[![PyTest](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pytest.yml/badge.svg?branch=main)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pytest.yml)&nbsp;![Version](https://img.shields.io/badge/python-v3.9-blue)&nbsp;![GitHub issues](https://img.shields.io/github/issues/Getlar/VigIL-Game-Validation)&nbsp;![GitHub](https://img.shields.io/github/license/Getlar/VigIL-Game-Validation)&nbsp;![GitHub release (with filter)](https://img.shields.io/github/v/release/Getlar/VigIL-Game-Validation)&nbsp;![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Getlar/5a256487d767cc5d606d29bd521a18ae/raw/algo.json)
 
 # VigIL - Lux AI Competition
 
@@ -47,7 +47,7 @@ On a Mac, using a Dev Container can lead to problems due to image incompatibilit
 
 ## Binary
 
-You will need `Python 3.8` installed on your system. Once installed, you can install the Lux AI season 2 environment and optionally the GPU version with:
+You will need `Python 3.9` installed on your system. Once installed, you can install the Lux AI season 2 environment and optionally the GPU version with:
 
 ```bash
 pip install --upgrade luxai_s2
@@ -71,18 +71,17 @@ apt update -y && apt upgrade -y && apt install -y build-essential && apt-get ins
 ```
 #### Base packages:
 ```bash
-pip install setuptools==57.1.0 psutil==5.7.0 \ 
-    pettingzoo==1.12.0 vec_noise==1.1.4 ipykernel moviepy  pytest \
-    pygame termcolor wheel==0.38.4 notebook tensorboard
+pip install pettingzoo vec_noise stable_baselines3 sb3-contrib
 ```
 #### Lux packages:
 ```bash
-pip install sb3_contrib stable_baselines3==1.7.0 gym==0.21 --upgrade luxai_s2
+pip install --upgrade luxai_s2
 ```
 
 #### Install JAX support: (Optional)
 ```bash
-pip install --no-cache-dir juxai-s2
+pip install -U "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+pip install git+https://github.com/RoboEden/jux.git@dev
 ```
 
 To test the existing implementation check out the [running docs](https://github.com/Getlar/VigIL-Game-Validation/blob/main/src/README.MD).
