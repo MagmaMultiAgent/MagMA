@@ -10,6 +10,7 @@ from luxai_s2.state import ObservationStateDict, StatsStateDict
 from luxai_s2.wrappers import SB3Wrapper
 from luxai_s2.unit import BidActionType, FactoryPlacementActionType
 from luxai_s2.wrappers.controllers import Controller
+from parsers.reward_parser import DenseRewardParser
 
 class SB3InvalidActionWrapper(SB3Wrapper):
     """
@@ -54,6 +55,7 @@ class CustomEnvWrapper(gym.Wrapper):
 
         super().__init__(env)
         self.prev_step_metrics = None
+        self.reward_parser = DenseRewardParser()
 
     def step(self, action):
         """
@@ -85,16 +87,15 @@ class CustomEnvWrapper(gym.Wrapper):
         metrics["action_queue_updates_total"] = stats["action_queue_updates_total"]
         info["metrics"] = metrics
 
-        reward = 0
-        if self.prev_step_metrics is not None:
-            ice_dug_this_step = metrics["ice_dug"] - self.prev_step_metrics["ice_dug"]
-            water_produced_this_step = (
-                metrics["water_produced"] - self.prev_step_metrics["water_produced"]
-            )
-            reward = ice_dug_this_step / 100 + water_produced_this_step
-
+        game_state = info["game_state"]
+        global_info = info["global_info"]
+        env_stats = info["env_stats"]
+        dones = info["dones"]
+        self.reward_parser.reset(game_state, global_info, env_stats)
+        rewards, sub_rewards = self.reward_parser.parse(dones, game_state, env_stats, global_info)
         self.prev_step_metrics = copy.deepcopy(metrics)
-        return obs, reward, done, info
+        return obs, rewards[0], done, info
+        #return obs, reward, done, info
 
     def reset(self, **kwargs):
         obs = self.env.reset(**kwargs)["player_0"]

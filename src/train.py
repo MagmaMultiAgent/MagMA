@@ -26,6 +26,7 @@ from sb3_contrib.ppo_mask import MaskablePPO
 from wrappers.controllers import SimpleUnitDiscreteController
 from wrappers.obs_wrappers import SimpleUnitObservationWrapper
 from wrappers.sb3_action_mask import SB3InvalidActionWrapper
+from net.net import CustomResNet
 
 class CustomEnvWrapper(gym.Wrapper):
     """
@@ -307,10 +308,15 @@ def main(args):
         else SubprocVecEnv(environments)
     env.reset()
 
-    rollout_steps = 8000
-    policy_kwargs = dict(net_arch=(256, 256, 256))
+    policy_kwargs = {
+        "features_extractor_class": CustomResNet,
+        "features_extractor_kwargs": {
+            "features_dim": 256,
+            }
+        }
+    rollout_steps = 4000
     model = MaskablePPO(
-        "MlpPolicy",
+        "CnnPolicy",
         env,
         n_steps=rollout_steps // args.n_envs,
         batch_size=800,

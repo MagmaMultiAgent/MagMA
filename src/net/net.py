@@ -1,10 +1,12 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 
-class CustomResNet(nn.Module):
-    def __init__(self, input_channels, features_dim):
-        super(CustomResNet, self).__init__()
+class CustomResNet(BaseFeaturesExtractor):
+    def __init__(self, observation_space, features_dim):
+        super(CustomResNet, self).__init__(observation_space, features_dim)
+        input_channels = observation_space.shape[0]
         self.conv1 = nn.Conv2d(input_channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
@@ -47,3 +49,4 @@ class CustomResNet(nn.Module):
         x = self.fc(x)
         
         return x
+

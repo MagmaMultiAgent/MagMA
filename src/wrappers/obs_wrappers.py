@@ -52,11 +52,12 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
         for i,agent in enumerate(obs.keys()):
             observation[agent] = observations[i]
 
-        model = CustomResNet(spaces.Box(low=-999, high=999, shape=(80, 64, 64)).shape[0], features_dim=512)
-        model.eval()
-        input_tensor = torch.randn(1, 80, 64, 64)
-        with torch.no_grad():
-            output = model(input_tensor)
+        #model = CustomResNet(spaces.Box(low=-999, high=999, shape=(80, 64, 64)).shape[0], features_dim=512)
+        #model.eval()
+        #input_tensor = torch.randn(1, 80, 64, 64)
+        #with torch.no_grad():
+        #    output = model(input_tensor)
 
-        exit(1)
+        #print(output.shape, file=sys.stderr)
+        #exit(1)
         return observation

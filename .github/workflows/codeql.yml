@@ -47,7 +47,7 @@ jobs:
         pip install stable_baselines3
         pip install sb3-contrib
         pip install --upgrade luxai_s2
-        pip install -U "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+        pip install --upgrade "jax[cuda11_cudnn82]==0.4.7" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
         pip install git+https://github.com/RoboEden/jux.git@dev
         
     - name: Initialize CodeQL
