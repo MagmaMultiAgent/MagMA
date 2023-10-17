@@ -46,7 +46,7 @@ RUN pip install --no-cache-dir --upgrade pip
 RUN apt update -y && apt upgrade -y && apt install -y build-essential && apt-get install -y manpages-dev
 
 # Intall prerequisites for LUX
-RUN pip install --no-cache-dir pettingzoo vec_noise stable_baselines3 sb3-contrib --upgrade luxai_s2
+RUN pip install --no-cache-dir pettingzoo vec_noise stable_baselines3 dm_tree sb3-contrib --upgrade luxai_s2
 
 # Install Jax with Lux
 
