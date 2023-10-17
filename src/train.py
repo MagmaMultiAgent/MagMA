@@ -27,8 +27,9 @@ from wrappers.controllers import SimpleUnitDiscreteController
 from wrappers.obs_wrappers import SimpleUnitObservationWrapper
 from wrappers.sb3_action_mask import SB3InvalidActionWrapper
 from net.net import CustomResNet
+from parsers.reward_parser import DenseRewardParser
 
-class CustomEnvWrapper(gym.Wrapper):
+class SurvivalRewardParser(gym.Wrapper):
     """
     Custom wrapper for the LuxAI_S2 environment
     """
@@ -59,10 +60,16 @@ class CustomEnvWrapper(gym.Wrapper):
         for k in termination:
             done[k] = termination[k] | truncation[k]
         obs = obs[agent]
-
+        
         # we collect stats on teams here. These are useful stats that can be used to help generate reward functions
+
         stats: StatsStateDict = self.env.state.stats[agent]
 
+        rew_parser = DenseRewardParser()
+        print(self.env.state)
+        rew_parser.reset(self.env.state.global_info, self.env.state.stats)
+        rev1, rev2 = rew_parser.parse(done, self.env.state.game_state, self.env.state.stats, self.env.state.global_info)
+        print(rev1, rev2)
 
         # Below is where you get to have some fun with reward design! we provide a simple reward function that rewards digging ice and producing water
 
@@ -102,6 +109,8 @@ class CustomEnvWrapper(gym.Wrapper):
         obs, reset_info = self.env.reset(**kwargs)
         self.prev_step_metrics = None
         return obs["player_0"], reset_info
+
+
 
 
 def parse_args():
@@ -170,12 +179,6 @@ def make_env(env_id: str, rank: int, seed: int = 0, max_episode_steps=100):
 
         env = gym.make(env_id, verbose=0, collect_stats=True, MAX_FACTORIES=4, disable_env_checker=True)
 
-        # env = SB3Wrapper(
-        #     env,
-        #     factory_placement_policy=place_near_random_ice,
-        #     controller=SimpleUnitDiscreteController(env.env_cfg),
-        # )
-
         env = SB3InvalidActionWrapper(
             env,
             factory_placement_policy=place_near_random_ice,
@@ -185,7 +188,7 @@ def make_env(env_id: str, rank: int, seed: int = 0, max_episode_steps=100):
         env = SimpleUnitObservationWrapper(
             env
         )
-        env = CustomEnvWrapper(env)
+        env = SurvivalRewardParser(env)
         env = TimeLimit(
             env, max_episode_steps=max_episode_steps
         )
@@ -262,9 +265,6 @@ def train(args, env_id, model: PPO, invalid_action_masking):
     Trains the model
     """
 
-    # eval_env = SubprocVecEnv(
-    #     [make_env(env_id, i, max_episode_steps=1000) for i in range(4)]
-    # )
     eval_environments = [make_env(env_id, i, max_episode_steps=1000) for i in range(4)]
     eval_env = DummyVecEnv(eval_environments) if invalid_action_masking \
         else SubprocVecEnv(eval_environments)
@@ -296,12 +296,7 @@ def main(args):
         set_random_seed(args.seed)
     env_id = "LuxAI_S2-v0"
     invalid_action_masking = True
-    # env = SubprocVecEnv(
-    #     [
-    #         make_env(env_id, i, max_episode_steps=args.max_episode_steps)
-    #         for i in range(args.n_envs)
-    #     ]
-    # )
+
     environments = [make_env(env_id, i, max_episode_steps=args.max_episode_steps) \
                     for i in range(args.n_envs)]
     env = DummyVecEnv(environments) if invalid_action_masking \

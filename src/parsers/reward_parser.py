@@ -1,11 +1,133 @@
 from functools import reduce
 import numpy as np
 from copy import deepcopy
-from config import RewardParam, stats_reward_params
 from scipy.stats import gamma
 from lux.kit import EnvConfig, GameState
 import tree
 from typing import List
+from dataclasses import asdict, dataclass, field
+
+@dataclass
+class RewardParam:
+    use_gamma_coe: bool = False
+    zero_sum: bool = True
+    global_reward_weight = 0
+    win_reward_weight: float = 0. * global_reward_weight
+    light_reward_weight: float = 0.4 * global_reward_weight
+    heavy_reward_weight: float = 4 * global_reward_weight
+    ice_reward_weight: float = 0.005 * global_reward_weight
+    ore_reward_weight: float = 0.01 * global_reward_weight
+    water_reward_weight: float = 0.01 * global_reward_weight
+    metal_reward_weight: float = 0.02 * global_reward_weight
+    power_reward_weight: float = 0.0005 * global_reward_weight
+    lichen_reward_weight: float = 0.002
+    factory_penalty_weight: float = 5 * global_reward_weight
+    lose_penalty_coe: float = 0.
+    survive_reward_weight: float = 0.01
+
+stats_reward_params = dict(
+    action_queue_updates_total=0,
+    action_queue_updates_success=0,
+    consumption={
+        "power": {
+            "LIGHT": 0,
+            "HEAVY": 0,
+            "FACTORY": 0,
+        },
+        "water": 0,
+        "metal": 0,
+        "ore": {
+            "LIGHT": 0,
+            "HEAVY": 0,
+        },
+        "ice": {
+            "LIGHT": 0,
+            "HEAVY": 0,
+        },
+    },
+    destroyed={
+        'FACTORY': 0,
+        'LIGHT': {
+            'own': -RewardParam.light_reward_weight,
+            'enm': RewardParam.light_reward_weight,
+        },
+        'HEAVY': {
+            'own': -RewardParam.heavy_reward_weight,
+            'enm': RewardParam.heavy_reward_weight,
+        },
+        'rubble': {
+            'LIGHT': 0,
+            'HEAVY': 0,
+        },
+        'lichen': {
+            'LIGHT': {
+                'own': 0,
+                'enm': 0,
+            },
+            'HEAVY': {
+                'own': 0,
+                'enm': 0,
+            },
+        },
+    },
+    generation={
+        'power': {
+            'LIGHT': 0,
+            'HEAVY': 0,
+            'FACTORY': 0,
+        },
+        'water': 0,
+        'metal': 0,
+        'ore': {
+            'LIGHT': 0,
+            'HEAVY': 0,
+        },
+        'ice': {
+            'LIGHT': 0.0,
+            'HEAVY': 0.0,
+        },
+        'lichen': 0,
+        'built': {
+            'LIGHT': 0,
+            'HEAVY': 0,
+        },
+    },
+    pickup={
+        'power': 0,
+        'water': 0,
+        'metal': 0,
+        'ice': 0,
+        'ore': 0,
+    },
+    transfer={
+        'power': {
+            "LIGHT": 0,
+            "HEAVY": 0,
+            "FACTORY": 0,
+        },
+        'water': {
+            "LIGHT": 0,
+            "HEAVY": 0,
+            "FACTORY": 0,
+        },
+        'metal': {
+            "LIGHT": 0,
+            "HEAVY": 0,
+            "FACTORY": 0,
+        },
+        'ice': {
+            "LIGHT": 0,
+            "HEAVY": 0,
+            "FACTORY": 0,
+        },
+        'ore': {
+            "LIGHT": 0,
+            "HEAVY": 0,
+            "FACTORY": 0,
+        },
+    },
+)
+
 
 
 class GammaTransform:
@@ -32,7 +154,7 @@ class DenseRewardParser:
     def __init__(self, ):
         pass
 
-    def reset(self, game_state, global_info, env_stats):
+    def reset(self, global_info, env_stats):
         self.update_last_count(global_info)
         self.update_env_stats(env_stats)
 
@@ -64,6 +186,8 @@ class DenseRewardParser:
                 self.last_env_stats[player],
                 stats_reward_params,
             )
+
+        
 
         for team in [0, 1]:
             player = f"player_{team}"
