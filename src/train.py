@@ -28,6 +28,69 @@ from wrappers.obs_wrappers import SimpleUnitObservationWrapper
 from wrappers.sb3_action_mask import SB3InvalidActionWrapper
 from net.net import CustomResNet
 from parsers.reward_parser import DenseRewardParser
+import lux.kit
+import numpy as np
+
+global_information_names = [
+            'player_factory_count',
+            'player_light_count',
+            'player_heavy_count',
+            'player_unit_ice',
+            'player_unit_ore',
+            'player_unit_water',
+            'player_unit_metal',
+            'player_unit_power',
+            'player_factory_ice',
+            'player_factory_ore',
+            'player_factory_water',
+            'player_factory_metal',
+            'player_factory_power',
+            'player_total_ice',
+            'player_total_ore',
+            'player_total_water',
+            'player_total_metal',
+            'player_total_power',
+            'player_lichen_count',
+        ]
+
+def get_global_info(player: str, obs: lux.kit.GameState):
+
+    global_info = {k: None for k in global_information_names}
+
+    factories = list(obs.factories[player].values())
+    units = list(obs.units[player].values())
+
+    global_info['player_light_count'] = sum(int(unit.unit_type == 'LIGHT') for unit in units)
+    global_info['player_heavy_count'] = sum(int(unit.unit_type == 'HEAVY') for unit in units)
+    global_info['player_factory_count'] = len(factories)
+
+    global_info['player_unit_ice'] = sum(unit.cargo.ice for unit in units)
+    global_info['player_unit_ore'] = sum(unit.cargo.ore for unit in units)
+    global_info['player_unit_water'] = sum(unit.cargo.water for unit in units)
+    global_info['player_unit_metal'] = sum(unit.cargo.metal for unit in units)
+    global_info['player_unit_power'] = sum(unit.power for unit in units)
+
+    global_info['player_factory_ice'] = sum(f.cargo.ice for f in factories)
+    global_info['player_factory_ore'] = sum(f.cargo.ore for f in factories)
+    global_info['player_factory_water'] = sum(f.cargo.water for f in factories)
+    global_info['player_factory_metal'] = sum(f.cargo.metal for f in factories)
+    global_info['player_factory_power'] = sum(f.power for f in factories)
+
+    global_info['player_total_ice'] = global_info['player_unit_ice'] + global_info['player_factory_ice']
+    global_info['player_total_ore'] = global_info['player_unit_ore'] + global_info['player_factory_ore']
+    global_info['player_total_water'] = global_info['player_unit_water'] + global_info['player_factory_water']
+    global_info['player_total_metal'] = global_info['player_unit_metal'] + global_info['player_factory_metal']
+    global_info['player_total_power'] = global_info['player_unit_power'] + global_info['player_factory_power']
+
+    lichen = obs.board.lichen
+    lichen_strains = obs.board.lichen_strains
+
+    #if factories:
+        #lichen_count = sum((np.sum(lichen[lichen_strains == factory.strain_id]) for factory in factories), 0)
+        #global_info['lichen_count'] = lichen_count
+    #else:
+    global_info['lichen_count'] = 0
+    return global_info
 
 class SurvivalRewardParser(gym.Wrapper):
     """
@@ -41,6 +104,7 @@ class SurvivalRewardParser(gym.Wrapper):
         """
         super().__init__(env)
         self.prev_step_metrics = None
+        self.reward_parser = DenseRewardParser()
 
     def step(self, action):
         agent = "player_0"
@@ -59,20 +123,21 @@ class SurvivalRewardParser(gym.Wrapper):
         done = dict()
         for k in termination:
             done[k] = termination[k] | truncation[k]
-        obs = obs[agent]
-        
+        #obs = obs[agent]
         # we collect stats on teams here. These are useful stats that can be used to help generate reward functions
 
-        stats: StatsStateDict = self.env.state.stats[agent]
+        #stats: StatsStateDict = self.env.state.stats[agent]
+        stats: StatsStateDict = self.env.state.stats
+        global_info_own = get_global_info(agent, self.env.state)
+        global_info_opp = get_global_info(opp_agent, self.env.state)
 
-        rew_parser = DenseRewardParser()
-        print(self.env.state)
-        rew_parser.reset(self.env.state.global_info, self.env.state.stats)
-        rev1, rev2 = rew_parser.parse(done, self.env.state.game_state, self.env.state.stats, self.env.state.global_info)
-        print(rev1, rev2)
+        global_info = {"player_0": global_info_own, "player_1": global_info_opp}
 
+        self.reward_parser.reset(global_info, stats)
+        rev1, rev2 = self.reward_parser.parse(done, self.env.state, stats, global_info)
         # Below is where you get to have some fun with reward design! we provide a simple reward function that rewards digging ice and producing water
-
+        
+        stats: StatsStateDict = self.env.state.stats[agent]
         info = dict()
         metrics = dict()
         metrics["ice_dug"] = (
@@ -99,18 +164,17 @@ class SurvivalRewardParser(gym.Wrapper):
             reward = ice_dug_this_step / 100 + water_produced_this_step
 
         self.prev_step_metrics = copy.deepcopy(metrics)
+        reward = rev1[0]
+        obs = obs[agent]
         return obs, reward, termination[agent], truncation[agent], info
 
     def reset(self, **kwargs):
         """
         Resets the environment
         """
-
         obs, reset_info = self.env.reset(**kwargs)
         self.prev_step_metrics = None
         return obs["player_0"], reset_info
-
-
 
 
 def parse_args():

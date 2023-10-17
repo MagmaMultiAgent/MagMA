@@ -11,7 +11,7 @@ from dataclasses import asdict, dataclass, field
 class RewardParam:
     use_gamma_coe: bool = False
     zero_sum: bool = True
-    global_reward_weight = 0
+    global_reward_weight = 1
     win_reward_weight: float = 0. * global_reward_weight
     light_reward_weight: float = 0.4 * global_reward_weight
     heavy_reward_weight: float = 4 * global_reward_weight
@@ -47,27 +47,15 @@ stats_reward_params = dict(
     },
     destroyed={
         'FACTORY': 0,
-        'LIGHT': {
-            'own': -RewardParam.light_reward_weight,
-            'enm': RewardParam.light_reward_weight,
-        },
-        'HEAVY': {
-            'own': -RewardParam.heavy_reward_weight,
-            'enm': RewardParam.heavy_reward_weight,
-        },
+        'LIGHT': 0,
+        'HEAVY': 0,
         'rubble': {
             'LIGHT': 0,
             'HEAVY': 0,
         },
         'lichen': {
-            'LIGHT': {
-                'own': 0,
-                'enm': 0,
-            },
-            'HEAVY': {
-                'own': 0,
-                'enm': 0,
-            },
+            'LIGHT': 0,
+            'HEAVY': 0,
         },
     },
     generation={
@@ -100,35 +88,13 @@ stats_reward_params = dict(
         'ore': 0,
     },
     transfer={
-        'power': {
-            "LIGHT": 0,
-            "HEAVY": 0,
-            "FACTORY": 0,
-        },
-        'water': {
-            "LIGHT": 0,
-            "HEAVY": 0,
-            "FACTORY": 0,
-        },
-        'metal': {
-            "LIGHT": 0,
-            "HEAVY": 0,
-            "FACTORY": 0,
-        },
-        'ice': {
-            "LIGHT": 0,
-            "HEAVY": 0,
-            "FACTORY": 0,
-        },
-        'ore': {
-            "LIGHT": 0,
-            "HEAVY": 0,
-            "FACTORY": 0,
-        },
+        'power': 0,
+        'water': 0,
+        'metal': 0,
+        'ice': 0,
+        'ore': 0,
     },
 )
-
-
 
 class GammaTransform:
     alpha: int = 2
@@ -159,6 +125,7 @@ class DenseRewardParser:
         self.update_env_stats(env_stats)
 
     def parse(self, dones, game_state: List[GameState], env_stats, global_info):
+
         sub_rewards_keys = [
             "reward_light",
             "reward_heavy",
@@ -171,12 +138,14 @@ class DenseRewardParser:
             "reward_survival",
             "reward_win_lose",
         ]
+
         sub_rewards = [
             {k: 0
              for k in sub_rewards_keys},
             {k: 0
              for k in sub_rewards_keys},
         ]
+        
 
         env_stats_rewards = {}
         for player in ["player_0", "player_1"]:
@@ -186,9 +155,6 @@ class DenseRewardParser:
                 self.last_env_stats[player],
                 stats_reward_params,
             )
-
-        
-
         for team in [0, 1]:
             player = f"player_{team}"
             env_stats_rewards[player] = tree.flatten_with_path(env_stats_rewards[player])
@@ -205,6 +171,9 @@ class DenseRewardParser:
             gamma_flipped_coe = GammaTransform.gamma_flipped(game_state[0].real_env_steps)
         else:
             gamma_coe, gamma_flipped_coe = 1, 1
+
+
+
         for team in [0, 1]:
             player = f"player_{team}"
             own_global_info = global_info[player]
@@ -212,14 +181,14 @@ class DenseRewardParser:
             last_count = self.last_count[player]
             own_sub_rewards = sub_rewards[team]
 
-            factories_increment = own_global_info["factory_count"] - last_count['factory_count']
-            light_increment = own_global_info["light_count"] - last_count['light_count']
-            heavy_increment = own_global_info["heavy_count"] - last_count['heavy_count']
-            ice_increment = own_global_info["total_ice"] - last_count['total_ice']
-            ore_increment = own_global_info["total_ore"] - last_count['total_ore']
-            water_increment = own_global_info["total_water"] - last_count['total_water']
-            metal_increment = own_global_info["total_metal"] - last_count['total_metal']
-            power_increment = own_global_info["total_power"] - last_count['total_power']
+            factories_increment = own_global_info["player_factory_count"] - last_count['player_factory_count']
+            light_increment = own_global_info["player_light_count"] - last_count['player_light_count']
+            heavy_increment = own_global_info["player_heavy_count"] - last_count['player_heavy_count']
+            ice_increment = own_global_info["player_total_ice"] - last_count['player_total_ice']
+            ore_increment = own_global_info["player_total_ore"] - last_count['player_total_ore']
+            water_increment = own_global_info["player_total_water"] - last_count['player_total_water']
+            metal_increment = own_global_info["player_total_metal"] - last_count['player_total_metal']
+            power_increment = own_global_info["player_total_power"] - last_count['player_total_power']
             lichen_increment = own_global_info["lichen_count"] - last_count['lichen_count']
 
             own_sub_rewards["reward_light"] = light_increment * RewardParam.light_reward_weight * gamma_flipped_coe
@@ -236,7 +205,7 @@ class DenseRewardParser:
             if dones[f'player_{team}']:
                 own_lichen = own_global_info["lichen_count"]
                 enm_lichen = enm_global_info["lichen_count"]
-                if enm_global_info["factory_count"] == 0:
+                if enm_global_info["player_factory_count"] == 0:
                     win = True
                 elif own_lichen > enm_lichen:
                     win = True
@@ -250,22 +219,21 @@ class DenseRewardParser:
                         game_state[team].real_env_steps) * RewardParam.survive_reward_weight * 2
                 else:
                     all_past_reward = 0
-                    all_past_reward += own_global_info["light_count"] * RewardParam.light_reward_weight
-                    all_past_reward += own_global_info["heavy_count"] * RewardParam.heavy_reward_weight
-                    all_past_reward += own_global_info["total_ice"] * RewardParam.ice_reward_weight
-                    all_past_reward += own_global_info["total_ore"] * RewardParam.ore_reward_weight
-                    all_past_reward += own_global_info["total_water"] * RewardParam.water_reward_weight
-                    all_past_reward += own_global_info["total_metal"] * RewardParam.metal_reward_weight
-                    all_past_reward += own_global_info["total_power"] * RewardParam.power_reward_weight
+                    all_past_reward += own_global_info["player_light_count"] * RewardParam.light_reward_weight
+                    all_past_reward += own_global_info["player_heavy_count"] * RewardParam.heavy_reward_weight
+                    all_past_reward += own_global_info["player_total_ice"] * RewardParam.ice_reward_weight
+                    all_past_reward += own_global_info["player_total_ore"] * RewardParam.ore_reward_weight
+                    all_past_reward += own_global_info["player_total_water"] * RewardParam.water_reward_weight
+                    all_past_reward += own_global_info["player_total_metal"] * RewardParam.metal_reward_weight
+                    all_past_reward += own_global_info["player_total_power"] * RewardParam.power_reward_weight
                     all_past_reward += own_global_info["lichen_count"] * RewardParam.lichen_reward_weight
-                    all_past_reward += own_global_info["factory_count"] * RewardParam.factory_penalty_weight
+                    all_past_reward += own_global_info["player_factory_count"] * RewardParam.factory_penalty_weight
                     all_past_reward += game_state[team].env_steps * RewardParam.survive_reward_weight
                     own_sub_rewards["reward_win_lose"] = RewardParam.lose_penalty_coe * all_past_reward
 
         rewards = [sum(sub_rewards[0].values()), sum(sub_rewards[1].values())]
 
-        # record total reward for logging
-        # it is not added to the training rewards
+
         sub_rewards[0]["reward_total"] = sum(sub_rewards[0].values())
         sub_rewards[1]["reward_total"] = sum(sub_rewards[1].values())
 
