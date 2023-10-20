@@ -23,11 +23,22 @@ from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecVideoRecorder
 from stable_baselines3.ppo import PPO
 from sb3_contrib.ppo_mask import MaskablePPO
-from src.action.controllers import SimpleUnitDiscreteController
+from action.controllers import SimpleUnitDiscreteController
 from wrappers.obs_wrappers import SimpleUnitObservationWrapper
 from wrappers.sb3_action_mask import SB3InvalidActionWrapper
 from net.net import CustomResNet
 from reward.early_reward_parser import EarlyRewardParser
+
+import sys
+import logging
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                    datefmt='%y-%m-%d %H:%M:%S',
+                    handlers=[logging.StreamHandler(sys.stderr)])
+logger = logging.getLogger(__name__)
+logger.info('Creating logger')
+
+logging.setLoggerClass
 
 class EarlyRewardParserWrapper(gym.Wrapper):
     """
@@ -39,6 +50,7 @@ class EarlyRewardParserWrapper(gym.Wrapper):
         Adds a custom reward and turns the LuxAI_S2 environment \
         into a single-agent environment for easy training
         """
+        logger.info(f"Adding early reward parser wrapper to environment {env}")
         super().__init__(env)
         self.prev_step_metrics = None
         self.reward_parser = EarlyRewardParser()
@@ -126,7 +138,7 @@ def parse_args():
         "-n",
         "--n-envs",
         type=int,
-        default=8,
+        default=1,
         help="Number of parallel envs to run. Note that the rollout \
         size is configured separately and invariant to this value",
     )
@@ -173,6 +185,7 @@ def make_env(env_id: str, rank: int, seed: int = 0, max_episode_steps=100):
         """
         Initializes the environment
         """
+        logger.debug(f"Initializing environment {env_id}")
 
         env = gym.make(env_id, verbose=0, collect_stats=True, MAX_FACTORIES=4, disable_env_checker=True)
 
@@ -190,8 +203,11 @@ def make_env(env_id: str, rank: int, seed: int = 0, max_episode_steps=100):
             env, max_episode_steps=max_episode_steps
         )
         env = Monitor(env)
+        logger.debug(f"Resetting env {env}")
         env.reset(seed=seed + rank)
         set_random_seed(seed)
+
+        logger.debug(f"Environment {env} ready")
         return env
 
     return _init
@@ -240,6 +256,7 @@ def evaluate(args, env_id, model):
     Evaluates the model
     """
 
+    logger.info("Eval mode")
     model = model.load(args.model_path)
     video_length = 1000
     eval_env = SubprocVecEnv(
@@ -262,6 +279,7 @@ def train(args, env_id, model: PPO, invalid_action_masking):
     Trains the model
     """
 
+    logger.info("Training mode")
     eval_environments = [make_env(env_id, i, max_episode_steps=1000) for i in range(4)]
     eval_env = DummyVecEnv(eval_environments) if invalid_action_masking \
         else SubprocVecEnv(eval_environments)
@@ -276,10 +294,12 @@ def train(args, env_id, model: PPO, invalid_action_masking):
         n_eval_episodes=5,
     )
 
+    logger.info("Starting learning")
     model.learn(
         args.total_timesteps,
         callback=[TensorboardCallback(tag="train_metrics"), eval_callback],
     )
+    logger.info("Saving model")
     model.save(osp.join(args.log_path, "models/latest_model"))
 
 
@@ -288,7 +308,9 @@ def main(args):
     Main function
     """
 
-    print("Training with args", args)
+    logger.debug("Starting main")
+
+    logger.info(f"Training with args {args}")
     if args.seed is not None:
         set_random_seed(args.seed)
     env_id = "LuxAI_S2-v0"
@@ -296,9 +318,12 @@ def main(args):
 
     environments = [make_env(env_id, i, max_episode_steps=args.max_episode_steps) \
                     for i in range(args.n_envs)]
+    logger.debug(f"Creating {len(environments)} environment(s)")
     env = DummyVecEnv(environments) if invalid_action_masking \
         else SubprocVecEnv(environments)
+    logger.debug("Resetting env")
     env.reset()
+    logger.debug(f"Env: {env}")
 
     policy_kwargs = {
         "features_extractor_class": CustomResNet,
@@ -319,6 +344,8 @@ def main(args):
         gamma=0.99,
         tensorboard_log=osp.join(args.log_path),
     )
+    # TODO: create another model for the factory
+    logger.debub(f"Model: {model}")
     if args.eval:
         evaluate(args, env_id, model)
     else:

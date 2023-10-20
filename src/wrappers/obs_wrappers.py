@@ -11,6 +11,9 @@ from observation.obs_parser import ObservationParser
 from net.test import EncoderDecoderNet
 import torch
 
+import logging
+logger = logging.getLogger(__name__)
+
 class SimpleUnitObservationWrapper(gym.ObservationWrapper):
     """
     A simple state based observation to work with in pair with the SimpleUnitDiscreteController
@@ -31,8 +34,10 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
         A simple state based observation to work with in pair with the SimpleUnitDiscreteController
         """
 
+        logger.info(f"Adding simple unit obervation wrapper to environment {env}")
         super().__init__(env)
         self.observation_space = spaces.Box(low=-999, high=999, shape=(80, 64, 64))
+        self.logger = logging.getLogger(f"{__name__}_{id(self)}")
 
     def observation(self, obs):
         """
@@ -54,7 +59,8 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
             model = EncoderDecoderNet(observation_space = 30, num_actions=19, num_global_features=44)
             model.eval()
             with torch.no_grad():
+                logger.debug("Calling model")
                 output = model(torch.from_numpy(observation[agent][0]).unsqueeze(0).to(torch.float), torch.from_numpy(observation[agent][1]).unsqueeze(0).to(torch.float))
-                print(output.shape, file=sys.stderr)
+                logger.debug(f"Model output: {output.shape}")
 
         return observation

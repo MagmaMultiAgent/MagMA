@@ -12,6 +12,9 @@ from luxai_s2.unit import BidActionType, FactoryPlacementActionType
 from luxai_s2.wrappers.controllers import Controller
 from reward.early_reward_parser import EarlyRewardParser
 
+import logging
+logger = logging.getLogger(__name__)
+
 class SB3InvalidActionWrapper(SB3Wrapper):
     """
     This wrapper adds action masks to the environment for use with stable-baselines3
@@ -32,6 +35,7 @@ class SB3InvalidActionWrapper(SB3Wrapper):
         This wrapper adds action masks to the environment for use with stable-baselines3
         """
 
+        logger.info(f"Adding invalid action wrapper to environment {env}")
         super().__init__(env, bid_policy, factory_placement_policy, controller)
 
     def action_masks(self):
