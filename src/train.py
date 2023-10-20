@@ -23,76 +23,13 @@ from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecVideoRecorder
 from stable_baselines3.ppo import PPO
 from sb3_contrib.ppo_mask import MaskablePPO
-from wrappers.controllers import SimpleUnitDiscreteController
+from src.action.controllers import SimpleUnitDiscreteController
 from wrappers.obs_wrappers import SimpleUnitObservationWrapper
 from wrappers.sb3_action_mask import SB3InvalidActionWrapper
 from net.net import CustomResNet
-from parsers.reward_parser import DenseRewardParser
-import lux.kit
-import numpy as np
+from reward.early_reward_parser import EarlyRewardParser
 
-global_information_names = [
-            'player_factory_count',
-            'player_light_count',
-            'player_heavy_count',
-            'player_unit_ice',
-            'player_unit_ore',
-            'player_unit_water',
-            'player_unit_metal',
-            'player_unit_power',
-            'player_factory_ice',
-            'player_factory_ore',
-            'player_factory_water',
-            'player_factory_metal',
-            'player_factory_power',
-            'player_total_ice',
-            'player_total_ore',
-            'player_total_water',
-            'player_total_metal',
-            'player_total_power',
-            'player_lichen_count',
-        ]
-
-def get_global_info(player: str, obs: lux.kit.GameState):
-
-    global_info = {k: None for k in global_information_names}
-
-    factories = list(obs.factories[player].values())
-    units = list(obs.units[player].values())
-
-    global_info['player_light_count'] = sum(int(unit.unit_type == 'LIGHT') for unit in units)
-    global_info['player_heavy_count'] = sum(int(unit.unit_type == 'HEAVY') for unit in units)
-    global_info['player_factory_count'] = len(factories)
-
-    global_info['player_unit_ice'] = sum(unit.cargo.ice for unit in units)
-    global_info['player_unit_ore'] = sum(unit.cargo.ore for unit in units)
-    global_info['player_unit_water'] = sum(unit.cargo.water for unit in units)
-    global_info['player_unit_metal'] = sum(unit.cargo.metal for unit in units)
-    global_info['player_unit_power'] = sum(unit.power for unit in units)
-
-    global_info['player_factory_ice'] = sum(f.cargo.ice for f in factories)
-    global_info['player_factory_ore'] = sum(f.cargo.ore for f in factories)
-    global_info['player_factory_water'] = sum(f.cargo.water for f in factories)
-    global_info['player_factory_metal'] = sum(f.cargo.metal for f in factories)
-    global_info['player_factory_power'] = sum(f.power for f in factories)
-
-    global_info['player_total_ice'] = global_info['player_unit_ice'] + global_info['player_factory_ice']
-    global_info['player_total_ore'] = global_info['player_unit_ore'] + global_info['player_factory_ore']
-    global_info['player_total_water'] = global_info['player_unit_water'] + global_info['player_factory_water']
-    global_info['player_total_metal'] = global_info['player_unit_metal'] + global_info['player_factory_metal']
-    global_info['player_total_power'] = global_info['player_unit_power'] + global_info['player_factory_power']
-
-    lichen = obs.board.lichen
-    lichen_strains = obs.board.lichen_strains
-
-    #if factories:
-        #lichen_count = sum((np.sum(lichen[lichen_strains == factory.strain_id]) for factory in factories), 0)
-        #global_info['lichen_count'] = lichen_count
-    #else:
-    global_info['lichen_count'] = 0
-    return global_info
-
-class SurvivalRewardParser(gym.Wrapper):
+class EarlyRewardParserWrapper(gym.Wrapper):
     """
     Custom wrapper for the LuxAI_S2 environment
     """
@@ -104,7 +41,7 @@ class SurvivalRewardParser(gym.Wrapper):
         """
         super().__init__(env)
         self.prev_step_metrics = None
-        self.reward_parser = DenseRewardParser()
+        self.reward_parser = EarlyRewardParser()
 
     def step(self, action):
         agent = "player_0"
@@ -113,59 +50,55 @@ class SurvivalRewardParser(gym.Wrapper):
         opp_factories = self.env.state.factories[opp_agent]
         for k in opp_factories.keys():
             factory = opp_factories[k]
-            # set enemy factories to have 1000 water to keep them alive the whole around and treat the game as single-agent
             factory.cargo.water = 1000
 
-        # submit actions for just one agent to make it single-agent
-        # and save single-agent versions of the data below
         action = {agent: action}
         obs, _, termination, truncation, info = self.env.step(action)
         done = dict()
         for k in termination:
             done[k] = termination[k] | truncation[k]
-        #obs = obs[agent]
-        # we collect stats on teams here. These are useful stats that can be used to help generate reward functions
+        obs = obs[agent]
 
-        #stats: StatsStateDict = self.env.state.stats[agent]
-        stats: StatsStateDict = self.env.state.stats
-        global_info_own = get_global_info(agent, self.env.state)
-        global_info_opp = get_global_info(opp_agent, self.env.state)
+        stats: StatsStateDict = self.env.state.stats[agent]
 
-        global_info = {"player_0": global_info_own, "player_1": global_info_opp}
+        global_info_own = self.reward_parser.get_global_info(agent, self.env.state)
+        self.reward_parser.reset(global_info_own, stats)
+        reward = self.reward_parser.parse(self.env.state, stats, global_info_own)
 
-        self.reward_parser.reset(global_info, stats)
-        rev1, rev2 = self.reward_parser.parse(done, self.env.state, stats, global_info)
-        # Below is where you get to have some fun with reward design! we provide a simple reward function that rewards digging ice and producing water
-        
         stats: StatsStateDict = self.env.state.stats[agent]
         info = dict()
         metrics = dict()
         metrics["ice_dug"] = (
             stats["generation"]["ice"]["HEAVY"] + stats["generation"]["ice"]["LIGHT"]
         )
+        metrics["ore_dug"] = (
+            stats["generation"]["ore"]["HEAVY"] + stats["generation"]["ore"]["LIGHT"]
+        )
+        metrics["power_consumed"] = (
+            stats["consumption"]["power"]["HEAVY"] + stats["consumption"]["power"]["LIGHT"] + stats["consumption"]["power"]["FACTORY"]
+        )
+        metrics["water_consumed"] = stats["consumption"]["water"]
+        metrics["metal_consumed"] = stats["consumption"]["metal"]
+        metrics["rubble_destroyed"] = (
+            stats["destroyed"]["rubble"]["LIGHT"] + stats["destroyed"]["rubble"]["HEAVY"]
+        )
+        metrics["ore_transferred"] = stats["transfer"]["ore"]
+        metrics["water_transferred"] = stats["transfer"]["water"]
+        metrics["energy_transferred"] = stats["transfer"]["power"]
+        metrics["energy_pickup"] = stats["pickup"]["power"]
+        metrics["light_robots_built"] = stats["generation"]["built"]["LIGHT"]
+        metrics["heavy_robots_built"] = stats["generation"]["built"]["HEAVY"]
+        metrics["light_power"] = stats["generation"]["power"]["LIGHT"]
+        metrics["heavy_power"] = stats["generation"]["power"]["HEAVY"]
+        metrics["factory_power"] = stats["generation"]["power"]["FACTORY"]
+        metrics["metal_produced"] = stats["generation"]["metal"]
         metrics["water_produced"] = stats["generation"]["water"]
-
-        # we save these two to see how often the agent updates robot action queues and how often the robot has enough
-        # power to do so and succeed (less frequent updates = more power is saved)
         metrics["action_queue_updates_success"] = stats["action_queue_updates_success"]
         metrics["action_queue_updates_total"] = stats["action_queue_updates_total"]
 
-        # we can save the metrics to info so we can use tensorboard to log them to get a glimpse into how our agent is behaving
         info["metrics"] = metrics
 
-        reward = 0
-        if self.prev_step_metrics is not None:
-            # we check how much ice and water is produced and reward the agent for generating both
-            ice_dug_this_step = metrics["ice_dug"] - self.prev_step_metrics["ice_dug"]
-            water_produced_this_step = (
-                metrics["water_produced"] - self.prev_step_metrics["water_produced"]
-            )
-            # we reward water production more as it is the most important resource for survival
-            reward = ice_dug_this_step / 100 + water_produced_this_step
-
         self.prev_step_metrics = copy.deepcopy(metrics)
-        reward = rev1[0]
-        obs = obs[agent]
         return obs, reward, termination[agent], truncation[agent], info
 
     def reset(self, **kwargs):
@@ -252,7 +185,7 @@ def make_env(env_id: str, rank: int, seed: int = 0, max_episode_steps=100):
         env = SimpleUnitObservationWrapper(
             env
         )
-        env = SurvivalRewardParser(env)
+        env = EarlyRewardParserWrapper(env)
         env = TimeLimit(
             env, max_episode_steps=max_episode_steps
         )

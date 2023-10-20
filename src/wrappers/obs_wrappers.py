@@ -7,8 +7,8 @@ import gymnasium as gym
 import numpy as np
 import numpy.typing as npt
 from gymnasium import spaces
-from parsers.obs_parser import ObservationParser
-from net.net import CustomResNet
+from observation.obs_parser import ObservationParser
+from net.test import EncoderDecoderNet
 import torch
 
 class SimpleUnitObservationWrapper(gym.ObservationWrapper):
@@ -48,16 +48,13 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
         """
         observation = {}
         obs_pars = ObservationParser()
-        observations, _ = obs_pars.parse_observation(obs, env_cfg)
+        map_features, global_features, _ = obs_pars.parse_observation(obs, env_cfg)
         for i,agent in enumerate(obs.keys()):
-            observation[agent] = observations[i]
+            observation[agent] = [map_features[i], global_features[i]]
+            model = EncoderDecoderNet(observation_space = 30, num_actions=19, num_global_features=44)
+            model.eval()
+            with torch.no_grad():
+                output = model(torch.from_numpy(observation[agent][0]).unsqueeze(0).to(torch.float), torch.from_numpy(observation[agent][1]).unsqueeze(0).to(torch.float))
+                print(output.shape, file=sys.stderr)
 
-        #model = CustomResNet(spaces.Box(low=-999, high=999, shape=(80, 64, 64)).shape[0], features_dim=512)
-        #model.eval()
-        #input_tensor = torch.randn(1, 80, 64, 64)
-        #with torch.no_grad():
-        #    output = model(input_tensor)
-
-        #print(output.shape, file=sys.stderr)
-        #exit(1)
         return observation

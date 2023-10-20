@@ -10,7 +10,7 @@ from luxai_s2.state import ObservationStateDict, StatsStateDict
 from luxai_s2.wrappers import SB3Wrapper
 from luxai_s2.unit import BidActionType, FactoryPlacementActionType
 from luxai_s2.wrappers.controllers import Controller
-from parsers.reward_parser import DenseRewardParser
+from reward.early_reward_parser import EarlyRewardParser
 
 class SB3InvalidActionWrapper(SB3Wrapper):
     """
@@ -55,7 +55,7 @@ class CustomEnvWrapper(gym.Wrapper):
 
         super().__init__(env)
         self.prev_step_metrics = None
-        self.reward_parser = DenseRewardParser()
+        self.reward_parser = EarlyRewardParser()
 
     def step(self, action):
         """
