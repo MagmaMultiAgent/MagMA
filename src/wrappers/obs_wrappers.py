@@ -32,7 +32,13 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
         """
 
         super().__init__(env)
-        self.observation_space = spaces.Box(low=-999, high=999, shape=(80, 64, 64))
+        self.map_space = spaces.Box(low=-999, high=999, shape=(30, 64, 64), dtype=np.float32)
+        self.global_space = spaces.Box(low=-999, high=999, shape=(44,), dtype=np.float32)
+
+        self.observation_space = spaces.Dict({
+            "map": self.map_space,
+            "global": self.global_space
+        })
 
     def observation(self, obs):
         """
@@ -49,12 +55,16 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
         observation = {}
         obs_pars = ObservationParser()
         map_features, global_features, _ = obs_pars.parse_observation(obs, env_cfg)
-        for i,agent in enumerate(obs.keys()):
-            observation[agent] = [map_features[i], global_features[i]]
-            model = EncoderDecoderNet(observation_space = 30, num_actions=19, num_global_features=44)
-            model.eval()
-            with torch.no_grad():
-                output = model(torch.from_numpy(observation[agent][0]).unsqueeze(0).to(torch.float), torch.from_numpy(observation[agent][1]).unsqueeze(0).to(torch.float))
-                print(output.shape, file=sys.stderr)
-
+        for i, agent in enumerate(obs.keys()):
+            observation[agent] = {
+                "map": map_features[i],
+                "global": global_features[i]
+            }
         return observation
+
+            #model = EncoderDecoderNet(observation_space = 30, num_actions=19, num_global_features=44)
+            #model.eval()
+            #with torch.no_grad():
+                #print(observation[agent][1].shape, file=sys.stderr)
+                #output = model(torch.from_numpy(observation[agent][0]).unsqueeze(0).to(torch.float), torch.from_numpy(observation[agent][1]).unsqueeze(0).to(torch.float))
+                #print(output.shape, file=sys.stderr)

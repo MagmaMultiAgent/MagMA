@@ -9,7 +9,6 @@ import argparse
 import os.path as osp
 import gymnasium as gym
 import torch as th
-from torch import nn
 from gymnasium.wrappers import TimeLimit
 from luxai_s2.state import StatsStateDict
 from luxai_s2.utils.heuristics.factory_placement import place_near_random_ice
@@ -23,10 +22,10 @@ from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecVideoRecorder
 from stable_baselines3.ppo import PPO
 from sb3_contrib.ppo_mask import MaskablePPO
-from src.action.controllers import SimpleUnitDiscreteController
+from action.controllers import SimpleUnitDiscreteController
 from wrappers.obs_wrappers import SimpleUnitObservationWrapper
 from wrappers.sb3_action_mask import SB3InvalidActionWrapper
-from net.net import CustomResNet
+from net.test import EncoderDecoderNet
 from reward.early_reward_parser import EarlyRewardParser
 
 class EarlyRewardParserWrapper(gym.Wrapper):
@@ -301,14 +300,14 @@ def main(args):
     env.reset()
 
     policy_kwargs = {
-        "features_extractor_class": CustomResNet,
+        "features_extractor_class": EncoderDecoderNet,
         "features_extractor_kwargs": {
-            "features_dim": 256,
+            "output_channels": 19,
             }
         }
     rollout_steps = 4000
     model = MaskablePPO(
-        "CnnPolicy",
+        "MultiInputPolicy",
         env,
         n_steps=rollout_steps // args.n_envs,
         batch_size=800,
