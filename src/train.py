@@ -51,11 +51,14 @@ class EarlyRewardParserWrapper(gym.Wrapper):
         into a single-agent environment for easy training
         """
         logger.info(f"Adding early reward parser wrapper to environment {env}")
+        self.logger = logging.getLogger(f"{__name__}_{id(self)}")
         super().__init__(env)
         self.prev_step_metrics = None
         self.reward_parser = EarlyRewardParser()
 
     def step(self, action):
+        self.logger.debug(f"Stepping environment with action {action}")
+        
         agent = "player_0"
         opp_agent = "player_1"
 

@@ -34,7 +34,6 @@ class EncoderDecoderNet(BaseFeaturesExtractor):
         #self.logger.debug(f"Created decoder {self.decoder_fc}, {self.decoder_conv}, {self.decoder_upsample}")
 
     def forward(self, x, global_features):
-
         self.logger.debug(f"Forward call input {x.shape}")
         # Encoder
         x = self.encoder.conv1(x)

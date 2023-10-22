@@ -15,7 +15,7 @@ import numpy as np
 import torch as th
 from sb3_contrib.ppo_mask import MaskablePPO
 from kit.config import EnvConfig
-from src.action.controllers import SimpleUnitDiscreteController
+from action.controllers import SimpleUnitDiscreteController
 from wrappers.obs_wrappers import SimpleUnitObservationWrapper
 
 MODEL_WEIGHTS_RELATIVE_PATH = "best_model"

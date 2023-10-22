@@ -9,10 +9,12 @@ import numpy.typing as npt
 from gymnasium import spaces
 from observation.obs_parser import ObservationParser
 from net.test import EncoderDecoderNet
+from net.factory_net import FactoryNet
 import torch
 
 import logging
 logger = logging.getLogger(__name__)
+
 
 class SimpleUnitObservationWrapper(gym.ObservationWrapper):
     """
@@ -53,14 +55,19 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
         """
         observation = {}
         obs_pars = ObservationParser()
-        map_features, global_features, _ = obs_pars.parse_observation(obs, env_cfg)
+        map_features, global_features, factory_features, _ = obs_pars.parse_observation(obs, env_cfg)
+        factory_model = FactoryNet(observation_space=24, num_actions=3)
         for i,agent in enumerate(obs.keys()):
-            observation[agent] = [map_features[i], global_features[i]]
-            model = EncoderDecoderNet(observation_space = 30, num_actions=19, num_global_features=44)
-            model.eval()
+            logger.debug(f"Handling observation for agent {i} {agent}")
+            observation[agent] = [map_features[i], global_features[i], factory_features[i]]
+            #model = EncoderDecoderNet(observation_space = 30, num_actions=19, num_global_features=44)
+            #model.eval()
             with torch.no_grad():
                 logger.debug("Calling model")
-                output = model(torch.from_numpy(observation[agent][0]).unsqueeze(0).to(torch.float), torch.from_numpy(observation[agent][1]).unsqueeze(0).to(torch.float))
+                #output = model(torch.from_numpy(observation[agent][0]).unsqueeze(0).to(torch.float), torch.from_numpy(observation[agent][1]).unsqueeze(0).to(torch.float))
+                output = torch.rand((1, 19, 64, 64))
+                output_factory = factory_model(torch.from_numpy(observation[agent][2]).to(torch.float))
                 logger.debug(f"Model output: {output.shape}")
+                logger.debug(f"Factory model output: {output_factory}")
 
         return observation

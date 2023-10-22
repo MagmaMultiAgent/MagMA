@@ -36,6 +36,7 @@ class SB3InvalidActionWrapper(SB3Wrapper):
         """
 
         logger.info(f"Adding invalid action wrapper to environment {env}")
+        self.logger = logging.getLogger(f"{__name__}_{id(self)}")
         super().__init__(env, bid_policy, factory_placement_policy, controller)
 
     def action_masks(self):
@@ -43,6 +44,7 @@ class SB3InvalidActionWrapper(SB3Wrapper):
         Generates a boolean action mask indicating in each \
         discrete dimension whether it would be valid or not
         """
+        self.logger.info("Generating mask")
         return self.controller.action_masks('player_0', self.prev_obs)
 
 class CustomEnvWrapper(gym.Wrapper):
