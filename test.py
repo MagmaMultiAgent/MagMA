@@ -1,10 +1,9 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from torchvision.models import resnet18
-from torchvision import models
-from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 import torchvision
+import numpy as np
+resnet = torchvision.models.resnet.resnet50(pretrained=True)
+
 
 class ConvBlock(nn.Module):
     """
@@ -77,34 +76,29 @@ class UpBlockForUNetWithResNet50(nn.Module):
         return x
 
 
-class UNetWithResnet50Encoder(BaseFeaturesExtractor):
+class UNetWithResnet50Encoder(nn.Module):
     DEPTH = 6
-    def __init__(self, observation, output_channels):
-        num_cnn_channels = observation['map'].shape[0]
-        num_global_features = observation['global'].shape[0]
-        super(UNetWithResnet50Encoder, self).__init__(num_cnn_channels, output_channels)
-        
+
+    def __init__(self, n_classes=19):
+        super().__init__()
         resnet = torchvision.models.resnet.resnet50(pretrained=True)
         down_blocks = []
         up_blocks = []
 
         num_output_channels = resnet.conv1.out_channels
 
-        new_conv1 = nn.Conv2d(num_cnn_channels, num_output_channels, kernel_size=resnet.conv1.kernel_size,
+        new_conv1 = nn.Conv2d(80, num_output_channels, kernel_size=resnet.conv1.kernel_size,
                       stride=resnet.conv1.stride, padding=resnet.conv1.padding, bias=resnet.conv1.bias)
 
         resnet.conv1 = new_conv1
 
         self.input_block = nn.Sequential(*list(resnet.children()))[:3]
         self.input_pool = list(resnet.children())[3]
-
+        print(self.input_block)
         for bottleneck in list(resnet.children()):
             if isinstance(bottleneck, nn.Sequential):
                 down_blocks.append(bottleneck)
         self.down_blocks = nn.ModuleList(down_blocks)
-
-        self.global_fc_1 = nn.Linear(num_global_features, 512)
-        self.global_fc_2 = nn.Linear(512, 1024)
 
         self.bridge = Bridge(9216, 8192, 2048)
         up_blocks.append(UpBlockForUNetWithResNet50(2048, 1024))
@@ -112,19 +106,14 @@ class UNetWithResnet50Encoder(BaseFeaturesExtractor):
         up_blocks.append(UpBlockForUNetWithResNet50(512, 256))
         up_blocks.append(UpBlockForUNetWithResNet50(in_channels=128 + 64, out_channels=128,
                                                     up_conv_in_channels=256, up_conv_out_channels=128))
-        up_blocks.append(UpBlockForUNetWithResNet50(in_channels=64 + 30, out_channels=64,
+        up_blocks.append(UpBlockForUNetWithResNet50(in_channels=64 + 80, out_channels=64,
                                                     up_conv_in_channels=128, up_conv_out_channels=64))
 
         self.up_blocks = nn.ModuleList(up_blocks)
 
-        self.out = nn.Conv2d(64, output_channels, kernel_size=1, stride=1)
-        
-    def forward(self, x):
-        
-        cnn_features = x['map']
-        global_features = x['global']
-        x = cnn_features
+        self.out = nn.Conv2d(64, n_classes, kernel_size=1, stride=1)
 
+    def forward(self, x):
         pre_pools = dict()
         pre_pools[f"layer_0"] = x
         x = self.input_block(x)
@@ -137,15 +126,11 @@ class UNetWithResnet50Encoder(BaseFeaturesExtractor):
                 continue
             pre_pools[f"layer_{i}"] = x
 
-        x = x.view(8, -1)
-
-        global_features = self.global_fc_1(global_features)
-        global_features = self.global_fc_2(global_features)
-        x = torch.cat((x, global_features), dim=1)
+        x = x.view(1, -1)
+        random_vector = torch.rand(1,1024).cuda()
+        x = torch.cat((x, random_vector), dim=1)
         x = self.bridge(x)
-
-        x = x.view(8, 2048, 2, 2)
-
+        x = x.view(1, 2048, 2, 2)
 
         for i, block in enumerate(self.up_blocks, 1):
             key = f"layer_{UNetWithResnet50Encoder.DEPTH - 1 - i}"
@@ -155,6 +140,12 @@ class UNetWithResnet50Encoder(BaseFeaturesExtractor):
         x = self.out(x)
         del pre_pools
         return x
-    
 
 
+
+
+
+model = UNetWithResnet50Encoder().cuda()
+inp = torch.rand((1, 80, 64, 64)).cuda()
+out = model(inp)
+print(out.shape)

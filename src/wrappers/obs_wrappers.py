@@ -8,7 +8,6 @@ import numpy as np
 import numpy.typing as npt
 from gymnasium import spaces
 from observation.obs_parser import ObservationParser
-from net.test import EncoderDecoderNet
 import torch
 
 class SimpleUnitObservationWrapper(gym.ObservationWrapper):

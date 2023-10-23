@@ -25,7 +25,7 @@ from sb3_contrib.ppo_mask import MaskablePPO
 from action.controllers import SimpleUnitDiscreteController
 from wrappers.obs_wrappers import SimpleUnitObservationWrapper
 from wrappers.sb3_action_mask import SB3InvalidActionWrapper
-from net.test import EncoderDecoderNet
+from net.net import UNetWithResnet50Encoder
 from reward.early_reward_parser import EarlyRewardParser
 
 class EarlyRewardParserWrapper(gym.Wrapper):
@@ -300,7 +300,7 @@ def main(args):
     env.reset()
 
     policy_kwargs = {
-        "features_extractor_class": EncoderDecoderNet,
+        "features_extractor_class": UNetWithResnet50Encoder,
         "features_extractor_kwargs": {
             "output_channels": 19,
             }
@@ -310,7 +310,7 @@ def main(args):
         "MultiInputPolicy",
         env,
         n_steps=rollout_steps // args.n_envs,
-        batch_size=800,
+        batch_size=8,
         learning_rate=3e-4,
         policy_kwargs=policy_kwargs,
         verbose=1,

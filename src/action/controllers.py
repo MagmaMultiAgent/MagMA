@@ -14,7 +14,16 @@ class Controller:
     def __init__(self, action_space: spaces.Space) -> None:
         self.action_space = action_space
 
-    def action_to_lux_action(
+    def unit_action_to_lux_action(
+        self, agent: str, obs: Dict[str, Any], action: npt.NDArray
+    ):
+        """
+        Takes as input the current "raw observation" and the parameterized action and returns
+        an action formatted for the Lux env
+        """
+        raise NotImplementedError()
+    
+    def factory_action_to_lux_action(
         self, agent: str, obs: Dict[str, Any], action: npt.NDArray
     ):
         """
