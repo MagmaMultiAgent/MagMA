@@ -28,6 +28,8 @@ from wrappers.obs_wrappers import SimpleUnitObservationWrapper
 from wrappers.sb3_action_mask import SB3InvalidActionWrapper
 from net.net import CustomResNet
 from reward.early_reward_parser import EarlyRewardParser
+from net.test import EncoderDecoderNet
+from net.factory_net import FactoryNet
 
 import sys
 import logging
@@ -328,20 +330,23 @@ def main(args):
     env.reset()
     logger.debug(f"Env: {env}")
 
-    policy_kwargs = {
-        "features_extractor_class": CustomResNet,
+    policy_kwargs_unit = {
+        "features_extractor_class": EncoderDecoderNet,
         "features_extractor_kwargs": {
             "features_dim": 256,
             }
         }
+    policy_kwargs_factory = {
+        "features_extractor_class": FactoryNet
+    }
     rollout_steps = 4000
     model = MaskablePPO(
-        "CnnPolicy",
+        "MlpPolicy",
         env,
         n_steps=rollout_steps // args.n_envs,
         batch_size=800,
         learning_rate=3e-4,
-        policy_kwargs=policy_kwargs,
+        policy_kwargs=policy_kwargs_unit,
         verbose=1,
         target_kl=0.05,
         gamma=0.99,

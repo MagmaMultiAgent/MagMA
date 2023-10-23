@@ -10,7 +10,10 @@ from luxai_s2.env import LuxAI_S2
 from luxai_s2.state import ObservationStateDict
 from luxai_s2.unit import BidActionType, FactoryPlacementActionType
 from luxai_s2.utils import my_turn_to_place_factory
-from src.action.controllers import Controller
+from action.controllers import Controller
+
+import logging
+logger = logging.getLogger(__name__)
 
 class SB3Wrapper(gym.Wrapper):
     """
@@ -55,6 +58,9 @@ class SB3Wrapper(gym.Wrapper):
             See luxai_s2/wrappers/controllers.py for available controllers
             and how to make your own
         """
+        logger.info(f"Adding SB3Wrapper to environment {env}")
+        self.logger = logging.getLogger(f"{__name__}_{id(self)}")
+
         gym.Wrapper.__init__(self, env)
         self.env = env
 
@@ -88,6 +94,7 @@ class SB3Wrapper(gym.Wrapper):
         """
         Takes as input a dictionary mapping agent name to an action and returns
         """
+        self.logger.debug("Stepping")
 
         lux_action = {}
         for agent in self.env.agents:
@@ -106,6 +113,7 @@ class SB3Wrapper(gym.Wrapper):
         """
         Resets the environment and returns the initial observation
         """
+        self.logger.info("Resetting")
 
         obs = self.env.reset(**kwargs)
 

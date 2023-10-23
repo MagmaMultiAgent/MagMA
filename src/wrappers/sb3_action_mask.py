@@ -44,8 +44,10 @@ class SB3InvalidActionWrapper(SB3Wrapper):
         Generates a boolean action mask indicating in each \
         discrete dimension whether it would be valid or not
         """
-        self.logger.info("Generating mask")
-        return self.controller.action_masks('player_0', self.prev_obs)
+        self.logger.debug("Generating mask")
+        mask = self.controller.action_masks('player_0', self.prev_obs)
+        self.logger.debug(mask)
+        return mask
 
 class CustomEnvWrapper(gym.Wrapper):
     """
@@ -58,6 +60,8 @@ class CustomEnvWrapper(gym.Wrapper):
         Adds a custom reward and turns the LuxAI_S2 environment into a single-agent \
         environment for easy training
         """
+        logger.info(f"Adding CustomEnvWrapper to environment {env}")
+        self.logger = logging.getLogger(f"{__name__}_{id(self)}")
 
         super().__init__(env)
         self.prev_step_metrics = None
@@ -68,6 +72,8 @@ class CustomEnvWrapper(gym.Wrapper):
         Adds a custom reward and turns the LuxAI_S2 environment into a single-agent \
         environment for easy training
         """
+        self.logger.debug("Stepping")
+
         agent = "player_0"
         opp_agent = "player_1"
 
@@ -104,6 +110,8 @@ class CustomEnvWrapper(gym.Wrapper):
         #return obs, reward, done, info
 
     def reset(self, **kwargs):
+        self.logger.debug("Resetting")
+
         obs = self.env.reset(**kwargs)["player_0"]
         self.prev_step_metrics = None
         return obs
