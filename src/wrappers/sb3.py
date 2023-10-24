@@ -58,7 +58,7 @@ class SB3Wrapper(gym.Wrapper):
             See luxai_s2/wrappers/controllers.py for available controllers
             and how to make your own
         """
-        logger.info(f"Adding SB3Wrapper to environment {env}")
+        logger.info(f"Creating {self.__class__.__name__}")
         self.logger = logging.getLogger(f"{__name__}_{id(self)}")
 
         gym.Wrapper.__init__(self, env)

@@ -36,16 +36,23 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
         A simple state based observation to work with in pair with the SimpleUnitDiscreteController
         """
 
-        logger.info(f"Adding simple unit obervation wrapper to environment {env}")
-        super().__init__(env)
-        self.observation_space = spaces.Box(low=-999, high=999, shape=(80, 64, 64))
+        logger.info(f"Creating {self.__class__.__name__}")
         self.logger = logging.getLogger(f"{__name__}_{id(self)}")
+        super().__init__(env)
+        self.map_space = spaces.Box(low=-999, high=999, shape=(30, 64, 64), dtype=np.float32)
+        self.global_space = spaces.Box(low=-999, high=999, shape=(44,), dtype=np.float32)
+
+        self.observation_space = spaces.Dict({
+            "map": self.map_space,
+            "global": self.global_space
+        })
 
     def observation(self, obs):
         """
         Takes as input the current "raw observation" and returns
         """
 
+        self.logger.debug("Observing")
         return SimpleUnitObservationWrapper.convert_obs(obs, self.env.state.env_cfg)
 
     @staticmethod
@@ -57,19 +64,17 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
         observation = {}
         obs_pars = ObservationParser()
         map_features, global_features, factory_features, _ = obs_pars.parse_observation(obs, env_cfg)
-        #factory_model = FactoryNet(observation_space=24, num_actions=3)
-        for i,agent in enumerate(obs.keys()):
-            logger.debug(f"Handling observation for agent {i} {agent}")
-            observation[agent] = [map_features[i], global_features[i], factory_features[i]]
+        for i, agent in enumerate(obs.keys()):
+            observation[agent] = {
+                "map": map_features[i],
+                "global": global_features[i],
+                "factory": factory_features[i]
+            }
+        return observation
+
             #model = EncoderDecoderNet(observation_space = 30, num_actions=19, num_global_features=44)
             #model.eval()
-            with torch.no_grad():
-                #logger.debug("Calling model")
+            #with torch.no_grad():
+                #print(observation[agent][1].shape, file=sys.stderr)
                 #output = model(torch.from_numpy(observation[agent][0]).unsqueeze(0).to(torch.float), torch.from_numpy(observation[agent][1]).unsqueeze(0).to(torch.float))
-                #output = torch.rand((1, 19, 64, 64))
-                #output_factory = factory_model(torch.from_numpy(observation[agent][2]).to(torch.float))
-                #logger.debug(f"Model output: {output.shape}")
-                #logger.debug(f"Factory model output: {output_factory}")
-                pass
-
-        return observation
+                #print(output.shape, file=sys.stderr)

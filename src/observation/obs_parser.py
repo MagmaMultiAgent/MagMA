@@ -18,7 +18,7 @@ class LuxFeature(NamedTuple):
 class ObservationParser():
 
     def __init__(self):
-        logger.info(f"Creating ObservationParser")
+        logger.info(f"Creating {self.__class__.__name__}")
         self.logger = logging.getLogger(f"{__name__}_{id(self)}")
         self.setup_names()
 

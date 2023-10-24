@@ -9,7 +9,6 @@ import argparse
 import os.path as osp
 import gymnasium as gym
 import torch as th
-from torch import nn
 from gymnasium.wrappers import TimeLimit
 from luxai_s2.state import StatsStateDict
 from luxai_s2.utils.heuristics.factory_placement import place_near_random_ice
@@ -26,7 +25,7 @@ from sb3_contrib.ppo_mask import MaskablePPO
 from action.controllers import SimpleUnitDiscreteController
 from wrappers.obs_wrappers import SimpleUnitObservationWrapper
 from wrappers.sb3_action_mask import SB3InvalidActionWrapper
-from net.net import CustomResNet
+from net.net import UNetWithResnet50Encoder
 from reward.early_reward_parser import EarlyRewardParser
 from net.test import EncoderDecoderNet
 from net.factory_net import FactoryNet
@@ -331,9 +330,9 @@ def main(args):
     logger.debug(f"Env: {env}")
 
     policy_kwargs_unit = {
-        "features_extractor_class": EncoderDecoderNet,
+        "features_extractor_class": UNetWithResnet50Encoder,
         "features_extractor_kwargs": {
-            "features_dim": 256,
+            "output_channels": 19,
             }
         }
     policy_kwargs_factory = {
@@ -341,10 +340,10 @@ def main(args):
     }
     rollout_steps = 4000
     model = MaskablePPO(
-        "MlpPolicy",
+        "MultiInputPolicy",
         env,
         n_steps=rollout_steps // args.n_envs,
-        batch_size=800,
+        batch_size=8,
         learning_rate=3e-4,
         policy_kwargs=policy_kwargs_unit,
         verbose=1,
@@ -353,7 +352,7 @@ def main(args):
         tensorboard_log=osp.join(args.log_path),
     )
     # TODO: create another model for the factory
-    logger.debub(f"Model: {model}")
+    logger.debug(f"Model: {model}")
     if args.eval:
         evaluate(args, env_id, model)
     else:

@@ -16,7 +16,7 @@ class Controller:
     A controller is a class that takes in an action space and converts it into a lux action
     """
     def __init__(self, action_space: spaces.Space) -> None:
-        logger.info(f"Creating Controller")
+        logger.info(f"Creating {self.__class__.__name__}")
         self.logger = logging.getLogger(f"{__name__}_{id(self)}")
         self.action_space = action_space
 

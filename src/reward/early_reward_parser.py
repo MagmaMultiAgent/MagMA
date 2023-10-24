@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class EarlyRewardParser:
 
     def __init__(self,):
-        logger.info(f"Creating EarlyRewardParser")
+        logger.info(f"Creating {self.__class__.__name__}")
         self.logger = logging.getLogger(f"{__name__}_{id(self)}")
 
     def reset(self, global_info, env_stats):

@@ -13,9 +13,9 @@ logger = logging.getLogger(__name__)
 
 class FactoryNet(BaseFeaturesExtractor):
     def __init__(self, observation_space, num_actions):
-        logger.info("Creating FactoryNet")
-        super(FactoryNet, self).__init__(observation_space, num_actions)
+        logger.info(f"Creating {self.__class__.__name__}")
         self.logger = logging.getLogger(f"{__name__}_{id(self)}")
+        super(FactoryNet, self).__init__(observation_space, num_actions)
 
         self.linear = nn.Linear(observation_space, num_actions)
 
