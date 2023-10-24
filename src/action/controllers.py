@@ -20,7 +20,16 @@ class Controller:
         self.logger = logging.getLogger(f"{__name__}_{id(self)}")
         self.action_space = action_space
 
-    def action_to_lux_action(
+    def unit_action_to_lux_action(
+        self, agent: str, obs: Dict[str, Any], action: npt.NDArray
+    ):
+        """
+        Takes as input the current "raw observation" and the parameterized action and returns
+        an action formatted for the Lux env
+        """
+        raise NotImplementedError()
+    
+    def factory_action_to_lux_action(
         self, agent: str, obs: Dict[str, Any], action: npt.NDArray
     ):
         """
@@ -160,9 +169,11 @@ class SimpleUnitDiscreteController(Controller):
         shared_obs = obs["player_0"]
         lux_action = {}
         units = shared_obs["units"][agent]
-        for unit_id in units.keys():
-            unit = units[unit_id]
-            choice = action
+
+        for unit_id, unit in units.items():
+            pos = tuple(unit['pos'])
+            filtered_action = action[pos]
+            choice = filtered_action
             action_queue = []
             no_op = False
             if self._is_move_action(choice):
@@ -185,7 +196,7 @@ class SimpleUnitDiscreteController(Controller):
             if not no_op:
                 lux_action[unit_id] = action_queue
 
-            break
+        return lux_action
 
     def factory_action_to_lux_action(
         self, agent: str, obs: Dict[str, Any], action: npt.NDArray
