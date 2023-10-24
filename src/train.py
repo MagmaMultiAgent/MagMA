@@ -27,7 +27,6 @@ from wrappers.obs_wrappers import SimpleUnitObservationWrapper
 from wrappers.sb3_action_mask import SB3InvalidActionWrapper
 from net.net import UNetWithResnet50Encoder
 from reward.early_reward_parser import EarlyRewardParser
-from net.test import EncoderDecoderNet
 from net.factory_net import FactoryNet
 
 import sys
@@ -58,7 +57,7 @@ class EarlyRewardParserWrapper(gym.Wrapper):
         self.reward_parser = EarlyRewardParser()
 
     def step(self, action):
-        self.logger.debug(f"Stepping environment with action {action}")
+        self.logger.debug(f"Stepping environment with action\n{action}")
         
         agent = "player_0"
         opp_agent = "player_1"
@@ -142,7 +141,7 @@ def parse_args():
         "-n",
         "--n-envs",
         type=int,
-        default=1,
+        default=3,
         help="Number of parallel envs to run. Note that the rollout \
         size is configured separately and invariant to this value",
     )

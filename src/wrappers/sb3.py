@@ -94,12 +94,12 @@ class SB3Wrapper(gym.Wrapper):
         """
         Takes as input a dictionary mapping agent name to an action and returns
         """
-        self.logger.debug("Stepping")
+        self.logger.debug(f"Stepping environment with action\n{action}")
 
         lux_action = {}
         for agent in self.env.agents:
             if agent in action:
-                lux_action[agent] = self.controller.action_to_lux_action(
+                lux_action[agent] = self.controller.unit_action_to_lux_action(
                     agent=agent, obs=self.prev_obs, action=action[agent]
                 )
             else:

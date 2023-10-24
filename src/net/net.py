@@ -16,7 +16,7 @@ class ConvBlock(nn.Module):
     """
 
     def __init__(self, in_channels, out_channels, padding=1, kernel_size=3, stride=1, with_nonlinearity=True):
-        logger.info(f"Creating {self.__class__.__name__}")
+        # logger.info(f"Creating {self.__class__.__name__}")
         self.logger = logging.getLogger(f"{__name__}_{id(self)}")
 
         super().__init__()
@@ -26,6 +26,8 @@ class ConvBlock(nn.Module):
         self.with_nonlinearity = with_nonlinearity
 
     def forward(self, x):
+        self.logger.info(f"forward {x.shape}")
+
         x = self.conv(x)
         x = self.bn(x)
         if self.with_nonlinearity:
@@ -39,11 +41,14 @@ class Bridge(nn.Module):
     """
 
     def __init__(self, in_channels, out_channels, hidden_size):
+        # logger.info(f"Creating {self.__class__.__name__}")
+        self.logger = logging.getLogger(f"{__name__}_{id(self)}")
         super().__init__()
         self.linear1 = nn.Linear(in_channels, hidden_size)
         self.linear2 = nn.Linear(hidden_size, out_channels)
 
     def forward(self, x):
+        self.logger.debug(f"forward {x.shape}")
         x = self.linear1(x)
         x = self.linear2(x)
         return x
@@ -56,6 +61,8 @@ class UpBlockForUNetWithResNet50(nn.Module):
 
     def __init__(self, in_channels, out_channels, up_conv_in_channels=None, up_conv_out_channels=None,
                  upsampling_method="conv_transpose"):
+        # logger.info(f"Creating {self.__class__.__name__}")
+        self.logger = logging.getLogger(f"{__name__}_{id(self)}")
         super().__init__()
 
         if up_conv_in_channels == None:
@@ -77,6 +84,7 @@ class UpBlockForUNetWithResNet50(nn.Module):
         """
         Forward pass
         """
+        self.logger.debug(f"fowardd {up_x.shape} {down_x.shape}")
         x = self.upsample(up_x)
         x = torch.cat([x, down_x], 1)
         x = self.conv_block_1(x)
@@ -87,6 +95,8 @@ class UpBlockForUNetWithResNet50(nn.Module):
 class UNetWithResnet50Encoder(BaseFeaturesExtractor):
     DEPTH = 6
     def __init__(self, observation, output_channels):
+        # logger.info(f"Creating {self.__class__.__name__}")
+        self.logger = logging.getLogger(f"{__name__}_{id(self)}")
         num_cnn_channels = observation['map'].shape[0]
         num_global_features = observation['global'].shape[0]
         super(UNetWithResnet50Encoder, self).__init__(num_cnn_channels, output_channels)
@@ -132,34 +142,47 @@ class UNetWithResnet50Encoder(BaseFeaturesExtractor):
         global_features = x['global']
         x = cnn_features
 
+        self.logger.debug(f"forward {cnn_features.shape} {global_features.shape}")
+
         pre_pools = dict()
         pre_pools[f"layer_0"] = x
         x = self.input_block(x)
+        self.logger.debug(x.shape)
         pre_pools[f"layer_1"] = x
         x = self.input_pool(x)
+        self.logger.debug(x.shape)
 
         for i, block in enumerate(self.down_blocks, 2):
             x = block(x)
+            self.logger.debug(x.shape)
             if i == (UNetWithResnet50Encoder.DEPTH - 1):
                 continue
             pre_pools[f"layer_{i}"] = x
 
-        x = x.view(8, -1)
+        batch_size = x.shape[0]
+        x = x.view(batch_size, -1)  # use batch size dynamically instead of 8
+
+        self.logger.debug(x.shape)
 
         global_features = self.global_fc_1(global_features)
         global_features = self.global_fc_2(global_features)
         x = torch.cat((x, global_features), dim=1)
         x = self.bridge(x)
 
-        x = x.view(8, 2048, 2, 2)
+        self.logger.debug(x.shape)
 
+        x = x.view(batch_size, 2048, 2, 2)  # use batch size dynamically instead of 8
+
+        self.logger.debug(x.shape)
 
         for i, block in enumerate(self.up_blocks, 1):
             key = f"layer_{UNetWithResnet50Encoder.DEPTH - 1 - i}"
             x = block(x, pre_pools[key])
+            self.logger.debug(x.shape)
 
         output_feature_map = x
         x = self.out(x)
+        self.logger.debug(x.shape)
         del pre_pools
         return x
     
