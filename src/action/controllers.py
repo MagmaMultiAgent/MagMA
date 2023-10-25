@@ -232,6 +232,8 @@ class SimpleUnitDiscreteController(Controller):
             # a[1] = direction (0 = center, 1 = up, 2 = right, 3 = down, 4 = left)
             move_deltas = np.array([[0, 0], [0, -1], [1, 0], [0, 1], [-1, 0]])
             for i, move_delta in enumerate(move_deltas):
+                # TODO transfer to units as well
+            
                 transfer_pos = np.array(
                     [pos[0] + move_delta[0], pos[1] + move_delta[1]]
                 )
@@ -274,6 +276,7 @@ class SimpleUnitDiscreteController(Controller):
                 action_mask[
                     self.dig_dim_high - self.dig_act_dims : self.dig_dim_high
                 ] = False
+            # TODO recharge is not valid in the night
 
             # no-op is always valid
             action_mask[-1] = True

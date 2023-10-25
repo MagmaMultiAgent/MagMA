@@ -1,14 +1,14 @@
 """
 Wrapper for Observation Space
 """
-import sys
 from typing import Any, Dict
 import gymnasium as gym
 import numpy as np
 import numpy.typing as npt
 from gymnasium import spaces
 from observation.obs_parser import ObservationParser
-import torch
+from collections import deque
+import random
 
 class SimpleUnitObservationWrapper(gym.ObservationWrapper):
     """
@@ -38,32 +38,81 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
             "map": self.map_space,
             "global": self.global_space
         })
+        self.observation_parser = ObservationParser()
+        self.max_observation_history = 10
+        self.observation_queue = deque(maxlen=self.max_observation_history)
 
     def observation(self, obs):
         """
         Takes as input the current "raw observation" and returns
         """
+        converted_obs = SimpleUnitObservationWrapper.convert_obs(obs, self.env.state.env_cfg, self.observation_parser)
+        self.map_observation_queue.append(converted_obs)
 
-        return SimpleUnitObservationWrapper.convert_obs(obs, self.env.state.env_cfg)
+        if len(self.observation_queue) >= 5:
+            past_3_observations = list(self.observation_queue)[-3:]
+
+            selected_observations = self.select_observations()
+
+            combined_map, combined_global = self.combine_observations(past_3_observations, selected_observations)
+
+            self.observation_queue.append({"map": combined_map, "global": past_3_observations[-1]["global"]})
+        return None
+    
+    def select_observations(self):
+        
+        num_observations_to_select = 2
+        initial_weight = 0.3
+        common_ratio = 0.8
+        weights = [initial_weight * common_ratio**i for i in range(3, len(self.observation_queue))]
+        total_weight = sum(weights)
+        weights = [w / total_weight for w in weights]
+
+        selected_indices = random.choices(range(3, len(self.observation_queue) - 3), weights=weights, k=num_observations_to_select)
+        selected_observations = [self.observation_queue[i] for i in selected_indices]
+
+        return selected_observations
+    
+    def combine_observations(self, past3_observations, selected_observations):
+
+        combined_map = {}
+        combined_global = {}
+
+        for player in ["player_0", "player_1"]:
+
+            concatenated_map_obs = []
+            concatenated_global_obs = []
+
+            for obs in past3_observations:
+                map_obs = obs[player]["map"]
+                global_obs = obs[player]["global"]
+
+                concatenated_map_obs.append(map_obs)
+                concatenated_global_obs.append(global_obs)
+
+            for obs in selected_observations:
+                map_obs = obs[player]["map"]
+                global_obs = obs[player]["global"]
+
+                concatenated_map_obs.append(map_obs)
+                concatenated_global_obs.append(global_obs)
+
+            combined_global[player] = np.stack(concatenated_global_obs, axis=0)
+            combined_map[player] = np.stack(concatenated_map_obs, axis=0)
+    
+
+        return combined_map, combined_global
 
     @staticmethod
-    def convert_obs(obs: Dict[str, Any], env_cfg: Any) -> Dict[str, npt.NDArray]:
+    def convert_obs(obs: Dict[str, Any], env_cfg: Any, obs_parsers: ObservationParser) -> Dict[str, npt.NDArray]:
         """
         Takes as input the current "raw observation" and returns converted observation
         """
         observation = {}
-        obs_pars = ObservationParser()
-        map_features, global_features, _ = obs_pars.parse_observation(obs, env_cfg)
+        map_features, global_features, _ = obs_parsers.parse_observation(obs, env_cfg)
         for i, agent in enumerate(obs.keys()):
             observation[agent] = {
                 "map": map_features[i],
                 "global": global_features[i]
             }
         return observation
-
-            #model = EncoderDecoderNet(observation_space = 30, num_actions=19, num_global_features=44)
-            #model.eval()
-            #with torch.no_grad():
-                #print(observation[agent][1].shape, file=sys.stderr)
-                #output = model(torch.from_numpy(observation[agent][0]).unsqueeze(0).to(torch.float), torch.from_numpy(observation[agent][1]).unsqueeze(0).to(torch.float))
-                #print(output.shape, file=sys.stderr)
