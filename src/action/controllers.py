@@ -162,7 +162,6 @@ class SimpleUnitDiscreteController(Controller):
         self, agent: str, obs: Dict[str, Any], action: npt.NDArray
     ):
         unit_action = self.unit_action_to_lux_action(agent, obs, action)
-        factory_action = None  # TODO: make this create factory action when factory is not training
         return unit_action
 
     def unit_action_to_lux_action(
