@@ -339,10 +339,23 @@ class MaskableActorCriticPolicy(BasePolicy):
             latent_pi = self.mlp_extractor.forward_actor(pi_features)
             latent_vf = self.mlp_extractor.forward_critic(vf_features)
 
-        distribution = self._get_action_dist_from_latent(latent_pi)
-        if action_masks is not None:
-            distribution.apply_masking(action_masks)
-        log_prob = distribution.log_prob(actions)
+        latent_shape = latent_pi.shape
+        assert len(latent_shape) == 4
+        batch_size, action_channels, height, width = latent_shape
+        log_prob_final = th.zeros(size=(batch_size,)).to(self.device)
+        actions = th.zeros(size=(batch_size, height, width)).to(self.device)
+        for i in range(height):
+            for j in range(width):
+                latent_pi_slice = latent_pi[:, :, i, j]
+                action_slice = actions[:, i, j]
+                distribution = self._get_action_dist_from_latent(latent_pi_slice)
+                if action_masks is not None:
+                    distribution.apply_masking(action_masks)
+                log_prob = distribution.log_prob(action_slice)
+                log_prob_final += log_prob
+
+        log_prob = log_prob_final
+
         values = self.value_net(latent_vf)
         return values, log_prob, distribution.entropy()
 

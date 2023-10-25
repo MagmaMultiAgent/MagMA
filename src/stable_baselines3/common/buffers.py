@@ -771,7 +771,6 @@ class DictRolloutBuffer(RolloutBuffer):
         # Reshape to handle multi-dim and discrete action spaces, see GH #970 #1392
         # action = action.reshape((self.n_envs, self.action_dim))
 
-        print(action.shape, self.actions.shape)
         self.actions[self.pos] = np.array(action).copy()
         self.rewards[self.pos] = np.array(reward).copy()
         self.episode_starts[self.pos] = np.array(episode_start).copy()

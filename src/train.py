@@ -337,18 +337,19 @@ def main(args):
     policy_kwargs_factory = {
         "features_extractor_class": FactoryNet
     }
-    rollout_steps = 4000
+    rollout_steps = 10
     model = MaskablePPO(
         "MultiInputPolicy",
         env,
         n_steps=rollout_steps // args.n_envs,
-        batch_size=8,
+        batch_size=9,
         learning_rate=3e-4,
         policy_kwargs=policy_kwargs_unit,
         verbose=1,
         target_kl=0.05,
         gamma=0.99,
         tensorboard_log=osp.join(args.log_path),
+        n_epochs=1
     )
     # TODO: create another model for the factory
     logger.debug(f"Model: {model}")
