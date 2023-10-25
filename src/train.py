@@ -198,6 +198,10 @@ def make_env(env_id: str, rank: int, seed: int = 0, max_episode_steps=100):
             controller=SimpleUnitDiscreteController(env.env_cfg),
         )
 
+        env.action_space = gym.spaces.Discrete(n=19)
+
+        logger.debug(f"asd {env.action_space}")
+
         env = SimpleUnitObservationWrapper(
             env
         )
@@ -338,6 +342,7 @@ def main(args):
         "features_extractor_class": FactoryNet
     }
     rollout_steps = 10
+    logger.debug(f"ACTION SPACE: {env.action_space} !!!!!!!!!!")
     model = MaskablePPO(
         "MultiInputPolicy",
         env,

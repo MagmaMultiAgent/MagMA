@@ -113,6 +113,7 @@ class MaskableActorCriticPolicy(BasePolicy):
             self.vf_features_extractor = self.make_features_extractor()
 
         # Action distribution
+        self.logger.debug(f"Action space: {action_space}")
         self.action_dist = make_masked_proba_distribution(action_space)
 
         self._build(lr_schedule)
@@ -215,6 +216,7 @@ class MaskableActorCriticPolicy(BasePolicy):
         """
         self._build_mlp_extractor()
 
+        self.logger.debug(f"building action net, size: {self.mlp_extractor.latent_dim_pi}")
         self.action_net = self.action_dist.proba_distribution_net(latent_dim=self.mlp_extractor.latent_dim_pi)
         self.value_net = nn.Linear(self.mlp_extractor.latent_dim_vf, 1)
 

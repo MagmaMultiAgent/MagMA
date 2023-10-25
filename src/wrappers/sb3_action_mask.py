@@ -10,6 +10,7 @@ from luxai_s2.state import ObservationStateDict, StatsStateDict
 from luxai_s2.wrappers import SB3Wrapper
 from luxai_s2.unit import BidActionType, FactoryPlacementActionType
 from luxai_s2.wrappers.controllers import Controller
+from action.controllers import SimpleUnitDiscreteController
 from reward.early_reward_parser import EarlyRewardParser
 
 import logging
@@ -37,7 +38,7 @@ class SB3InvalidActionWrapper(SB3Wrapper):
 
         logger.info(f"Creating {self.__class__.__name__}")
         self.logger = logging.getLogger(f"{__name__}_{id(self)}")
-        super().__init__(env, bid_policy, factory_placement_policy, controller)
+        super().__init__(env, bid_policy, factory_placement_policy, SimpleUnitDiscreteController(env.env_cfg))
 
     def action_masks(self):
         """

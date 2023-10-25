@@ -302,4 +302,7 @@ class SimpleUnitDiscreteController(Controller):
             # no-op is always valid
             action_mask[-1] = True
             break
+        
+        action_mask = np.zeros(shape=(19,)) == 1  # TODO: change this to dynamic size
+    
         return action_mask
