@@ -7,11 +7,17 @@ import numpy as np
 import numpy.typing as npt
 from gymnasium import spaces
 
+import logging
+logger = logging.getLogger(__name__)
+
+
 class Controller:
     """
     A controller is a class that takes in an action space and converts it into a lux action
     """
     def __init__(self, action_space: spaces.Space) -> None:
+        logger.info(f"Creating {self.__class__.__name__}")
+        self.logger = logging.getLogger(f"{__name__}_{id(self)}")
         self.action_space = action_space
 
     def unit_action_to_lux_action(
@@ -30,6 +36,7 @@ class Controller:
         Takes as input the current "raw observation" and the parameterized action and returns
         an action formatted for the Lux env
         """
+        self.logger.debug("Creating lux action")
         raise NotImplementedError()
 
     def action_masks(self, agent: str, obs: Dict[str, Any]):
@@ -37,6 +44,7 @@ class Controller:
         Generates a boolean action mask indicating in each \
         discrete dimension whether it would be valid or not
         """
+        self.logger.debug("Generating action masks")
         raise NotImplementedError()
 
 
@@ -67,6 +75,9 @@ class SimpleUnitDiscreteController(Controller):
         see how the lux action space is defined in luxai_s2/spaces/action.py
 
         """
+        logger.info(f"Creating SimpleUnitDiscreteController")
+        self.logger = logging.getLogger(f"{__name__}_{id(self)}")
+
         self.env_cfg = env_cfg
         self.move_act_dims = 4
         self.transfer_act_dims = 5 * 3
@@ -147,12 +158,20 @@ class SimpleUnitDiscreteController(Controller):
         """
         return np.array([4, 0, 0, 0, 0, 1])
 
+    def action_to_lux_action(
+        self, agent: str, obs: Dict[str, Any], action: npt.NDArray
+    ):
+        unit_action = self.unit_action_to_lux_action(agent, obs, action)
+        return unit_action
+
     def unit_action_to_lux_action(
         self, agent: str, obs: Dict[str, Any], action: npt.NDArray
     ):
         """
         Converts the action to a lux action
         """
+        self.logger.debug(f"Creating lux action for agent {agent} with action {action}")
+
         shared_obs = obs["player_0"]
         lux_action = {}
         units = shared_obs["units"][agent]
@@ -188,6 +207,8 @@ class SimpleUnitDiscreteController(Controller):
     def factory_action_to_lux_action(
         self, agent: str, obs: Dict[str, Any], action: npt.NDArray
     ):
+        self.logger.debug(f"Creating lux action for factory {agent} with action {action}")
+
         lux_action = {}
         shared_obs = obs["player_0"]
         factories = shared_obs["factories"][agent]
@@ -203,6 +224,8 @@ class SimpleUnitDiscreteController(Controller):
 
         Doesn't account for whether robot has enough power
         """
+
+        self.logger.debug(f"Creating simplified action mask for {agent}")
 
         shared_obs = obs[agent]
         factory_occupancy_map = (
@@ -232,8 +255,6 @@ class SimpleUnitDiscreteController(Controller):
             # a[1] = direction (0 = center, 1 = up, 2 = right, 3 = down, 4 = left)
             move_deltas = np.array([[0, 0], [0, -1], [1, 0], [0, 1], [-1, 0]])
             for i, move_delta in enumerate(move_deltas):
-                # TODO transfer to units as well
-            
                 transfer_pos = np.array(
                     [pos[0] + move_delta[0], pos[1] + move_delta[1]]
                 )
@@ -276,9 +297,11 @@ class SimpleUnitDiscreteController(Controller):
                 action_mask[
                     self.dig_dim_high - self.dig_act_dims : self.dig_dim_high
                 ] = False
-            # TODO recharge is not valid in the night
 
             # no-op is always valid
             action_mask[-1] = True
             break
+        
+        action_mask = np.zeros(shape=(19,)) == 1  # TODO: change this to dynamic size
+    
         return action_mask

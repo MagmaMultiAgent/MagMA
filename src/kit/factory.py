@@ -51,11 +51,15 @@ class Factory:
     def build_light(self):
         return 0
 
+    def owned_lichen_tiles(self, game_state):
+        owned_lichen_tiles = (game_state.board.lichen_strains == self.strain_id).sum()
+        return owned_lichen_tiles
+
     def water_cost(self, game_state):
         """
         Water required to perform water action
         """
-        owned_lichen_tiles = (game_state.board.lichen_strains == self.strain_id).sum()
+        owned_lichen_tiles = self.owned_lichen_tiles()
         return np.ceil(owned_lichen_tiles / self.env_cfg.LICHEN_WATERING_COST_FACTOR)
 
     def can_water(self, game_state):
