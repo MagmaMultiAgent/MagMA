@@ -6,6 +6,8 @@ from gymnasium import spaces
 from stable_baselines3.common.buffers import DictRolloutBuffer, RolloutBuffer
 from stable_baselines3.common.type_aliases import TensorDict
 from stable_baselines3.common.vec_env import VecNormalize
+import logging
+logger = logging.getLogger(__name__)
 
 
 class MaskableRolloutBufferSamples(NamedTuple):
@@ -53,9 +55,12 @@ class MaskableRolloutBuffer(RolloutBuffer):
         n_envs: int = 1,
     ):
         super().__init__(buffer_size, observation_space, action_space, device, gae_lambda, gamma, n_envs)
+        logger.info(f"Creating {self.__class__.__name__}")
+        self.logger = logging.getLogger(f"{__name__}_{id(self)}")
         self.action_masks = None
 
     def reset(self) -> None:
+        logging.debug(f"Masks dim: {self.action_space}")
         if isinstance(self.action_space, spaces.Discrete):
             mask_dims = self.action_space.n
         elif isinstance(self.action_space, spaces.MultiDiscrete):
@@ -64,7 +69,6 @@ class MaskableRolloutBuffer(RolloutBuffer):
             mask_dims = 2 * self.action_space.n  # One mask per binary outcome
         else:
             raise ValueError(f"Unsupported action space {type(self.action_space)}")
-
         self.mask_dims = mask_dims
         self.action_masks = np.ones((self.buffer_size, self.n_envs, self.mask_dims), dtype=np.float32)
 
@@ -155,8 +159,11 @@ class MaskableDictRolloutBuffer(DictRolloutBuffer):
     ):
         self.action_masks = None
         super().__init__(buffer_size, observation_space, action_space, device, gae_lambda, gamma, n_envs=n_envs)
+        logger.info(f"Creating {self.__class__.__name__}")
+        self.logger = logging.getLogger(f"{__name__}_{id(self)}")
 
     def reset(self) -> None:
+        logging.debug(f"Masks dim: {self.action_space}")
         if isinstance(self.action_space, spaces.Discrete):
             mask_dims = self.action_space.n
         elif isinstance(self.action_space, spaces.MultiDiscrete):
@@ -167,7 +174,7 @@ class MaskableDictRolloutBuffer(DictRolloutBuffer):
             raise ValueError(f"Unsupported action space {type(self.action_space)}")
 
         self.mask_dims = mask_dims
-        self.action_masks = np.ones((self.buffer_size, self.n_envs, self.mask_dims), dtype=np.float32)
+        self.action_masks = np.ones((self.buffer_size, self.n_envs, self.mask_dims, 64, 64), dtype=np.float32)
 
         super().reset()
 
@@ -176,7 +183,8 @@ class MaskableDictRolloutBuffer(DictRolloutBuffer):
         :param action_masks: Masks applied to constrain the choice of possible actions.
         """
         if action_masks is not None:
-            self.action_masks[self.pos] = action_masks.reshape((self.n_envs, self.mask_dims))
+            
+            self.action_masks[self.pos] = action_masks.reshape((self.n_envs, self.mask_dims, 64, 64))
 
         super().add(*args, **kwargs)
 

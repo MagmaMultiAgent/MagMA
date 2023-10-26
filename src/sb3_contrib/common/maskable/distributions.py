@@ -57,7 +57,6 @@ class MaskableCategorical(Categorical):
             device = self.logits.device
             self.masks = th.as_tensor(masks, dtype=th.bool, device=device).reshape(self.logits.shape)
             HUGE_NEG = th.tensor(-1e8, dtype=self.logits.dtype, device=device)
-
             logits = th.where(self.masks, self._original_logits, HUGE_NEG)
         else:
             self.masks = None

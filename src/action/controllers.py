@@ -80,7 +80,8 @@ class SimpleUnitDiscreteController(Controller):
 
         self.env_cfg = env_cfg
         self.move_act_dims = 4
-        self.transfer_act_dims = 5 * 3
+        self.one_transfer_dim = 5
+        self.transfer_act_dims = self.one_transfer_dim * 3
         self.pickup_act_dims = 1
         self.dig_act_dims = 1
         self.recharge_act_dims = 1
@@ -225,12 +226,24 @@ class SimpleUnitDiscreteController(Controller):
         Doesn't account for whether robot has enough power
         """
 
+        ## Should return a 19x64x64 mask. 19 actions, 64x64 board
+        ## It should return all false where units are not there
+
         self.logger.debug(f"Creating simplified action mask for {agent}")
 
         shared_obs = obs[agent]
         factory_occupancy_map = (
             np.ones_like(shared_obs["board"]["rubble"], dtype=int) * -1
         )
+        player_occupancy_map = (
+            np.ones_like(shared_obs["board"]["rubble"], dtype=int) * -1
+        )
+        for player in shared_obs["units"]:
+            for unit_id in shared_obs["units"][player]:
+                unit = shared_obs["units"][player][unit_id]
+                pos = np.array(unit["pos"])
+                player_occupancy_map[pos[0], pos[1]] = unit["id"]
+                
         factories = {}
         for player in shared_obs["factories"]:
             factories[player] = {}
@@ -243,22 +256,25 @@ class SimpleUnitDiscreteController(Controller):
                 ] = f_data["strain_id"]
 
         units = shared_obs["units"][agent]
-        action_mask = np.zeros((self.total_act_dims), dtype=bool)
+        action_mask = np.zeros((self.total_act_dims, self.env_cfg.map_size, self.env_cfg.map_size), dtype=bool)
         for unit_id in units.keys():
-            action_mask = np.zeros(self.total_act_dims)
-            # movement is always valid
-            action_mask[:4] = True
+            
+            # get position of unit
+            pos = np.array(unit["pos"])
+
+            # move is only valid if there is a unit there
+            action_mask[:4, pos[0], pos[1]] = True
 
             # transferring is valid only if the target exists
             unit = units[unit_id]
-            pos = np.array(unit["pos"])
+            
             # a[1] = direction (0 = center, 1 = up, 2 = right, 3 = down, 4 = left)
             move_deltas = np.array([[0, 0], [0, -1], [1, 0], [0, 1], [-1, 0]])
             for i, move_delta in enumerate(move_deltas):
                 transfer_pos = np.array(
                     [pos[0] + move_delta[0], pos[1] + move_delta[1]]
                 )
-                # check if theres a factory tile there
+                # check if transfer position is valid
                 if (
                     transfer_pos[0] < 0
                     or transfer_pos[1] < 0
@@ -266,11 +282,20 @@ class SimpleUnitDiscreteController(Controller):
                     or transfer_pos[1] >= len(factory_occupancy_map[0])
                 ):
                     continue
+
+                # check if there is a unit there or factory
                 factory_there = factory_occupancy_map[transfer_pos[0], transfer_pos[1]]
+                unit_there = player_occupancy_map[transfer_pos[0], transfer_pos[1]]
+
+                if unit_there != -1:
+                    for j in range(3):  # we want to allow transfer of any kind of resouce if its possible
+                        index = (self.transfer_dim_high - self.transfer_act_dims + i) + j * self.one_transfer_dim
+                        action_mask[index, pos[0], pos[1]] = True
+
                 if factory_there in shared_obs["teams"][agent]["factory_strains"]:
-                    action_mask[
-                        self.transfer_dim_high - self.transfer_act_dims + i
-                    ] = True
+                    for j in range(3):  # same for factories
+                        index = (self.transfer_dim_high - self.transfer_act_dims + i) + j * self.one_transfer_dim
+                        action_mask[index, pos[0], pos[1]] = True
 
             factory_there = factory_occupancy_map[pos[0], pos[1]]
             on_top_of_factory = (
@@ -286,22 +311,22 @@ class SimpleUnitDiscreteController(Controller):
             )
             if board_sum > 0 and not on_top_of_factory:
                 action_mask[
-                    self.dig_dim_high - self.dig_act_dims : self.dig_dim_high
+                    self.dig_dim_high - self.dig_act_dims : self.dig_dim_high, pos[0], pos[1]
                 ] = True
 
             # pickup is valid only if on top of factory tile
             if on_top_of_factory:
                 action_mask[
-                    self.pickup_dim_high - self.pickup_act_dims : self.pickup_dim_high
+                    self.pickup_dim_high - self.pickup_act_dims : self.pickup_dim_high, pos[0], pos[1]
                 ] = True
                 action_mask[
-                    self.dig_dim_high - self.dig_act_dims : self.dig_dim_high
+                    self.dig_dim_high - self.dig_act_dims : self.dig_dim_high, pos[0], pos[1]
                 ] = False
 
-            # no-op is always valid
-            action_mask[-1] = True
-            break
-        
-        action_mask = np.zeros(shape=(19,)) == 1  # TODO: change this to dynamic size
+            # recharge should only be valid in the night
+            if shared_obs["step"] % 40 > 30:
+                action_mask[
+                    self.recharge_dim_high - self.recharge_act_dims : self.recharge_dim_high, pos[0], pos[1]
+                ] = True
     
         return action_mask

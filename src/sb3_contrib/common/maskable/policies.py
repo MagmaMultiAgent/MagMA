@@ -80,7 +80,6 @@ class MaskableActorCriticPolicy(BasePolicy):
             normalize_images=normalize_images,
             squash_output=False,
         )
-
         if isinstance(net_arch, list) and len(net_arch) > 0 and isinstance(net_arch[0], dict):
             warnings.warn(
                 (
@@ -152,7 +151,7 @@ class MaskableActorCriticPolicy(BasePolicy):
                 latent_pi_slice = latent_pi[:, :, i, j]
                 distribution = self._get_action_dist_from_latent(latent_pi_slice)
                 if action_masks is not None:
-                    distribution.apply_masking(action_masks)
+                    distribution.apply_masking(action_masks[:, :, i, j])
                 action = distribution.get_actions(deterministic=deterministic)
                 actions[:, i, j] = action
                 log_prob = distribution.log_prob(action)
@@ -200,6 +199,7 @@ class MaskableActorCriticPolicy(BasePolicy):
         # Note: If net_arch is None and some features extractor is used,
         #       net_arch here is an empty list and mlp_extractor does not
         #       really contain any layers (acts like an identity module).
+        self.logger.debug(f"building mlp extractor, size: {self.features_dim}")
         self.mlp_extractor = CustomExtractor(
             self.features_dim,
             net_arch=self.net_arch,

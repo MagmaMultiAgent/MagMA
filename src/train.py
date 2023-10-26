@@ -136,12 +136,12 @@ def parse_args():
         that can succesfully control a heavy unit to dig ice and transfer it back to \
         a factory to keep it alive"
     )
-    parser.add_argument("-s", "--seed", type=int, default=12, help="seed for training")
+    parser.add_argument("-s", "--seed", type=int, default=666, help="seed for training")
     parser.add_argument(
         "-n",
         "--n-envs",
         type=int,
-        default=3,
+        default=8,
         help="Number of parallel envs to run. Note that the rollout \
         size is configured separately and invariant to this value",
     )
@@ -197,10 +197,6 @@ def make_env(env_id: str, rank: int, seed: int = 0, max_episode_steps=100):
             factory_placement_policy=place_near_random_ice,
             controller=SimpleUnitDiscreteController(env.env_cfg),
         )
-
-        env.action_space = gym.spaces.Discrete(n=19)
-
-        logger.debug(f"asd {env.action_space}")
 
         env = SimpleUnitObservationWrapper(
             env
@@ -331,30 +327,29 @@ def main(args):
     logger.debug("Resetting env")
     env.reset()
     logger.debug(f"Env: {env}")
+    logger.debug(f"Env action space: {env.action_space}")
 
     policy_kwargs_unit = {
         "features_extractor_class": UNetWithResnet50Encoder,
         "features_extractor_kwargs": {
-            "output_channels": 19,
+            "output_channels": 22,
             }
         }
     policy_kwargs_factory = {
         "features_extractor_class": FactoryNet
     }
-    rollout_steps = 10
-    logger.debug(f"ACTION SPACE: {env.action_space} !!!!!!!!!!")
+    rollout_steps = 4000
     model = MaskablePPO(
         "MultiInputPolicy",
         env,
         n_steps=rollout_steps // args.n_envs,
-        batch_size=9,
+        batch_size=800,
         learning_rate=3e-4,
         policy_kwargs=policy_kwargs_unit,
         verbose=1,
         target_kl=0.05,
         gamma=0.99,
         tensorboard_log=osp.join(args.log_path),
-        n_epochs=1
     )
     # TODO: create another model for the factory
     logger.debug(f"Model: {model}")

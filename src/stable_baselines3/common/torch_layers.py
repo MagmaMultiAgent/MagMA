@@ -165,8 +165,8 @@ class CustomExtractor(nn.Module):
         self.value_net = nn.Sequential(*value_net).to(device)
 
         # TODO: make these sizes dynamic
-        self.latent_dim_pi = 19  # action space
-        self.latent_dim_vf = 77824  # 19x64x64
+        self.latent_dim_pi = feature_dim  # action space
+        self.latent_dim_vf = 90112  # 19x64x64
 
     def forward(self, features: th.Tensor) -> Tuple[th.Tensor, th.Tensor]:
         """
