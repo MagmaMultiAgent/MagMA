@@ -60,7 +60,7 @@ class MaskableRolloutBuffer(RolloutBuffer):
         self.action_masks = None
 
     def reset(self) -> None:
-        logging.debug(f"Masks dim: {self.action_space}")
+        self.logger.debug(f"Masks dim: {self.action_space}")
         if isinstance(self.action_space, spaces.Discrete):
             mask_dims = self.action_space.n
         elif isinstance(self.action_space, spaces.MultiDiscrete):
@@ -163,7 +163,7 @@ class MaskableDictRolloutBuffer(DictRolloutBuffer):
         self.logger = logging.getLogger(f"{__name__}_{id(self)}")
 
     def reset(self) -> None:
-        logging.debug(f"Masks dim: {self.action_space}")
+        self.logger.debug(f"Masks dim: {self.action_space}")
         if isinstance(self.action_space, spaces.Discrete):
             mask_dims = self.action_space.n
         elif isinstance(self.action_space, spaces.MultiDiscrete):
