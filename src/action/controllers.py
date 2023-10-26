@@ -171,7 +171,7 @@ class SimpleUnitDiscreteController(Controller):
         """
         Converts the action to a lux action
         """
-        self.logger.debug(f"Creating lux action for agent {agent} with action {action}")
+        self.logger.debug(f"Creating lux action for agent {agent} with action\n{action}")
 
         shared_obs = obs["player_0"]
         lux_action = {}

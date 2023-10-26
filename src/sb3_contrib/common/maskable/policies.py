@@ -137,29 +137,47 @@ class MaskableActorCriticPolicy(BasePolicy):
             latent_pi, latent_vf = self.mlp_extractor(features)
         else:
             pi_features, vf_features = features
-            latent_pi = self.mlp_extractor.forward_actor(pi_features)
-            latent_vf = self.mlp_extractor.forward_critic(vf_features)
+            latent_pi: th.Tensor = self.mlp_extractor.forward_actor(pi_features)
+            latent_vf: th.Tensor = self.mlp_extractor.forward_critic(vf_features)
         # Evaluate the values for the given observations
         values = self.value_net(latent_vf)
+
         latent_shape = latent_pi.shape
         assert len(latent_shape) == 4
+
+        if action_masks is not None:
+            assert latent_shape == action_masks.shape
+
         batch_size, action_channels, height, width = latent_shape
-        log_prob_final = th.zeros(size=(batch_size,)).to(self.device)
-        actions = th.zeros(size=(batch_size, height, width)).to(self.device)
-        for i in range(height):
-            for j in range(width):
-                latent_pi_slice = latent_pi[:, :, i, j]
-                distribution = self._get_action_dist_from_latent(latent_pi_slice)
-                if action_masks is not None:
-                    distribution.apply_masking(action_masks[:, :, i, j])
-                action = distribution.get_actions(deterministic=deterministic)
-                actions[:, i, j] = action
-                log_prob = distribution.log_prob(action)
-                log_prob_final += log_prob
+
+        latent_pi = latent_pi.view(-1, action_channels)
+        assert latent_pi.shape[0] == batch_size * height * width
+
+        if action_masks is not None:
+            action_masks = action_masks.reshape(-1, action_channels)
+            assert latent_pi.shape == action_masks.shape
+        
+        if action_masks is not None:
+            self.logger.debug(f"Transformed actions and masks: {latent_pi.shape} {action_masks.shape}")
+        else:
+            self.logger.debug(f"Transformed actions: {latent_pi.shape}")
+
+        distribution = self._get_action_dist_from_latent(latent_pi)
+        if action_masks is not None:
+            distribution.apply_masking(action_masks)
+        actions = distribution.get_actions(deterministic=deterministic)
+        log_prob = distribution.log_prob(actions)
+        
+        self.logger.debug(f"Sampled actions: {actions.shape}")
+
+        actions = actions.view(batch_size, height, width)
+        log_prob = log_prob.view(batch_size, height, width)
+        log_prob = log_prob.sum(axis=[1,2])
+        
         self.logger.debug(f"Actions: {actions.shape}")
         self.logger.debug(f"Values: {values}")
-        self.logger.debug(f"Log Probs: {log_prob_final}")
-        return actions, values, log_prob_final
+        self.logger.debug(f"Log Probs: {log_prob}")
+        return actions, values, log_prob
 
     def extract_features(self, obs: th.Tensor) -> Union[th.Tensor, Tuple[th.Tensor, th.Tensor]]:
         """
@@ -343,20 +361,29 @@ class MaskableActorCriticPolicy(BasePolicy):
 
         latent_shape = latent_pi.shape
         assert len(latent_shape) == 4
-        batch_size, action_channels, height, width = latent_shape
-        log_prob_final = th.zeros(size=(batch_size,)).to(self.device)
-        actions = th.zeros(size=(batch_size, height, width)).to(self.device)
-        for i in range(height):
-            for j in range(width):
-                latent_pi_slice = latent_pi[:, :, i, j]
-                action_slice = actions[:, i, j]
-                distribution = self._get_action_dist_from_latent(latent_pi_slice)
-                if action_masks is not None:
-                    distribution.apply_masking(action_masks)
-                log_prob = distribution.log_prob(action_slice)
-                log_prob_final += log_prob
 
-        log_prob = log_prob_final
+        batch_size, action_channels, height, width = latent_shape
+
+        if action_masks is not None:
+            assert action_masks.shape == (batch_size * height * width, action_channels)
+
+        latent_pi = latent_pi.view(-1, action_channels)
+        assert latent_pi.shape[0] == batch_size * height * width
+
+        if action_masks is not None:
+            assert latent_pi.shape == action_masks.shape
+
+        distribution = self._get_action_dist_from_latent(latent_pi)
+        if action_masks is not None:
+            distribution.apply_masking(action_masks)
+        actions = actions.view(-1)
+        self.logger.debug(f"Transformed saved actions: {actions.shape}")
+        log_prob = distribution.log_prob(actions)
+        
+        log_prob = log_prob.view(batch_size, height, width)
+        log_prob = log_prob.sum(axis=[1,2])
+
+        self.logger.debug(f"Log prob from saved actions: {log_prob}")
 
         values = self.value_net(latent_vf)
         return values, log_prob, distribution.entropy()

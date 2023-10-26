@@ -47,5 +47,5 @@ class SB3InvalidActionWrapper(SB3Wrapper):
         """
         self.logger.debug("Generating action mask")
         mask = self.controller.action_masks('player_0', self.prev_obs)
-        self.logger.debug(mask)
+        self.logger.debug(mask.shape)
         return mask
