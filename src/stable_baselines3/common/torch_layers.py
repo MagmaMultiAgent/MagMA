@@ -155,6 +155,7 @@ class CustomExtractor(nn.Module):
         net_arch: Union[List[int], Dict[str, List[int]]],
         activation_fn: Type[nn.Module],
         device: Union[th.device, str] = "auto",
+        obs_shape: int = 0,
     ) -> None:
         super().__init__()
         device = get_device(device)
@@ -166,7 +167,7 @@ class CustomExtractor(nn.Module):
 
         # TODO: make these sizes dynamic
         self.latent_dim_pi = feature_dim  # action space
-        self.latent_dim_vf = 90112  # 19x64x64
+        self.latent_dim_vf = obs_shape ** 2 * feature_dim  # observation space
 
     def forward(self, features: th.Tensor) -> Tuple[th.Tensor, th.Tensor]:
         """

@@ -2,11 +2,9 @@ import IPython
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchvision.models import resnet18
-from torchvision import models
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 import sys
-
+from net import *
 import logging
 logger = logging.getLogger(__name__)
 

@@ -139,13 +139,17 @@ class MaskableActorCriticPolicy(BasePolicy):
             pi_features, vf_features = features
             latent_pi = self.mlp_extractor.forward_actor(pi_features)
             latent_vf = self.mlp_extractor.forward_critic(vf_features)
+
         # Evaluate the values for the given observations
+
         values = self.value_net(latent_vf)
         latent_shape = latent_pi.shape
         assert len(latent_shape) == 4
         batch_size, action_channels, height, width = latent_shape
         log_prob_final = th.zeros(size=(batch_size,)).to(self.device)
         actions = th.zeros(size=(batch_size, height, width)).to(self.device)
+
+        # TODO Vectorize the below code, inneficent
         for i in range(height):
             for j in range(width):
                 latent_pi_slice = latent_pi[:, :, i, j]
@@ -156,6 +160,7 @@ class MaskableActorCriticPolicy(BasePolicy):
                 actions[:, i, j] = action
                 log_prob = distribution.log_prob(action)
                 log_prob_final += log_prob
+
         self.logger.debug(f"Actions: {actions.shape}")
         self.logger.debug(f"Values: {values}")
         self.logger.debug(f"Log Probs: {log_prob_final}")
@@ -205,6 +210,7 @@ class MaskableActorCriticPolicy(BasePolicy):
             net_arch=self.net_arch,
             activation_fn=self.activation_fn,
             device=self.device,
+            obs_shape = self.observation_space['map'].shape[1],
         )
 
     def _build(self, lr_schedule: Schedule) -> None:

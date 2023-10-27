@@ -15,6 +15,8 @@ import torch
 import logging
 logger = logging.getLogger(__name__)
 
+MAP_FEATURE_SIZE = 30
+GLOBAL_FEATURE_SIZE = 44
 
 class SimpleUnitObservationWrapper(gym.ObservationWrapper):
     """
@@ -39,8 +41,8 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
         logger.info(f"Creating {self.__class__.__name__}")
         self.logger = logging.getLogger(f"{__name__}_{id(self)}")
         super().__init__(env)
-        self.map_space = spaces.Box(low=-999, high=999, shape=(150, 64, 64), dtype=np.float32)
-        self.global_space = spaces.Box(low=-999, high=999, shape=(220,), dtype=np.float32)
+        self.map_space = spaces.Box(low=-999, high=999, shape=(MAP_FEATURE_SIZE * 5, env.env_cfg.map_size, env.env_cfg.map_size), dtype=np.float32)
+        self.global_space = spaces.Box(low=-999, high=999, shape=(GLOBAL_FEATURE_SIZE * 5,), dtype=np.float32)
 
         self.observation_space = spaces.Dict({
             "map": self.map_space,
@@ -52,12 +54,12 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
         for _ in range(self.max_observation_history):
             self.observation_queue.append({
                 "player_0": {
-                    "map": np.zeros((30, 64, 64)),
-                    "global": np.zeros((44,))
+                    "map": np.zeros((MAP_FEATURE_SIZE, env.env_cfg.map_size, env.env_cfg.map_size)),
+                    "global": np.zeros((GLOBAL_FEATURE_SIZE,))
                 },
                 "player_1": {
-                    "map": np.zeros((30, 64, 64)),
-                    "global": np.zeros((44,))
+                    "map": np.zeros((MAP_FEATURE_SIZE, env.env_cfg.map_size, env.env_cfg.map_size)),
+                    "global": np.zeros((GLOBAL_FEATURE_SIZE,))
                 }
             })
 

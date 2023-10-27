@@ -1,13 +1,13 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
-from typing import Callable, List, Optional, Tuple, Type, Union
+import numpy as np
+from typing import Type, Any, Callable, Union, List, Optional
 from torch import Tensor
+import torch.nn.functional as F
 
 
 def conv3x3(in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dilation: int = 1) -> nn.Conv2d:
-
+    """3x3 convolution with padding"""
     return nn.Conv2d(
         in_planes,
         out_planes,
@@ -21,7 +21,7 @@ def conv3x3(in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, d
 
 
 def conv1x1(in_planes: int, out_planes: int, stride: int = 1) -> nn.Conv2d:
-
+    """1x1 convolution"""
     return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
 
 
@@ -46,7 +46,7 @@ class BasicBlock(nn.Module):
             raise ValueError("BasicBlock only supports groups=1 and base_width=64")
         if dilation > 1:
             raise NotImplementedError("Dilation > 1 not supported in BasicBlock")
-
+        # Both self.conv1 and self.downsample layers downsample the input when stride != 1
         self.conv1 = conv3x3(inplanes, planes, stride)
         self.bn1 = norm_layer(planes)
         self.relu = nn.ReLU(inplace=True)
@@ -92,7 +92,7 @@ class Bottleneck(nn.Module):
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
         width = int(planes * (base_width / 64.0)) * groups
-
+        # Both self.conv2 and self.downsample layers downsample the input when stride != 1
         self.conv1 = conv1x1(inplanes, width)
         self.bn1 = norm_layer(width)
         self.conv2 = conv3x3(width, width, stride, groups, dilation)
@@ -146,6 +146,8 @@ class ResNet(nn.Module):
         self.inplanes = 64
         self.dilation = 1
         if replace_stride_with_dilation is None:
+            # each element in the tuple indicates if we should replace
+            # the 2x2 stride with a dilated convolution instead
             replace_stride_with_dilation = [False, False, False]
         if len(replace_stride_with_dilation) != 3:
             raise ValueError(
@@ -172,12 +174,15 @@ class ResNet(nn.Module):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
 
+        # Zero-initialize the last BN in each residual branch,
+        # so that the residual branch starts with zeros, and each residual block behaves like an identity.
+        # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
         if zero_init_residual:
             for m in self.modules():
                 if isinstance(m, Bottleneck) and m.bn3.weight is not None:
-                    nn.init.constant_(m.bn3.weight, 0)
+                    nn.init.constant_(m.bn3.weight, 0)  # type: ignore[arg-type]
                 elif isinstance(m, BasicBlock) and m.bn2.weight is not None:
-                    nn.init.constant_(m.bn2.weight, 0)
+                    nn.init.constant_(m.bn2.weight, 0)  # type: ignore[arg-type]
 
     def _make_layer(
         self,
@@ -239,6 +244,13 @@ class ResNet(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         return self._forward_impl(x)
+    
+
+
+model = ResNet(Bottleneck, [2, 2, 2, 2]).cuda()
+inp = torch.rand((1, 3, 128, 128)).cuda()
+out = model(inp)
+
 
 
 class ConvBlock(nn.Module):
@@ -247,7 +259,6 @@ class ConvBlock(nn.Module):
     """
 
     def __init__(self, in_channels, out_channels, padding=1, kernel_size=3, stride=1, with_nonlinearity=True):
-
         super().__init__()
         self.conv = nn.Conv2d(in_channels, out_channels, padding=padding, kernel_size=kernel_size, stride=stride)
         self.bn = nn.BatchNorm2d(out_channels)
@@ -313,62 +324,50 @@ class UpBlockForUNetWithResNet50(nn.Module):
         return x
 
 
-class UNetWithResnet50Encoder(BaseFeaturesExtractor):
+class UNetWithResnet50Encoder(nn.Module):
     DEPTH = 6
-    def __init__(self, observation, output_channels):
 
-        num_cnn_channels = observation['map'].shape[0]
-        num_global_features = observation['global'].shape[0]
-        super(UNetWithResnet50Encoder, self).__init__(num_cnn_channels, output_channels)
-        
+    def __init__(self, n_classes=22):
+        super().__init__()
         resnet = ResNet(Bottleneck, [2, 2, 2, 2]).cuda()
         down_blocks = []
         up_blocks = []
 
         num_output_channels = resnet.conv1.out_channels
 
-        new_conv1 = nn.Conv2d(num_cnn_channels, num_output_channels, kernel_size=resnet.conv1.kernel_size,
+        new_conv1 = nn.Conv2d(80, num_output_channels, kernel_size=resnet.conv1.kernel_size,
                       stride=resnet.conv1.stride, padding=resnet.conv1.padding, bias=resnet.conv1.bias)
 
         resnet.conv1 = new_conv1
 
         self.input_block = nn.Sequential(*list(resnet.children()))[:3]
         self.input_pool = list(resnet.children())[3]
-
         for bottleneck in list(resnet.children()):
             if isinstance(bottleneck, nn.Sequential):
                 down_blocks.append(bottleneck)
         self.down_blocks = nn.ModuleList(down_blocks)
+        
+        last_down_block = self.down_blocks[-1]
+        last_conv2d_layer = list(last_down_block.children())[-1]
+        last_conv2d_layer_out_channels = last_conv2d_layer.conv3.out_channels
 
-        self.last_down_block = self.down_blocks[-1]
-        self.last_conv2d_layer = list(self.last_down_block.children())[-1]
-        self.last_conv2d_layer_out_channels = self.last_conv2d_layer.conv3.out_channels
+        self.aap2 = nn.AdaptiveAvgPool2d((1, 1))
+        self.lin = nn.Linear(in_features=last_conv2d_layer_out_channels, out_features=1024)
+        
+        self.bridge = Bridge(last_conv2d_layer_out_channels, last_conv2d_layer_out_channels, last_conv2d_layer_out_channels * 4)
 
-        self.aap2d = nn.AdaptiveAvgPool2d((1, 1))
-        self.lin = nn.Linear(in_features=self.last_conv2d_layer_out_channels, out_features=1024)
-
-        self.global_fc_1 = nn.Linear(num_global_features, 512)
-        self.global_fc_2 = nn.Linear(512, 1024)
-
-        self.bridge = Bridge(self.last_conv2d_layer_out_channels, self.last_conv2d_layer_out_channels, self.last_conv2d_layer_out_channels * 4)
-        up_blocks.append(UpBlockForUNetWithResNet50(self.last_conv2d_layer_out_channels, 1024))
+        up_blocks.append(UpBlockForUNetWithResNet50(last_conv2d_layer_out_channels, 1024))
         up_blocks.append(UpBlockForUNetWithResNet50(1024, 512))
         up_blocks.append(UpBlockForUNetWithResNet50(512, 256))
         up_blocks.append(UpBlockForUNetWithResNet50(in_channels=128 + 64, out_channels=128,
                                                     up_conv_in_channels=256, up_conv_out_channels=128))
-        up_blocks.append(UpBlockForUNetWithResNet50(in_channels=64 + num_cnn_channels, out_channels=64,
+        up_blocks.append(UpBlockForUNetWithResNet50(in_channels=64 + 80, out_channels=64,
                                                     up_conv_in_channels=128, up_conv_out_channels=64))
 
         self.up_blocks = nn.ModuleList(up_blocks)
+        self.out = nn.Conv2d(64, n_classes, kernel_size=1, stride=1)
 
-        self.out = nn.Conv2d(64, output_channels, kernel_size=1, stride=1)
-        
     def forward(self, x):
-        
-        cnn_features = x['map']
-        global_features = x['global']
-        x = cnn_features
-
         pre_pools = dict()
         pre_pools[f"layer_0"] = x
         x = self.input_block(x)
@@ -380,23 +379,20 @@ class UNetWithResnet50Encoder(BaseFeaturesExtractor):
             if i == (UNetWithResnet50Encoder.DEPTH - 1):
                 continue
             pre_pools[f"layer_{i}"] = x
-        
+
         last_size = pre_pools[f"layer_{UNetWithResnet50Encoder.DEPTH - 2}"].shape[-1]
-        batch_size = x.shape[0]
-        x = self.aap2d(x)
-        x = x.view(batch_size, -1)
+
+        x = self.aap2(x)
+        x = x.view(1, -1)
         x = self.lin(x)
 
-        global_features = self.global_fc_1(global_features)
-        global_features = self.global_fc_2(global_features)
-
-        x = torch.cat((x, global_features), dim=1)
-
+        x = x.view(1, -1)
+        random_vector = torch.rand(1,1024).cuda()
+        x = torch.cat((x, random_vector), dim=1)
         x = self.bridge(x)
 
-        x = x.view(batch_size, self.last_conv2d_layer_out_channels, 1, 1)
+        x = x.view(1, 2048, 1, 1)
         x = F.interpolate(x, size=(int(last_size / 2), int(last_size / 2)), mode='bilinear', align_corners=False)
-
         for i, block in enumerate(self.up_blocks, 1):
             key = f"layer_{UNetWithResnet50Encoder.DEPTH - 1 - i}"
             x = block(x, pre_pools[key])
@@ -404,6 +400,9 @@ class UNetWithResnet50Encoder(BaseFeaturesExtractor):
         x = self.out(x)
         del pre_pools
         return x
-    
 
 
+model = UNetWithResnet50Encoder().cuda()
+inp = torch.rand((1, 80, 128, 128)).cuda()
+out = model(inp)
+print(out.shape)
