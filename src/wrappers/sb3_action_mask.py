@@ -2,16 +2,12 @@
 This file contains a wrapper that adds action masks to the environment \
 for use with stable-baselines3
 """
-import copy
 from typing import Dict, Callable
-import gymnasium as gym
 from luxai_s2.env import LuxAI_S2
-from luxai_s2.state import ObservationStateDict, StatsStateDict
+from luxai_s2.state import ObservationStateDict
 from luxai_s2.wrappers import SB3Wrapper
 from luxai_s2.unit import BidActionType, FactoryPlacementActionType
-from luxai_s2.wrappers.controllers import Controller
 from action.controllers import SimpleUnitDiscreteController
-from reward.early_reward_parser import EarlyRewardParser
 
 import logging
 logger = logging.getLogger(__name__)

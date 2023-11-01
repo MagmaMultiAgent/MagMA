@@ -332,18 +332,15 @@ def main(args):
     policy_kwargs_unit = {
         "features_extractor_class": UNetWithResnet50Encoder,
         "features_extractor_kwargs": {
-            "output_channels": 22,
+            "output_channels": 25,
             }
         }
-    policy_kwargs_factory = {
-        "features_extractor_class": FactoryNet
-    }
-    rollout_steps = 4000
+    rollout_steps = 1000
     model = MaskablePPO(
         "MultiInputPolicy",
         env,
         n_steps=rollout_steps // args.n_envs,
-        batch_size=800,
+        batch_size=1,
         learning_rate=3e-4,
         policy_kwargs=policy_kwargs_unit,
         verbose=1,

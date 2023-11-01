@@ -319,9 +319,10 @@ class UNetWithResnet50Encoder(BaseFeaturesExtractor):
 
         num_cnn_channels = observation['map'].shape[0]
         num_global_features = observation['global'].shape[0]
+        num_factory_features = observation['factory'].shape[0]
         super(UNetWithResnet50Encoder, self).__init__(num_cnn_channels, output_channels)
         
-        resnet = ResNet(Bottleneck, [2, 2, 2, 2]).cuda()
+        resnet = ResNet(Bottleneck, [2, 2, 2, 2])
         down_blocks = []
         up_blocks = []
 
@@ -348,7 +349,7 @@ class UNetWithResnet50Encoder(BaseFeaturesExtractor):
         self.lin = nn.Linear(in_features=self.last_conv2d_layer_out_channels, out_features=1024)
 
         self.global_fc_1 = nn.Linear(num_global_features, 512)
-        self.global_fc_2 = nn.Linear(512, 1024)
+        self.global_fc_2 = nn.Linear(num_factory_features, 512)
 
         self.bridge = Bridge(self.last_conv2d_layer_out_channels, self.last_conv2d_layer_out_channels, self.last_conv2d_layer_out_channels * 4)
         up_blocks.append(UpBlockForUNetWithResNet50(self.last_conv2d_layer_out_channels, 1024))
@@ -367,6 +368,7 @@ class UNetWithResnet50Encoder(BaseFeaturesExtractor):
         
         cnn_features = x['map']
         global_features = x['global']
+        factory_features = x['factory']
         x = cnn_features
 
         pre_pools = dict()
@@ -387,8 +389,10 @@ class UNetWithResnet50Encoder(BaseFeaturesExtractor):
         x = x.view(batch_size, -1)
         x = self.lin(x)
 
+        factory_features = self.global_fc_2(factory_features)
         global_features = self.global_fc_1(global_features)
-        global_features = self.global_fc_2(global_features)
+
+        global_features = torch.cat((global_features, factory_features), dim=1)
 
         x = torch.cat((x, global_features), dim=1)
 
