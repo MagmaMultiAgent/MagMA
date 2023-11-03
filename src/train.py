@@ -78,7 +78,7 @@ class EarlyRewardParserWrapper(gym.Wrapper):
 
         global_info_own = self.reward_parser.get_global_info(agent, self.env.state)
         self.reward_parser.reset(global_info_own, stats)
-        reward = self.reward_parser.parse(self.env.state, stats, global_info_own)
+        #reward = self.reward_parser.parse(self.env.state, stats, global_info_own)
 
         stats: StatsStateDict = self.env.state.stats[agent]
         info = dict()
@@ -112,6 +112,16 @@ class EarlyRewardParserWrapper(gym.Wrapper):
         metrics["action_queue_updates_total"] = stats["action_queue_updates_total"]
 
         info["metrics"] = metrics
+
+        reward = 0
+        if self.prev_step_metrics is not None:
+            # we check how much ice and water is produced and reward the agent for generating both
+            ice_dug_this_step = metrics["ice_dug"] - self.prev_step_metrics["ice_dug"]
+            water_produced_this_step = (
+                metrics["water_produced"] - self.prev_step_metrics["water_produced"]
+            )
+            # we reward water production more as it is the most important resource for survival
+            reward = ice_dug_this_step / 100 + water_produced_this_step
 
         self.prev_step_metrics = copy.deepcopy(metrics)
         return obs, reward, termination[agent], truncation[agent], info
@@ -335,12 +345,12 @@ def main(args):
             "output_channels": 25,
             }
         }
-    rollout_steps = 1000
+    rollout_steps = 2000
     model = MaskablePPO(
         "MultiInputPolicy",
         env,
         n_steps=rollout_steps // args.n_envs,
-        batch_size=1,
+        batch_size=16,
         learning_rate=3e-4,
         policy_kwargs=policy_kwargs_unit,
         verbose=1,

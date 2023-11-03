@@ -412,5 +412,6 @@ class ObservationParser():
             features[i] = features_tmp
 
         self.logger.debug(f"Factory features: {features.shape}")
+        features = features.flatten()
         return features
 

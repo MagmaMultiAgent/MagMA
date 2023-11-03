@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 MAP_FEATURE_SIZE = 30
 GLOBAL_FEATURE_SIZE = 44
-FACTORY_FEATURE_SIZE = 24
+FACTORY_FEATURE_SIZE = 24 * 4
 
 class SimpleUnitObservationWrapper(gym.ObservationWrapper):
     """

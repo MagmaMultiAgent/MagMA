@@ -258,7 +258,7 @@ class SimpleUnitDiscreteController(Controller):
             elif self._is_water_lichen_action(choice):
                 lux_action[factory_id] = self._get_water_lichen_action(choice)
             else:
-                lux_action[factory_id] = -1
+                continue
 
         return lux_action
 
@@ -368,7 +368,7 @@ class SimpleUnitDiscreteController(Controller):
                 ] = False
 
             # recharge should only be valid in the night
-            if shared_obs["real_envs_steps"] % 40 > 30:
+            if shared_obs["real_env_steps"] % 40 > 30:
                 action_mask[
                     self.recharge_dim_high - self.recharge_act_dims : self.recharge_dim_high, pos[0], pos[1]
                 ] = True
