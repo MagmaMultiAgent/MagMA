@@ -9,9 +9,6 @@ from luxai_s2.wrappers import SB3Wrapper
 from luxai_s2.unit import BidActionType, FactoryPlacementActionType
 from action.controllers import SimpleUnitDiscreteController
 
-import logging
-logger = logging.getLogger(__name__)
-
 class SB3InvalidActionWrapper(SB3Wrapper):
     """
     This wrapper adds action masks to the environment for use with stable-baselines3
@@ -32,8 +29,6 @@ class SB3InvalidActionWrapper(SB3Wrapper):
         This wrapper adds action masks to the environment for use with stable-baselines3
         """
 
-        logger.info(f"Creating {self.__class__.__name__}")
-        self.logger = logging.getLogger(f"{__name__}_{id(self)}")
         super().__init__(env, bid_policy, factory_placement_policy, SimpleUnitDiscreteController(env.env_cfg))
 
     def action_masks(self):
@@ -41,7 +36,5 @@ class SB3InvalidActionWrapper(SB3Wrapper):
         Generates a boolean action mask indicating in each \
         discrete dimension whether it would be valid or not
         """
-        self.logger.debug("Generating action mask")
         mask = self.controller.action_masks('player_0', self.prev_obs)
-        self.logger.debug(mask.shape)
         return mask

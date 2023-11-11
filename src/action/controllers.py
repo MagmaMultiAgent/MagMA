@@ -127,7 +127,7 @@ class SimpleUnitDiscreteController(Controller):
         transfer_type_mapping = [0, 1, 4]  # Mapping index to desired value
         transfer_type_index = id // (self.transfer_act_dims/3)  # 0 for ice, 1 for ore, 2 for power
         transfer_type = transfer_type_mapping[transfer_type_index.astype(int).item()]
-        return np.array([1, transfer_dir, transfer_type, self.env_cfg.max_transfer_amount, 0, 1])
+        return np.array([1, transfer_dir, transfer_type, self.env_cfg.max_transfer_amount, 0, 1], dtype=int)
 
     def _is_pickup_action(self, id):
         """
@@ -213,11 +213,17 @@ class SimpleUnitDiscreteController(Controller):
         """
         Converts the action to a lux action
         """
-        self.logger.debug(f"Creating lux action for agent {agent} with action\n{action}")
 
         shared_obs = obs["player_0"]
         lux_action = {}
         units = shared_obs["units"][agent]
+
+        unit_id = list(units.keys())
+        factory_id = list(shared_obs["factories"][agent].keys())
+
+        logger.debug(f"units are: {unit_id}")
+        logger.debug(f"factories are: {factory_id}")
+        logger.debug(f"env steps: {shared_obs['real_env_steps']}")
 
         for unit_id, unit in units.items():
             pos = tuple(unit['pos'])
@@ -259,7 +265,8 @@ class SimpleUnitDiscreteController(Controller):
                 lux_action[factory_id] = self._get_water_lichen_action(choice)
             else:
                 continue
-
+        
+        logger.debug(f"Created lux action\n{lux_action}")
         return lux_action
 
     def action_masks(self, agent: str, obs: Dict[str, Any]):
@@ -312,6 +319,8 @@ class SimpleUnitDiscreteController(Controller):
             # transferring is valid only if the target exists
             unit = units[unit_id]
             
+
+            
             # a[1] = direction (0 = center, 1 = up, 2 = right, 3 = down, 4 = left)
             move_deltas = np.array([[0, 0], [0, -1], [1, 0], [0, 1], [-1, 0]])
             for i, move_delta in enumerate(move_deltas):
@@ -326,6 +335,7 @@ class SimpleUnitDiscreteController(Controller):
                     or transfer_pos[1] >= len(factory_occupancy_map[0])
                 ):
                     continue
+
 
                 # check if there is a unit there or factory
                 factory_there = factory_occupancy_map[transfer_pos[0], transfer_pos[1]]
@@ -346,6 +356,21 @@ class SimpleUnitDiscreteController(Controller):
                 factory_there in shared_obs["teams"][agent]["factory_strains"]
             )
 
+            if unit["cargo"]["ice"] == 0:
+                action_mask[
+                    self.move_dim_high : self.transfer_dim_high - 2* self.one_transfer_dim, pos[0], pos[1]
+                ] = False
+
+            if unit["cargo"]["ore"] == 0:
+                action_mask[
+                    self.move_dim_high + self.one_transfer_dim : self.transfer_dim_high - self.one_transfer_dim, pos[0], pos[1]
+                ] = False
+
+            # if on the factory, or in the occumpancy map of factory, transfer of power is not valid
+            if on_top_of_factory or factory_there != -1:
+                action_mask[
+                    self.transfer_dim_high - self.one_transfer_dim : self.transfer_dim_high, pos[0], pos[1]
+                ] = False
             # dig is valid only if on top of tile with rubble or resources or lichen
             board_sum = (
                 shared_obs["board"]["ice"][pos[0], pos[1]]

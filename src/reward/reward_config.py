@@ -25,15 +25,15 @@ global_information_names = [
 @dataclass
 class EarlyRewardParam:
     global_reward_weight = 1
-    light_reward_weight: float = 0.4 * global_reward_weight
-    heavy_reward_weight: float = 4 * global_reward_weight
-    ice_reward_weight: float = 0.1 * global_reward_weight
-    ore_reward_weight: float = 0.5 * global_reward_weight
+    light_reward_weight: float = 0.01 * global_reward_weight
+    heavy_reward_weight: float = 0.1 * global_reward_weight
+    ice_reward_weight: float = 0.4 * global_reward_weight
+    ore_reward_weight: float = 0.3 * global_reward_weight
     water_reward_weight: float = 0.2 * global_reward_weight
     metal_reward_weight: float = 0.7 * global_reward_weight
     power_reward_weight: float = 0.01 * global_reward_weight
-    factory_penalty_weight: float = 2 * global_reward_weight
-    survive_reward_weight: float = 0.1
+    factory_penalty_weight: float = 0.2 * global_reward_weight
+    survive_reward_weight: float = 1
 
 @dataclass
 class LateRewardParam:

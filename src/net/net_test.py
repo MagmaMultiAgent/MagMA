@@ -4,6 +4,9 @@ import numpy as np
 from typing import Type, Any, Callable, Union, List, Optional
 from torch import Tensor
 import torch.nn.functional as F
+from torchvision.models import resnet50
+
+
 
 
 def conv3x3(in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dilation: int = 1) -> nn.Conv2d:
@@ -57,11 +60,9 @@ class BasicBlock(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         identity = x
-
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
-
         out = self.conv2(out)
         out = self.bn2(out)
 
@@ -298,9 +299,9 @@ class UpBlockForUNetWithResNet50(nn.Module):
                  upsampling_method="conv_transpose"):
         super().__init__()
 
-        if up_conv_in_channels == None:
+        if up_conv_in_channels is None:
             up_conv_in_channels = in_channels
-        if up_conv_out_channels == None:
+        if up_conv_out_channels is None:
             up_conv_out_channels = out_channels
 
         if upsampling_method == "conv_transpose":
@@ -315,7 +316,9 @@ class UpBlockForUNetWithResNet50(nn.Module):
 
     def forward(self, up_x, down_x):
         """
-        Forward pass
+        :param up_x: this is the output from the previous up block
+        :param down_x: this is the output from the down block
+        :return: up-sampled feature map
         """
         x = self.upsample(up_x)
         x = torch.cat([x, down_x], 1)
@@ -324,12 +327,15 @@ class UpBlockForUNetWithResNet50(nn.Module):
         return x
 
 
-class UNetWithResnet50Encoder(nn.Module):
+class UNetWithResnet18Encoder(nn.Module):
     DEPTH = 6
 
     def __init__(self, n_classes=22):
         super().__init__()
-        resnet = ResNet(Bottleneck, [2, 2, 2, 2]).cuda()
+        resnet = ResNet(BasicBlock, [2, 2, 2, 2]).cuda()
+        print(resnet)
+        resnet = resnet50(pretrained=True).cuda()
+        print(resnet)
         down_blocks = []
         up_blocks = []
 
@@ -356,7 +362,7 @@ class UNetWithResnet50Encoder(nn.Module):
         
         self.bridge = Bridge(last_conv2d_layer_out_channels, last_conv2d_layer_out_channels, last_conv2d_layer_out_channels * 4)
 
-        up_blocks.append(UpBlockForUNetWithResNet50(last_conv2d_layer_out_channels, 1024))
+        up_blocks.append(UpBlockForUNetWithResNet50(2048, 1024))
         up_blocks.append(UpBlockForUNetWithResNet50(1024, 512))
         up_blocks.append(UpBlockForUNetWithResNet50(512, 256))
         up_blocks.append(UpBlockForUNetWithResNet50(in_channels=128 + 64, out_channels=128,
@@ -376,11 +382,11 @@ class UNetWithResnet50Encoder(nn.Module):
 
         for i, block in enumerate(self.down_blocks, 2):
             x = block(x)
-            if i == (UNetWithResnet50Encoder.DEPTH - 1):
+            if i == (UNetWithResnet18Encoder.DEPTH - 1):
                 continue
             pre_pools[f"layer_{i}"] = x
 
-        last_size = pre_pools[f"layer_{UNetWithResnet50Encoder.DEPTH - 2}"].shape[-1]
+        last_size = pre_pools[f"layer_{UNetWithResnet18Encoder.DEPTH - 2}"].shape[-1]
 
         x = self.aap2(x)
         x = x.view(1, -1)
@@ -392,17 +398,56 @@ class UNetWithResnet50Encoder(nn.Module):
         x = self.bridge(x)
 
         x = x.view(1, 2048, 1, 1)
+  
         x = F.interpolate(x, size=(int(last_size / 2), int(last_size / 2)), mode='bilinear', align_corners=False)
+        print(x.shape)
         for i, block in enumerate(self.up_blocks, 1):
-            key = f"layer_{UNetWithResnet50Encoder.DEPTH - 1 - i}"
+
+            key = f"layer_{UNetWithResnet18Encoder.DEPTH - 1 - i}"
+            print(i)
             x = block(x, pre_pools[key])
+            print(x.shape)
 
         x = self.out(x)
         del pre_pools
         return x
 
 
-model = UNetWithResnet50Encoder().cuda()
-inp = torch.rand((1, 80, 128, 128)).cuda()
+model = UNetWithResnet18Encoder().cuda()
+inp = torch.rand((1, 80, 64, 64)).cuda()
 out = model(inp)
+print(out.shape)
+
+
+
+
+class UNet(nn.Module):
+    def __init__(self):
+        super(UNet, self).__init__()
+        self.conv1 = nn.Conv2d(150, 16, 3, padding=1)
+        self.conv2 = nn.Conv2d(16, 64, 3, padding=1)
+        self.up = nn.ConvTranspose2d(64, 16, 2, stride=2)
+        self.conv3 = nn.Conv2d(32, 16, 3, padding=1)
+        self.conv4 = nn.Conv2d(16, 3, 1)
+        self.max_pool = nn.MaxPool2d(2, 2)
+        self.dropout = nn.Dropout(0.5)
+
+    def forward(self, x):
+        # Down-sampling
+        conv1 = F.relu(self.conv1(x))
+        pool1 = self.max_pool(conv1)
+        conv2 = F.relu(self.conv2(pool1))
+        drop2 = self.dropout(conv2)
+
+        # Up-sampling
+        up3 = F.relu(self.up(drop2))
+        merge3 = torch.cat([conv1, up3], dim=1)
+        conv3 = F.relu(self.conv3(merge3))
+        conv4 = F.softmax(self.conv4(conv3), dim=1)
+
+        return conv4
+
+a = UNet().cuda()
+inp = torch.rand((1, 150, 64, 64)).cuda()
+out = a(inp)
 print(out.shape)

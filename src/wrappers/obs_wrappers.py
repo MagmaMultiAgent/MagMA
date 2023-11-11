@@ -10,9 +10,6 @@ from observation.obs_parser import ObservationParser
 from collections import deque
 import random
 
-import logging
-logger = logging.getLogger(__name__)
-
 MAP_FEATURE_SIZE = 30
 GLOBAL_FEATURE_SIZE = 44
 FACTORY_FEATURE_SIZE = 24 * 4
@@ -37,8 +34,6 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
         A simple state based observation to work with in pair with the SimpleUnitDiscreteController
         """
 
-        logger.info(f"Creating {self.__class__.__name__}")
-        self.logger = logging.getLogger(f"{__name__}_{id(self)}")
         super().__init__(env)
         self.map_space = spaces.Box(low=-999, high=999, shape=(MAP_FEATURE_SIZE * 5, env.env_cfg.map_size, env.env_cfg.map_size), dtype=np.float32)
         self.global_space = spaces.Box(low=-999, high=999, shape=(GLOBAL_FEATURE_SIZE * 5,), dtype=np.float32)
@@ -70,7 +65,6 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
         """
         Takes as input the current "raw observation" and returns
         """
-        self.logger.debug("Observing")
 
         converted_obs = SimpleUnitObservationWrapper.convert_obs(obs, self.env.state.env_cfg, self.observation_parser)
         self.observation_queue.append(converted_obs)
@@ -126,7 +120,6 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
             combined_map = np.stack(concatenated_map_obs, axis=0)
             combined_map = combined_map.reshape(-1, combined_map.shape[-2], combined_map.shape[-1])
 
-            self.logger.debug(f"{player} {combined_global.shape} {combined_map.shape}")
 
             converted_obs[player] = {
                 "map": combined_map,
@@ -141,7 +134,6 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
         """
         Takes as input the current "raw observation" and returns converted observation
         """
-        logger.debug("Converting observation")
         observation = {}
         obs_pars = ObservationParser()
         map_features, global_features, factory_features, _ = obs_pars.parse_observation(obs, env_cfg)

@@ -61,8 +61,6 @@ class MaskableActorCriticPolicy(BasePolicy):
         optimizer_class: Type[th.optim.Optimizer] = th.optim.Adam,
         optimizer_kwargs: Optional[Dict[str, Any]] = None,
     ):
-        logger.info(f"Creating {self.__class__.__name__}")
-        self.logger = logging.getLogger(f"{__name__}_{id(self)}")
 
         if optimizer_kwargs is None:
             optimizer_kwargs = {}
@@ -112,7 +110,6 @@ class MaskableActorCriticPolicy(BasePolicy):
             self.vf_features_extractor = self.make_features_extractor()
 
         # Action distribution
-        self.logger.debug(f"Action space: {action_space}")
         self.action_dist = make_masked_proba_distribution(action_space)
 
         self._build(lr_schedule)
@@ -157,11 +154,6 @@ class MaskableActorCriticPolicy(BasePolicy):
         if action_masks is not None:
             action_masks = action_masks.reshape(-1, action_channels)
             assert latent_pi.shape == action_masks.shape
-        
-        if action_masks is not None:
-            self.logger.debug(f"Transformed actions and masks: {latent_pi.shape} {action_masks.shape}")
-        else:
-            self.logger.debug(f"Transformed actions: {latent_pi.shape}")
 
         distribution = self._get_action_dist_from_latent(latent_pi)
         if action_masks is not None:
@@ -169,15 +161,11 @@ class MaskableActorCriticPolicy(BasePolicy):
         actions = distribution.get_actions(deterministic=deterministic)
         log_prob = distribution.log_prob(actions)
         
-        self.logger.debug(f"Sampled actions: {actions.shape}")
 
         actions = actions.view(batch_size, height, width)
         log_prob = log_prob.view(batch_size, height, width)
         log_prob = log_prob.sum(axis=[1,2])
-        
-        self.logger.debug(f"Actions: {actions.shape}")
-        self.logger.debug(f"Values: {values}")
-        self.logger.debug(f"Log Probs: {log_prob}")
+
         return actions, values, log_prob
 
     def extract_features(self, obs: th.Tensor) -> Union[th.Tensor, Tuple[th.Tensor, th.Tensor]]:
@@ -218,7 +206,6 @@ class MaskableActorCriticPolicy(BasePolicy):
         # Note: If net_arch is None and some features extractor is used,
         #       net_arch here is an empty list and mlp_extractor does not
         #       really contain any layers (acts like an identity module).
-        self.logger.debug(f"building mlp extractor, size: {self.features_dim}")
         self.mlp_extractor = CustomExtractor(
             self.features_dim,
             net_arch=self.net_arch,
@@ -236,7 +223,6 @@ class MaskableActorCriticPolicy(BasePolicy):
         """
         self._build_mlp_extractor()
 
-        self.logger.debug(f"building action net, size: {self.mlp_extractor.latent_dim_pi}")
         self.action_net = self.action_dist.proba_distribution_net(latent_dim=self.mlp_extractor.latent_dim_pi)
         self.value_net = nn.Linear(self.mlp_extractor.latent_dim_vf, 1)
 
@@ -379,13 +365,10 @@ class MaskableActorCriticPolicy(BasePolicy):
         if action_masks is not None:
             distribution.apply_masking(action_masks)
         actions = actions.view(-1)
-        self.logger.debug(f"Transformed saved actions: {actions.shape}")
         log_prob = distribution.log_prob(actions)
         
         log_prob = log_prob.view(batch_size, height, width)
         log_prob = log_prob.sum(axis=[1,2])
-
-        self.logger.debug(f"Log prob from saved actions: {log_prob}")
 
         values = self.value_net(latent_vf)
         return values, log_prob, distribution.entropy()
@@ -400,6 +383,8 @@ class MaskableActorCriticPolicy(BasePolicy):
         """
         features = super().extract_features(obs, self.pi_features_extractor)
         latent_pi = self.mlp_extractor.forward_actor(features)
+        _, action_channels, _, _ = latent_pi.shape
+        latent_pi = latent_pi.view(-1, action_channels)
         distribution = self._get_action_dist_from_latent(latent_pi)
         if action_masks is not None:
             distribution.apply_masking(action_masks)

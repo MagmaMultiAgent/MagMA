@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from typing import Callable, List, Optional, Tuple, Type, Union
 from torch import Tensor
+from torchvision.models import resnet50
 
 
 def conv3x3(in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dilation: int = 1) -> nn.Conv2d:
@@ -312,6 +313,32 @@ class UpBlockForUNetWithResNet50(nn.Module):
         x = self.conv_block_2(x)
         return x
 
+class CompatibleNet(nn.Module):
+    def __init__(self):
+        super(CompatibleNet, self).__init__()
+        self.conv1 = nn.Conv2d(150, 16, 3, padding=1)
+        self.conv2 = nn.Conv2d(16, 64, 3, padding=1)
+        self.up = nn.ConvTranspose2d(64, 16, 2, stride=2)
+        self.conv3 = nn.Conv2d(32, 16, 3, padding=1)
+        self.conv4 = nn.Conv2d(16, 3, 1)
+        self.max_pool = nn.MaxPool2d(2, 2)
+        self.dropout = nn.Dropout(0.5)
+
+    def forward(self, x):
+        # Down-sampling
+        conv1 = F.relu(self.conv1(x))
+        pool1 = self.max_pool(conv1)
+        conv2 = F.relu(self.conv2(pool1))
+        drop2 = self.dropout(conv2)
+
+        # Up-sampling
+        up3 = F.relu(self.up(drop2))
+        merge3 = torch.cat([conv1, up3], dim=1)
+        conv3 = F.relu(self.conv3(merge3))
+        conv4 = F.softmax(self.conv4(conv3), dim=1)
+
+        return conv4
+
 
 class UNetWithResnet50Encoder(BaseFeaturesExtractor):
     DEPTH = 6
@@ -322,7 +349,8 @@ class UNetWithResnet50Encoder(BaseFeaturesExtractor):
         num_factory_features = observation['factory'].shape[0]
         super(UNetWithResnet50Encoder, self).__init__(num_cnn_channels, output_channels)
         
-        resnet = ResNet(Bottleneck, [2, 2, 2, 2])
+        #resnet = ResNet(BasicBlock, [2, 2, 2, 2]).cuda()
+        resnet = resnet50(pretrained=True).cuda()
         down_blocks = []
         up_blocks = []
 

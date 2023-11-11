@@ -366,7 +366,7 @@ class ObservationParser():
         factories = obs.factories[player]
         factory_count = len(factories.keys())
 
-        features = np.zeros((factory_count, 24))
+        features = np.zeros((4, 24))
         for i, (factory_name, factory) in enumerate(factories.items()):
             factory_id = int(factory_name.split("_")[1])
             cargo = factory.cargo
