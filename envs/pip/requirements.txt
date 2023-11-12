@@ -57,9 +57,6 @@ ipykernel==6.26.0
 ipython==8.17.2
 isoduration==20.11.0
 isort==5.12.0
-jax==0.4.7
-jax-jumpy==1.0.0
-jaxlib==0.4.7+cuda11.cudnn82
 jedi==0.19.1
 Jinja2==3.1.2
 json5==0.9.14
@@ -75,7 +72,6 @@ jupyter_server_terminals==0.4.4
 jupyterlab==4.0.8
 jupyterlab-pygments==0.2.2
 jupyterlab_server==2.25.1
-juxai-s2==3.0.0
 kiwisolver==1.4.5
 luxai-s2==3.0.0
 Markdown==3.5.1
