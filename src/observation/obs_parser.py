@@ -118,11 +118,14 @@ class ObservationParser():
             global_features = self.get_global_features(game_state, player, env_cfg, map_features)
             action_features = self.get_action_features(game_state, env_cfg)
             factory_features = self.get_factory_features(game_state, player, env_cfg, global_features, map_features)
+            unit_features = self.get_unit_features(game_state, player, env_cfg, global_features, map_features)
+            entity_features = self.get_entity_features(game_state, player, env_cfg, global_features, map_features)
+            assembled_features = self.assemble_entity_features(entity_features, factory_features, unit_features)
             
-
             map_features = np.array(list(map_features.values()))
             global_features = np.array(list(global_features.values()))
             #global_features_broadcasted = global_features.reshape(global_features.shape[0], 1, 1) * np.ones((global_features.shape[0], env_cfg.map_size, env_cfg.map_size))
+            factory_features = factory_features.flatten()
             factory_feature_list.append(factory_features)
 
             #full_feature_map = np.concatenate([map_features, action_features, global_features_broadcasted], axis=0)
@@ -339,79 +342,153 @@ class ObservationParser():
 
         return global_feature
 
-    def get_factory_features(self, obs: kit.kit.GameState, player: str, env_cfg: EnvConfig, global_feature: np.ndarray, map_feature: np.ndarray):
-        # Factory features:
-        #   factory features
-        #       power
-        #       ice
-        #       ore
-        #       water
-        #       metal
-        #   global features
-        #       env_step
-        #       cycle
-        #       hour
-        #       daytime_or_night
-        #       num_factory_own
-        #       num_factory_enm
-        #       total_lichen_own
-        #       total_lichen_enm
-        #       num_light_own
-        #       num_light_enm
-        #       num_heavy_own
-        #       num_heavy_enm
+    def assemble_entity_features(self, entity_features, factory_features, unit_features):
+        # Entity features - 52
+        #   entity specific features - 15
+        #   unit specific features - 3
+        #   factory specific features - 1
+        #   global features - 33
+        #
+
+        entity_count = entity_features.shape[0]
+        factory_count = factory_features.shape[0]
+        unit_count = unit_features.shape[0]
+
+        assert factory_count + unit_count == entity_count
+
+        entity_feature_count = entity_features.shape[1]
+        factory_feature_count = factory_features.shape[1]
+        unit_feature_count = unit_features.shape[1]
+        
+        unit_factory_features = np.zeros((unit_count, factory_feature_count))
+        factory_unit_features = np.zeros((factory_count, unit_feature_count))
+
+        factory_features = np.concatenate((factory_features, factory_unit_features), axis=1)
+        unit_features = np.concatenate((unit_factory_features, unit_features), axis=1)
+        assert factory_features.shape == (factory_count, factory_feature_count + unit_feature_count)
+        assert unit_features.shape == (unit_count, factory_feature_count + unit_feature_count)
+
+        factory_and_unit_features = np.concatenate((factory_features, unit_features), axis=0)
+        assert factory_and_unit_features.shape == (entity_count, factory_feature_count + unit_feature_count)
+
+        features = np.concatenate((entity_features, factory_and_unit_features), axis=1)
+        assert features.shape == (entity_count, entity_feature_count + factory_feature_count + unit_feature_count)
+        
+        self.logger.debug(f"Assembled features: {features.shape}")
+
+        return features
+
+    def get_entity_features(self, obs: kit.kit.GameState, player: str, env_cfg: EnvConfig, global_feature: np.ndarray, map_feature: np.ndarray):
+        #   entity specific features - 15
+        #       00 is_factory - 0/1
+        #       01 is_unit - 0/1
+        #       02 power - ratio
+        #       03 ice - ratio
+        #       04 ore - ratio
+        #       05 water - ratio
+        #       06 metal - ratio
+        #       07 distance from center X - [-1, 1]
+        #       08 distance from center Y - [-1, 1]
+        #       09 closest_factory X - [-1, 1]
+        #       10 closest_factory Y - [-1, 1]
+        #       11 closest_friendly X - [-1, 1]
+        #       12 closest_friendly Y - [-1, 1]
+        #       13 closest_enemy X - [-1, 1]
+        #       14 closest_enemy Y - [-1, 1]
+        #
 
         light_cfg = env_cfg.ROBOTS['LIGHT']
 
-        factories = obs.factories[player]
-        factory_count = len(factories.keys())
+        factory_keys = obs.factories[player].keys()
+        unit_keys = obs.units[player].keys()
 
-        features = np.zeros((4, 24))
-        for i, (factory_name, factory) in enumerate(factories.items()):
-            factory_id = int(factory_name.split("_")[1])
-            cargo = factory.cargo
+        entities = list(obs.factories[player].items()) + list(obs.units[player].items())
+        entity_count = len(entities)
+        feature_count = 15
 
-            power = factory.power / light_cfg.BATTERY_CAPACITY
+        features = np.zeros((entity_count, feature_count))
+
+        for i, (entity_name, entity) in enumerate(entities):
+
+            cargo = entity.cargo
+            power = entity.power / light_cfg.BATTERY_CAPACITY
             ice = cargo.ice / light_cfg.CARGO_SPACE
             ore = cargo.ore / light_cfg.CARGO_SPACE
             water = cargo.water / light_cfg.CARGO_SPACE
             metal = cargo.metal / light_cfg.CARGO_SPACE
-
             power_ratio = 0 if global_feature['factory_total_power_own'] == 0 else power / global_feature['factory_total_power_own']
             ice_ratio = 0 if global_feature['factory_total_ice_own'] == 0 else ice / global_feature['factory_total_ice_own']
             ore_ratio = 0 if global_feature['factory_total_ore_own'] == 0 else ore / global_feature['factory_total_ore_own']
             water_ratio = 0 if global_feature['factory_total_water_own'] == 0 else water / global_feature['factory_total_water_own']
             metal_ratio = 0 if global_feature['factory_total_metal_own'] == 0 else metal / global_feature['factory_total_metal_own']
 
+            entity_features = np.array([
+                1 if entity_name in factory_keys else 0,
+                1 if entity_name in unit_keys else 0,
+                power_ratio,
+                ice_ratio,
+                ore_ratio,
+                water_ratio,
+                metal_ratio,
+                0,  # TODO: distance from center X
+                0,  # TODO: distance from center Y
+                0,  # TODO: closest_factory X
+                0,  # TODO: closest_factory Y
+                0,  # TODO: closest_friendly X
+                0,  # TODO: closest_friendly Y
+                0,  # TODO: closest_enemy X
+                0,  # TODO: closest_enemy Y
+            ], dtype=np.float32)
+
+            features[i] = entity_features
+
+        self.logger.debug(f"Entity features: {features.shape}")
+
+        return features
+
+    def get_unit_features(self, obs: kit.kit.GameState, player: str, env_cfg: EnvConfig, global_feature: np.ndarray, map_feature: np.ndarray):
+        #   unit specific features - 2
+        #       00 is_light - 0/1
+        #       01 is_heavy - 0/1
+        #       
+
+        units = obs.units[player]
+        unit_count = len(units.keys())
+        feature_count = 2
+
+        features = np.zeros((unit_count, feature_count))
+
+        for i, (_, unit) in enumerate(units.items()):
+
+            self.logger.debug(unit)
+
+            # TODO: add features
+
+        self.logger.debug(f"Unit features: {features.shape}")
+
+        return features
+
+    def get_factory_features(self, obs: kit.kit.GameState, player: str, env_cfg: EnvConfig, global_feature: np.ndarray, map_feature: np.ndarray):
+        #   factory specific features
+        #       00 lichen
+        #
+
+        factories = obs.factories[player]
+        factory_count = len(factories.keys())
+        feature_count = 1
+
+        features = np.zeros((factory_count, feature_count))
+        for i, (_, factory) in enumerate(factories.items()):
+
             lichen = factory.owned_lichen_tiles(obs)
             lichen_ratio = 0 if global_feature['total_lichen_own'] == 0 else lichen / global_feature['total_lichen_own']
 
             factory_features = np.array([
-                power, ice, ore, water, metal, lichen,
-                power_ratio, ice_ratio, ore_ratio, water_ratio, metal_ratio, lichen_ratio
+                lichen_ratio
             ], dtype=np.float32)
 
-            global_features = np.array([
-                global_feature['env_step'],
-                global_feature['cycle'],
-                global_feature['hour'],
-                global_feature['daytime_or_night'],
-                global_feature['num_factory_own'],
-                global_feature['num_factory_enm'],
-                global_feature['total_lichen_own'],
-                global_feature['total_lichen_enm'],
-                global_feature['num_light_own'],
-                global_feature['num_light_enm'],
-                global_feature['num_heavy_own'],
-                global_feature['num_heavy_enm']
-            ])
-
-            features_tmp = np.concatenate((factory_features, global_features), axis=0)
-            self.logger.debug(f"Factory {factory_name} features: {features_tmp.shape}")
-
-            features[i] = features_tmp
+            features[i] = factory_features
 
         self.logger.debug(f"Factory features: {features.shape}")
-        features = features.flatten()
-        return features
 
+        return features

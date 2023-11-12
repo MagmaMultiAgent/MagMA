@@ -12,7 +12,7 @@ import random
 
 MAP_FEATURE_SIZE = 30
 GLOBAL_FEATURE_SIZE = 44
-FACTORY_FEATURE_SIZE = 24 * 4
+FACTORY_FEATURE_SIZE = 1 * 4
 
 class SimpleUnitObservationWrapper(gym.ObservationWrapper):
     """
@@ -119,7 +119,6 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
             combined_global = combined_global.reshape(-1)
             combined_map = np.stack(concatenated_map_obs, axis=0)
             combined_map = combined_map.reshape(-1, combined_map.shape[-2], combined_map.shape[-1])
-
 
             converted_obs[player] = {
                 "map": combined_map,
