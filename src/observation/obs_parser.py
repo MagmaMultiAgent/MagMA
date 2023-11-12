@@ -5,10 +5,6 @@ import kit.kit
 from typing import NamedTuple
 from luxai_s2.config import EnvConfig
 
-import logging
-logger = logging.getLogger(__name__)
-
-
 class LuxFeature(NamedTuple):
     global_feature: np.ndarray
     map_feature: np.ndarray
@@ -18,8 +14,6 @@ class LuxFeature(NamedTuple):
 class ObservationParser():
 
     def __init__(self):
-        logger.info(f"Creating {self.__class__.__name__}")
-        self.logger = logging.getLogger(f"{__name__}_{id(self)}")
         self.setup_names()
 
     def setup_names(self):
@@ -105,7 +99,6 @@ class ObservationParser():
         ]
 
     def parse_observation(self, obs, env_cfg: EnvConfig):
-        self.logger.debug("Parsing observation")
         map_feature_list = []
         global_feature_list = []
         factory_feature_list = []
@@ -116,16 +109,11 @@ class ObservationParser():
 
             map_features = self.get_map_features(player, game_state, env_cfg)
             global_features = self.get_global_features(game_state, player, env_cfg, map_features)
-            action_features = self.get_action_features(game_state, env_cfg)
             factory_features = self.get_factory_features(game_state, player, env_cfg, global_features, map_features)
             
-
             map_features = np.array(list(map_features.values()))
             global_features = np.array(list(global_features.values()))
-            #global_features_broadcasted = global_features.reshape(global_features.shape[0], 1, 1) * np.ones((global_features.shape[0], env_cfg.map_size, env_cfg.map_size))
             factory_feature_list.append(factory_features)
-
-            #full_feature_map = np.concatenate([map_features, action_features, global_features_broadcasted], axis=0)
             map_feature_list.append(map_features)
             global_feature_list.append(global_features)
 
@@ -249,47 +237,6 @@ class ObservationParser():
         map_feature['unit_metal'] = map_feature['unit_metal'] / light_cfg.CARGO_SPACE
 
         return map_feature
-    
-    def get_action_features(self, obs: kit.kit.GameState, env_cfg: EnvConfig):
-
-        # action_feature = dict(
-        #     unit_indicator=np.zeros((env_cfg.map_size, env_cfg.map_size), dtype=np.int16),
-        #     type=np.zeros((env_cfg.map_size, env_cfg.map_size, env_cfg.UNIT_ACTION_QUEUE_SIZE), dtype=np.int16),
-        #     direction=np.zeros((env_cfg.map_size, env_cfg.map_size, env_cfg.UNIT_ACTION_QUEUE_SIZE), dtype=np.int16),
-        #     resource=np.zeros((env_cfg.map_size, env_cfg.map_size, env_cfg.UNIT_ACTION_QUEUE_SIZE), dtype=np.int16),
-        #     amount=np.zeros((env_cfg.map_size, env_cfg.map_size, env_cfg.UNIT_ACTION_QUEUE_SIZE), dtype=np.int16),
-        #     repeat=np.zeros((env_cfg.map_size, env_cfg.map_size, env_cfg.UNIT_ACTION_QUEUE_SIZE), dtype=np.int16),
-        #     n=np.zeros((env_cfg.map_size, env_cfg.map_size, env_cfg.UNIT_ACTION_QUEUE_SIZE), dtype=np.int16),
-        # )
-        # empty_action = [0] * 6
-        # for units in obs.units.values():
-        #     for unit in units.values():
-        #         padding = [empty_action] * (env_cfg.UNIT_ACTION_QUEUE_SIZE - len(unit.action_queue))
-        #         actions = np.array(unit.action_queue + padding)
-
-        #         x, y = unit.pos
-        #         action_feature['unit_indicator'][x, y] = True
-        #         action_feature['type'][x, y, :] = actions[:, 0]
-        #         action_feature['direction'][x, y, :] = actions[:, 1]
-        #         action_feature['resource'][x, y, :] = actions[:, 2]
-        #         action_feature['amount'][x, y, :] = actions[:, 3]
-        #         action_feature['repeat'][x, y, :] = actions[:, 4]
-        #         action_feature['n'][x, y, :] = actions[:, 5]
-
-        # return action_feature
-    
-        action_feature = np.zeros((6, env_cfg.map_size, env_cfg.map_size), dtype=np.int16)
-
-        for units in obs.units.values():
-            for unit in units.values():
-                x, y = unit.pos
-                action_feature[0, x, y] = 1  # unit_indicator
-                action_feature[1, x, y] = 0  # type
-                action_feature[2, x, y] = 0  # direction
-                action_feature[3, x, y] = 0  # resource
-                action_feature[4, x, y] = 0  # amount
-                action_feature[5, x, y] = 0  # repeat
-        return action_feature
 
     def get_global_features(self, obs: kit.kit.GameState, player: str, env_cfg: EnvConfig, map_feature: np.ndarray):
    
@@ -340,26 +287,6 @@ class ObservationParser():
         return global_feature
 
     def get_factory_features(self, obs: kit.kit.GameState, player: str, env_cfg: EnvConfig, global_feature: np.ndarray, map_feature: np.ndarray):
-        # Factory features:
-        #   factory features
-        #       power
-        #       ice
-        #       ore
-        #       water
-        #       metal
-        #   global features
-        #       env_step
-        #       cycle
-        #       hour
-        #       daytime_or_night
-        #       num_factory_own
-        #       num_factory_enm
-        #       total_lichen_own
-        #       total_lichen_enm
-        #       num_light_own
-        #       num_light_enm
-        #       num_heavy_own
-        #       num_heavy_enm
 
         light_cfg = env_cfg.ROBOTS['LIGHT']
 
@@ -407,11 +334,8 @@ class ObservationParser():
             ])
 
             features_tmp = np.concatenate((factory_features, global_features), axis=0)
-            self.logger.debug(f"Factory {factory_name} features: {features_tmp.shape}")
-
             features[i] = features_tmp
 
-        self.logger.debug(f"Factory features: {features.shape}")
         features = features.flatten()
         return features
 

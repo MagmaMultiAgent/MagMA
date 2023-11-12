@@ -7,22 +7,13 @@ from reward.reward_config import global_information_names
 import numpy as np
 import tree
 
-import logging
-logger = logging.getLogger(__name__)
-
 class EarlyRewardParser:
 
-    def __init__(self,):
-        logger.info(f"Creating {self.__class__.__name__}")
-        self.logger = logging.getLogger(f"{__name__}_{id(self)}")
-
     def reset(self, global_info, env_stats):
-        self.logger.debug("Resetting environment")
         self.update_last_count(global_info)
         self.update_env_stats(env_stats)
 
     def parse(self, game_state: GameState, env_stats, own_global_info, enm_global_info = None, done = False, late = False):
-        self.logger.debug("Parsing rewards")
         
         sub_rewards_keys = [
             "reward_light",

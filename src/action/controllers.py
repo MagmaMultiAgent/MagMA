@@ -7,17 +7,11 @@ import numpy as np
 import numpy.typing as npt
 from gymnasium import spaces
 
-import logging
-logger = logging.getLogger(__name__)
-
-
 class Controller:
     """
     A controller is a class that takes in an action space and converts it into a lux action
     """
     def __init__(self, action_space: spaces.Space) -> None:
-        logger.info(f"Creating {self.__class__.__name__}")
-        self.logger = logging.getLogger(f"{__name__}_{id(self)}")
         self.action_space = action_space
 
     def unit_action_to_lux_action(
@@ -36,7 +30,6 @@ class Controller:
         Takes as input the current "raw observation" and the parameterized action and returns
         an action formatted for the Lux env
         """
-        self.logger.debug("Creating lux action")
         raise NotImplementedError()
 
     def action_masks(self, agent: str, obs: Dict[str, Any]):
@@ -48,7 +41,7 @@ class Controller:
         raise NotImplementedError()
 
 
-class SimpleUnitDiscreteController(Controller):
+class MultiUnitController(Controller):
     """
     A simple controller that controls only the robot \
     that will get spawned.
@@ -75,8 +68,6 @@ class SimpleUnitDiscreteController(Controller):
         see how the lux action space is defined in luxai_s2/spaces/action.py
 
         """
-        logger.info(f"Creating SimpleUnitDiscreteController")
-        self.logger = logging.getLogger(f"{__name__}_{id(self)}")
 
         self.env_cfg = env_cfg
         self.move_act_dims = 4
@@ -204,12 +195,6 @@ class SimpleUnitDiscreteController(Controller):
     def action_to_lux_action(
         self, agent: str, obs: Dict[str, Any], action: npt.NDArray
     ):
-        unit_action = self.unit_action_to_lux_action(agent, obs, action)
-        return unit_action
-
-    def unit_action_to_lux_action(
-        self, agent: str, obs: Dict[str, Any], action: npt.NDArray
-    ):
         """
         Converts the action to a lux action
         """
@@ -220,11 +205,6 @@ class SimpleUnitDiscreteController(Controller):
 
         unit_id = list(units.keys())
         factory_id = list(shared_obs["factories"][agent].keys())
-
-        logger.debug(f"units are: {unit_id}")
-        logger.debug(f"factories are: {factory_id}")
-        logger.debug(f"env steps: {shared_obs['real_env_steps']}")
-
         for unit_id, unit in units.items():
             pos = tuple(unit['pos'])
             filtered_action = action[pos]
@@ -266,20 +246,13 @@ class SimpleUnitDiscreteController(Controller):
             else:
                 continue
         
-        logger.debug(f"Created lux action\n{lux_action}")
         return lux_action
 
     def action_masks(self, agent: str, obs: Dict[str, Any]):
         """
         Defines a simplified action mask for this controller's action space
-
         Doesn't account for whether robot has enough power
         """
-
-        ## Should return a 19x64x64 mask. 19 actions, 64x64 board
-        ## It should return all false where units are not there
-
-        self.logger.debug(f"Creating simplified action mask for {agent}")
 
         shared_obs = obs[agent]
         factory_occupancy_map = (
@@ -318,9 +291,6 @@ class SimpleUnitDiscreteController(Controller):
 
             # transferring is valid only if the target exists
             unit = units[unit_id]
-            
-
-            
             # a[1] = direction (0 = center, 1 = up, 2 = right, 3 = down, 4 = left)
             move_deltas = np.array([[0, 0], [0, -1], [1, 0], [0, 1], [-1, 0]])
             for i, move_delta in enumerate(move_deltas):
@@ -335,7 +305,6 @@ class SimpleUnitDiscreteController(Controller):
                     or transfer_pos[1] >= len(factory_occupancy_map[0])
                 ):
                     continue
-
 
                 # check if there is a unit there or factory
                 factory_there = factory_occupancy_map[transfer_pos[0], transfer_pos[1]]

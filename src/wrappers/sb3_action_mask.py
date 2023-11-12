@@ -7,7 +7,7 @@ from luxai_s2.env import LuxAI_S2
 from luxai_s2.state import ObservationStateDict
 from luxai_s2.wrappers import SB3Wrapper
 from luxai_s2.unit import BidActionType, FactoryPlacementActionType
-from action.controllers import SimpleUnitDiscreteController
+from action.controllers import MultiUnitController
 
 class SB3InvalidActionWrapper(SB3Wrapper):
     """
@@ -23,13 +23,13 @@ class SB3InvalidActionWrapper(SB3Wrapper):
         factory_placement_policy: Callable[
             [str, ObservationStateDict], Dict[str, FactoryPlacementActionType]
         ] = None,
-        controller: SimpleUnitDiscreteController = None,
+        controller: MultiUnitController = None,
     ) -> None:
         """
         This wrapper adds action masks to the environment for use with stable-baselines3
         """
 
-        super().__init__(env, bid_policy, factory_placement_policy, SimpleUnitDiscreteController(env.env_cfg))
+        super().__init__(env, bid_policy, factory_placement_policy, MultiUnitController(env.env_cfg))
 
     def action_masks(self):
         """

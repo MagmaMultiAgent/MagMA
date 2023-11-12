@@ -22,10 +22,10 @@ from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecVideoRecorder
 from stable_baselines3.ppo import PPO
 from sb3_contrib.ppo_mask import MaskablePPO
-from action.controllers import SimpleUnitDiscreteController
+from action.controllers import MultiUnitController
 from wrappers.obs_wrappers import SimpleUnitObservationWrapper
 from wrappers.sb3_action_mask import SB3InvalidActionWrapper
-from net.net import UNetWithResnet50Encoder
+from net.mixed_net import UNetWithResnet50Encoder
 from reward.early_reward_parser import EarlyRewardParser
 from net.factory_net import FactoryNet
 
@@ -191,7 +191,7 @@ def make_env(env_id: str, rank: int, seed: int = 0, max_episode_steps=100):
         env = SB3InvalidActionWrapper(
             env,
             factory_placement_policy=place_near_random_ice,
-            controller=SimpleUnitDiscreteController(env.env_cfg),
+            controller=MultiUnitController(env.env_cfg),
         )
 
         env = SimpleUnitObservationWrapper(
@@ -235,6 +235,7 @@ class TensorboardCallback(BaseCallback):
                 count += 1
                 for k in info["metrics"]:
                     stat = info["metrics"][k]
+                    self.logger.record_mean(f"{self.tag}/{k}", stat)
         return True
 
 
