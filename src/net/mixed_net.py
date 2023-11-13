@@ -4,7 +4,6 @@ import torch.nn.functional as F
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from typing import Callable, List, Optional, Tuple, Type, Union
 from torch import Tensor
-from torchvision.models import resnet50
 
 
 def conv3x3(in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dilation: int = 1) -> nn.Conv2d:

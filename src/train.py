@@ -186,7 +186,7 @@ def make_env(env_id: str, rank: int, seed: int = 0, max_episode_steps=100):
         Initializes the environment
         """
 
-        env = gym.make(env_id, verbose=0, collect_stats=True, MAX_FACTORIES=4, disable_env_checker=True)
+        env = gym.make(env_id, verbose=1, collect_stats=True, MAX_FACTORIES=4, disable_env_checker=True)
 
         env = SB3InvalidActionWrapper(
             env,
@@ -324,10 +324,11 @@ def main(args):
         "MultiInputPolicy",
         env,
         n_steps=rollout_steps // args.n_envs,
-        batch_size=64,
+        batch_size=400,
         learning_rate=3e-4,
         policy_kwargs=policy_kwargs_unit,
         verbose=1,
+        n_epochs=10,
         target_kl=0.05,
         gamma=0.99,
         tensorboard_log=osp.join(args.log_path),

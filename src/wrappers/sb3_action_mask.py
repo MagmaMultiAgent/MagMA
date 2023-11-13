@@ -29,7 +29,7 @@ class SB3InvalidActionWrapper(SB3Wrapper):
         This wrapper adds action masks to the environment for use with stable-baselines3
         """
 
-        super().__init__(env, bid_policy, factory_placement_policy, MultiUnitController(env.env_cfg))
+        super().__init__(env, bid_policy, factory_placement_policy, controller)
 
     def action_masks(self):
         """

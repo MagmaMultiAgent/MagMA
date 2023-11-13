@@ -276,7 +276,10 @@ class MaskableActorCriticPolicy(BasePolicy):
         :param action_masks: Action masks to apply to the action distribution
         :return: Taken action according to the policy
         """
-        return self.get_distribution(observation, action_masks).get_actions(deterministic=deterministic)
+        distribution, batch_size, height, width = self.get_distribution(observation, action_masks)
+        actions = distribution.get_actions(deterministic=deterministic)
+        actions = actions.view(batch_size, height, width)
+        return actions
 
     def predict(
         self,
@@ -381,14 +384,20 @@ class MaskableActorCriticPolicy(BasePolicy):
         :param action_masks: Actions' mask
         :return: the action distribution.
         """
-        features = super().extract_features(obs, self.pi_features_extractor)
-        latent_pi = self.mlp_extractor.forward_actor(features)
-        _, action_channels, _, _ = latent_pi.shape
+        features = self.extract_features(obs)
+        if self.share_features_extractor:
+            latent_pi, _ = self.mlp_extractor(features)
+        else:
+            pi_features, _ = features
+            latent_pi = self.mlp_extractor.forward_actor(pi_features)
+        batch_size, action_channels, height, width = latent_pi.shape
         latent_pi = latent_pi.view(-1, action_channels)
+        assert latent_pi.shape[0] == batch_size * height * width
         distribution = self._get_action_dist_from_latent(latent_pi)
         if action_masks is not None:
             distribution.apply_masking(action_masks)
-        return distribution
+
+        return distribution, batch_size, height, width
 
     def predict_values(self, obs: th.Tensor) -> th.Tensor:
         """
