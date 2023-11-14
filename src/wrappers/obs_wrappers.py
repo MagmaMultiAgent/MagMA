@@ -35,31 +35,39 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
         """
 
         super().__init__(env)
-        self.map_space = spaces.Box(low=-999, high=999, shape=(MAP_FEATURE_SIZE * 5, env.env_cfg.map_size, env.env_cfg.map_size), dtype=np.float32)
-        self.global_space = spaces.Box(low=-999, high=999, shape=(GLOBAL_FEATURE_SIZE * 5,), dtype=np.float32)
-        self.factory_space = spaces.Box(low=-999, high=999, shape=(FACTORY_FEATURE_SIZE,), dtype=np.float32)
 
+        # self.map_space = spaces.Box(low=-999, high=999, shape=(MAP_FEATURE_SIZE * 5, env.env_cfg.map_size, env.env_cfg.map_size), dtype=np.float32)
+        # self.global_space = spaces.Box(low=-999, high=999, shape=(GLOBAL_FEATURE_SIZE * 5,), dtype=np.float32)
+        # self.factory_space = spaces.Box(low=-999, high=999, shape=(FACTORY_FEATURE_SIZE,), dtype=np.float32)
+        # self.observation_space = spaces.Dict({
+        #     "map": self.map_space,
+        #     "global": self.global_space,
+        #     "factory": self.factory_space
+        # })
+
+        # Change: custom observation space
         self.observation_space = spaces.Dict({
-            "map": self.map_space,
-            "global": self.global_space,
-            "factory": self.factory_space
+            "entity_obs": spaces.Box(low=-np.inf, high=np.inf, shape=(62,), dtype=np.float32),
+            "entity_count": spaces.Box(low=-np.inf, high=np.inf, shape=(1,), dtype=np.float32)
         })
+
         self.observation_parser = ObservationParser()
-        self.max_observation_history = 10
-        self.observation_queue = deque(maxlen=self.max_observation_history)
-        for _ in range(self.max_observation_history):
-            self.observation_queue.append({
-                "player_0": {
-                    "map": np.zeros((MAP_FEATURE_SIZE, env.env_cfg.map_size, env.env_cfg.map_size)),
-                    "global": np.zeros((GLOBAL_FEATURE_SIZE,)),
-                    "factory": np.zeros((FACTORY_FEATURE_SIZE,))
-                },
-                "player_1": {
-                    "map": np.zeros((MAP_FEATURE_SIZE, env.env_cfg.map_size, env.env_cfg.map_size)),
-                    "global": np.zeros((GLOBAL_FEATURE_SIZE,)),
-                    "factory": np.zeros((FACTORY_FEATURE_SIZE,))
-                }
-            })
+
+        # self.max_observation_history = 10
+        # self.observation_queue = deque(maxlen=self.max_observation_history)
+        # for _ in range(self.max_observation_history):
+        #     self.observation_queue.append({
+        #         "player_0": {
+        #             "map": np.zeros((MAP_FEATURE_SIZE, env.env_cfg.map_size, env.env_cfg.map_size)),
+        #             "global": np.zeros((GLOBAL_FEATURE_SIZE,)),
+        #             "factory": np.zeros((FACTORY_FEATURE_SIZE,))
+        #         },
+        #         "player_1": {
+        #             "map": np.zeros((MAP_FEATURE_SIZE, env.env_cfg.map_size, env.env_cfg.map_size)),
+        #             "global": np.zeros((GLOBAL_FEATURE_SIZE,)),
+        #             "factory": np.zeros((FACTORY_FEATURE_SIZE,))
+        #         }
+        #     })
 
     def observation(self, obs):
         """
@@ -67,16 +75,22 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
         """
 
         converted_obs = SimpleUnitObservationWrapper.convert_obs(obs, self.env.state.env_cfg, self.observation_parser)
-        self.observation_queue.append(converted_obs)
 
-        past_3_observations = list(self.observation_queue)[-3:]
+        # self.observation_queue.append(converted_obs)
+        # past_3_observations = list(self.observation_queue)[-3:]
+        # selected_observations = self.select_observations()
+        # converted_obs: Dict[str, Dict[str, np.ndarray]] = self.combine_observations(past_3_observations, selected_observations)
 
-        selected_observations = self.select_observations()
+        # Change: return only entity_obs
+        observation = {}
+        for _, agent in enumerate(obs.keys()):
+            entity_obs = converted_obs[agent]["entity"]
+            observation[agent] = {
+                "entity_obs": entity_obs,
+                "entity_count": entity_obs.shape[0]
+            }
+        return observation
 
-        converted_obs: Dict[str, Dict[str, np.ndarray]] = self.combine_observations(past_3_observations, selected_observations)
-
-        return converted_obs
-    
     def select_observations(self):
         
         num_observations_to_select = 2
@@ -135,11 +149,12 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
         """
         observation = {}
         obs_pars = ObservationParser()
-        map_features, global_features, factory_features, _ = obs_pars.parse_observation(obs, env_cfg)
+        map_features, global_features, factory_features, assembled_features, _ = obs_pars.parse_observation(obs, env_cfg)
         for i, agent in enumerate(obs.keys()):
             observation[agent] = {
                 "map": map_features[i],
                 "global": global_features[i],
-                "factory": factory_features[i]
+                "factory": factory_features[i],
+                "entity": assembled_features[i]
             }
         return observation

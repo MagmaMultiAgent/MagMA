@@ -19,15 +19,26 @@ from stable_baselines3.common.callbacks import (
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.utils import set_random_seed
-from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecVideoRecorder
+from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecVideoRecorder, CustomDummyVecEnv
 from stable_baselines3.ppo import PPO
 from sb3_contrib.ppo_mask import MaskablePPO
 from action.controllers import SimpleUnitDiscreteController
 from wrappers.obs_wrappers import SimpleUnitObservationWrapper
 from wrappers.sb3_action_mask import SB3InvalidActionWrapper
-from net.net import UNetWithResnet50Encoder
+from net.net import SimpleEntityNet
 from reward.early_reward_parser import EarlyRewardParser
-from net.factory_net import FactoryNet
+
+import sys
+import logging
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                    datefmt='%y-%m-%d %H:%M:%S',
+                    handlers=[logging.StreamHandler(sys.stderr)])
+logger = logging.getLogger(__name__)
+logger.info('Creating logger')
+
+logging.setLoggerClass
+
 
 class EarlyRewardParserWrapper(gym.Wrapper):
     """
@@ -138,7 +149,7 @@ def parse_args():
         "-n",
         "--n-envs",
         type=int,
-        default=8,
+        default=3,
         help="Number of parallel envs to run. Note that the rollout \
         size is configured separately and invariant to this value",
     )
@@ -275,8 +286,7 @@ def train(args, env_id, model: PPO, invalid_action_masking):
     """
 
     eval_environments = [make_env(env_id, i, max_episode_steps=1000) for i in range(4)]
-    eval_env = DummyVecEnv(eval_environments) if invalid_action_masking \
-        else SubprocVecEnv(eval_environments)
+    eval_env = CustomDummyVecEnv(eval_environments)
     eval_env.reset()
     eval_callback = EvalCallback(
         eval_env,
@@ -308,17 +318,17 @@ def main(args):
     environments = [make_env(env_id, i, max_episode_steps=args.max_episode_steps) \
                     for i in range(args.n_envs)]
 
-    env = DummyVecEnv(environments) if invalid_action_masking \
-        else SubprocVecEnv(environments)
+    # Change: needed to make a custom environment to handle the changing observation space 🙃
+    env = CustomDummyVecEnv(environments)
     env.reset()
 
     policy_kwargs_unit = {
-        "features_extractor_class": UNetWithResnet50Encoder,
+        "features_extractor_class": SimpleEntityNet,
         "features_extractor_kwargs": {
-            "output_channels": 25,
+                "features_dim": 25,
             }
         }
-    rollout_steps = 4000
+    rollout_steps = 12
     model = MaskablePPO(
         "MultiInputPolicy",
         env,

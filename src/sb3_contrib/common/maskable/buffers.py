@@ -172,7 +172,7 @@ class MaskableDictRolloutBuffer(DictRolloutBuffer):
             raise ValueError(f"Unsupported action space {type(self.action_space)}")
 
         self.mask_dims = mask_dims
-        self.action_masks = np.ones((self.buffer_size, self.n_envs, self.mask_dims, self.obs_shape['map'][1], self.obs_shape['map'][1]), dtype=np.float32)
+        self.action_masks = np.ones((self.buffer_size, self.n_envs, self.mask_dims), dtype=np.float32)
 
         super().reset()
 
@@ -181,7 +181,7 @@ class MaskableDictRolloutBuffer(DictRolloutBuffer):
         :param action_masks: Masks applied to constrain the choice of possible actions.
         """
         if action_masks is not None:
-            self.action_masks[self.pos] = action_masks.reshape((self.n_envs, self.mask_dims, self.obs_shape['map'][1], self.obs_shape['map'][1]))
+            self.action_masks[self.pos] = action_masks.reshape((self.n_envs, self.mask_dims))
 
         super().add(*args, **kwargs)
 

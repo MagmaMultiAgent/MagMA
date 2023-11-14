@@ -439,3 +439,33 @@ class UNetWithResnet50Encoder(BaseFeaturesExtractor):
     
 
 
+
+class SimpleEntityNet(BaseFeaturesExtractor):
+    def __init__(self, observation, features_dim):
+
+        self.input_dim = observation["entity_obs"].shape[-1]
+        self.output_dim = features_dim
+        
+        super(SimpleEntityNet, self).__init__(self.input_dim, self.output_dim)
+
+        self.lin1 = nn.Linear(self.input_dim, self.output_dim)
+        
+    def forward(self, x):
+
+        entity_obs = x["entity_obs"]
+        entity_count = x["entity_count"]
+        print(entity_obs.shape, entity_count.shape)
+
+        assert len(entity_obs.shape), 3
+        assert entity_obs.shape[1], entity_count
+
+        env_count, _, feature_size = entity_obs.shape
+
+        assert feature_size, self.input_dim
+
+        x = entity_obs.view(env_count * entity_count, feature_size)
+        x = self.lin1(entity_obs)
+        x = x.view(env_count, entity_count, feature_size)
+
+        return x
+

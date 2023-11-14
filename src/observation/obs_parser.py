@@ -109,6 +109,7 @@ class ObservationParser():
         map_feature_list = []
         global_feature_list = []
         factory_feature_list = []
+        assembled_feature_list = []
         for player, player_obs in obs.items():
 
             env_step = player_obs['real_env_steps'] + player_obs['board']['factories_per_team'] * 2 + 1
@@ -120,10 +121,13 @@ class ObservationParser():
             factory_features = self.get_factory_features(game_state, player, env_cfg, global_features, map_features)
             unit_features = self.get_unit_features(game_state, player, env_cfg, global_features, map_features)
             entity_features = self.get_entity_features(game_state, player, env_cfg, global_features, map_features)
-            assembled_features = self.assemble_entity_features(entity_features, factory_features, unit_features)
+
+            # Python version >= 3.7, so the order of the dict elements stay the same luckily
+            global_features = np.array(list(global_features.values()))
+
+            assembled_features = self.assemble_entity_features(entity_features, factory_features, unit_features, global_features)
             
             map_features = np.array(list(map_features.values()))
-            global_features = np.array(list(global_features.values()))
             #global_features_broadcasted = global_features.reshape(global_features.shape[0], 1, 1) * np.ones((global_features.shape[0], env_cfg.map_size, env_cfg.map_size))
             factory_features = factory_features.flatten()
             factory_feature_list.append(factory_features)
@@ -132,9 +136,11 @@ class ObservationParser():
             map_feature_list.append(map_features)
             global_feature_list.append(global_features)
 
+            assembled_feature_list.append(assembled_features)
+
         global_info = {player: self.get_global_info(player, game_state) for player in ['player_0', 'player_1']}
 
-        return map_feature_list, global_feature_list, factory_feature_list, global_info
+        return map_feature_list, global_feature_list, factory_feature_list, assembled_feature_list, global_info
 
     def get_global_info(self, player: str, obs: kit.kit.GameState):
 
@@ -342,12 +348,12 @@ class ObservationParser():
 
         return global_feature
 
-    def assemble_entity_features(self, entity_features, factory_features, unit_features):
-        # Entity features - 52
+    def assemble_entity_features(self, entity_features, factory_features, unit_features, global_features):
+        # Entity features - 62
         #   entity specific features - 15
         #   unit specific features - 3
         #   factory specific features - 1
-        #   global features - 33
+        #   global features - 42
         #
 
         entity_count = entity_features.shape[0]
@@ -359,6 +365,7 @@ class ObservationParser():
         entity_feature_count = entity_features.shape[1]
         factory_feature_count = factory_features.shape[1]
         unit_feature_count = unit_features.shape[1]
+        global_feature_count = global_features.shape[0]
         
         unit_factory_features = np.zeros((unit_count, factory_feature_count))
         factory_unit_features = np.zeros((factory_count, unit_feature_count))
@@ -368,11 +375,14 @@ class ObservationParser():
         assert factory_features.shape == (factory_count, factory_feature_count + unit_feature_count)
         assert unit_features.shape == (unit_count, factory_feature_count + unit_feature_count)
 
+        global_features = np.tile(global_features, (entity_count, 1))
+        assert global_features.shape == (entity_count, global_feature_count)
+
         factory_and_unit_features = np.concatenate((factory_features, unit_features), axis=0)
         assert factory_and_unit_features.shape == (entity_count, factory_feature_count + unit_feature_count)
 
-        features = np.concatenate((entity_features, factory_and_unit_features), axis=1)
-        assert features.shape == (entity_count, entity_feature_count + factory_feature_count + unit_feature_count)
+        features = np.concatenate((entity_features, factory_and_unit_features, global_features), axis=1)
+        assert features.shape == (entity_count, entity_feature_count + factory_feature_count + unit_feature_count + global_feature_count)
         
         self.logger.debug(f"Assembled features: {features.shape}")
 

@@ -10,6 +10,10 @@ from stable_baselines3.common.vec_env.base_vec_env import VecEnv, VecEnvIndices,
 from stable_baselines3.common.vec_env.patch_gym import _patch_env
 from stable_baselines3.common.vec_env.util import copy_obs_dict, dict_to_obs, obs_space_info
 
+import sys
+
+from copy import deepcopy
+
 
 class DummyVecEnv(VecEnv):
     """
@@ -103,10 +107,11 @@ class DummyVecEnv(VecEnv):
     def _save_obs(self, env_idx: int, obs: VecEnvObs) -> None:
         for key in self.keys:
             if key is None:
-                print([o.shape for o in obs])
+                # print([o.shape for o in obs])
                 self.buf_obs[key][env_idx] = obs
             else:
                 self.buf_obs[key][env_idx] = obs[key]  # type: ignore[call-overload]
+        print("env save", [type(v) for v in self.buf_obs.values()])
 
     def _obs_from_buf(self) -> VecEnvObs:
         return dict_to_obs(self.observation_space, copy_obs_dict(self.buf_obs))
@@ -138,3 +143,54 @@ class DummyVecEnv(VecEnv):
     def _get_target_envs(self, indices: VecEnvIndices) -> List[gym.Env]:
         indices = self._get_indices(indices)
         return [self.envs[i] for i in indices]
+
+
+class CustomDummyVecEnv(DummyVecEnv):
+    def __init__(self, env_fns: List[Callable[[], gym.Env]]):
+        super().__init__(env_fns)
+
+        env = self.envs[0]
+        obs_space = env.observation_space
+        self.keys, _, _ = obs_space_info(obs_space)
+
+        self.buf_obs = OrderedDict([(k, np.zeros((self.num_envs)).tolist()) for k in self.keys])
+        print("Vec Env Obs Buffer:\t", self.buf_obs, file=sys. stderr)
+        self.buf_dones = np.zeros((self.num_envs,), dtype=bool)
+        print("Vec Env Dones Buffer:\t", self.buf_dones, file=sys. stderr)
+        self.buf_rews = np.zeros((self.num_envs,), dtype=np.float32)
+        print("Vec Env Rews Buffer:\t", self.buf_rews, file=sys. stderr)
+        self.buf_infos: List[Dict[str, Any]] = [{} for _ in range(self.num_envs)]
+        print("Vec Env Infos Buffer:\t", self.buf_infos, file=sys. stderr)
+        self.metadata = env.metadata
+
+    @staticmethod
+    def copy_obs_dict(obs: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
+        assert isinstance(obs, OrderedDict), f"unexpected type for observations '{type(obs)}'"
+
+        # Ok, so here we will assume a lot of things because otherwise this will be really painful
+        dim_key = "entity_count"
+        entity_dims = np.array(obs[dim_key])
+        max_entity_dim = entity_dims.max()
+        obs2 = {
+            "entity_count": entity_dims
+        }
+
+        for name, observations in obs.items():
+            if name == dim_key:
+                continue
+
+            shape = [len(observations)] + list(observations[0].shape)
+            shape[1] = max_entity_dim
+            arr = np.zeros(shape)
+            for env_id, observation in enumerate(observations):
+                entity_dim = observation.shape[0]
+                print(entity_dim, arr[env_id, 0:entity_dim, :].shape, observation.shape)
+                arr[env_id, 0:entity_dim, :] = observation
+            obs2[name] = arr
+        obs2 = OrderedDict(obs2)
+
+        return obs2
+
+
+    def _obs_from_buf(self) -> VecEnvObs:
+        return dict_to_obs(self.observation_space, CustomDummyVecEnv.copy_obs_dict(self.buf_obs))

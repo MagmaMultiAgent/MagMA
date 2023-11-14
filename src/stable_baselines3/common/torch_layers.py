@@ -167,7 +167,8 @@ class CustomExtractor(nn.Module):
 
         # TODO: make these sizes dynamic
         self.latent_dim_pi = feature_dim  # action space
-        self.latent_dim_vf = obs_shape ** 2 * feature_dim  # observation space
+        # Change: changed this to obs_shape
+        self.latent_dim_vf = obs_shape  # observation space
 
     def forward(self, features: th.Tensor) -> Tuple[th.Tensor, th.Tensor]:
         """

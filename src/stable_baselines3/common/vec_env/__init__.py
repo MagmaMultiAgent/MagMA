@@ -3,7 +3,7 @@ from copy import deepcopy
 from typing import Optional, Type, Union
 
 from stable_baselines3.common.vec_env.base_vec_env import CloudpickleWrapper, VecEnv, VecEnvWrapper
-from stable_baselines3.common.vec_env.dummy_vec_env import DummyVecEnv
+from stable_baselines3.common.vec_env.dummy_vec_env import DummyVecEnv, CustomDummyVecEnv
 from stable_baselines3.common.vec_env.stacked_observations import StackedObservations
 from stable_baselines3.common.vec_env.subproc_vec_env import SubprocVecEnv
 from stable_baselines3.common.vec_env.vec_check_nan import VecCheckNan
@@ -78,6 +78,7 @@ __all__ = [
     "VecEnv",
     "VecEnvWrapper",
     "DummyVecEnv",
+    "CustomDummyVecEnv",
     "StackedObservations",
     "SubprocVecEnv",
     "VecCheckNan",

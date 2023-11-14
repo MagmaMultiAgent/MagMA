@@ -408,4 +408,9 @@ class SimpleUnitDiscreteController(Controller):
             elif factory["cargo"]["water"] >= 200:
                 action_mask[self.water_lichen_dim_high, pos[0], pos[1]] = True
 
+        # Change: return simple action mask
+        # TODO: implement
+
+        action_mask = np.ones((62,))
+
         return action_mask

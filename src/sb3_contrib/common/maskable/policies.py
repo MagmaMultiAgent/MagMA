@@ -211,7 +211,8 @@ class MaskableActorCriticPolicy(BasePolicy):
             net_arch=self.net_arch,
             activation_fn=self.activation_fn,
             device=self.device,
-            obs_shape = self.observation_space['map'].shape[1],
+            # Change: changed observation space
+            obs_shape = self.observation_space["entity_obs"].shape[-1],
         )
 
     def _build(self, lr_schedule: Schedule) -> None:
