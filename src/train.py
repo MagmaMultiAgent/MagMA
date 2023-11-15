@@ -9,25 +9,27 @@ import argparse
 import os.path as osp
 import gymnasium as gym
 import torch as th
-from gymnasium.wrappers import TimeLimit
+from wrappers.time_limit_wrapper import TimeLimit
 from luxai_s2.state import StatsStateDict
-from luxai_s2.utils.heuristics.factory_placement import place_near_random_ice
 from stable_baselines3.common.callbacks import (
     BaseCallback,
     EvalCallback,
 )
 from stable_baselines3.common.evaluation import evaluate_policy
-from stable_baselines3.common.monitor import Monitor
+from wrappers.monitor_wrapper import Monitor
 from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecVideoRecorder
 from stable_baselines3.ppo import PPO
 from sb3_contrib.ppo_mask import MaskablePPO
-from action.controllers import MultiUnitController
+from controller.controller import MultiUnitController
 from wrappers.obs_wrappers import SimpleUnitObservationWrapper
-from wrappers.sb3_action_mask import SB3InvalidActionWrapper
+from wrappers.sb3_iam_wrapper import SB3InvalidActionWrapper
+from wrappers.utils import factory_placement, bid_with_log_bias
 from net.mixed_net import UNetWithResnet50Encoder
-from reward.early_reward_parser import EarlyRewardParser
-from net.factory_net import FactoryNet
+from reward.reward import EarlyRewardParser
+import warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning, module="pygame", append=True)
+
 
 class EarlyRewardParserWrapper(gym.Wrapper):
     """
@@ -190,7 +192,8 @@ def make_env(env_id: str, rank: int, seed: int = 0, max_episode_steps=100):
 
         env = SB3InvalidActionWrapper(
             env,
-            factory_placement_policy=place_near_random_ice,
+            factory_placement_policy=factory_placement,
+            bid_policy=bid_with_log_bias,
             controller=MultiUnitController(env.env_cfg),
         )
 
@@ -270,14 +273,13 @@ def evaluate(args, env_id, model):
     print(out)
 
 
-def train(args, env_id, model: PPO, invalid_action_masking):
+def train(args, env_id, model: PPO):
     """
     Trains the model
     """
 
     eval_environments = [make_env(env_id, i, max_episode_steps=1000) for i in range(4)]
-    eval_env = DummyVecEnv(eval_environments) if invalid_action_masking \
-        else SubprocVecEnv(eval_environments)
+    eval_env = SubprocVecEnv(eval_environments)
     eval_env.reset()
     eval_callback = EvalCallback(
         eval_env,
@@ -304,13 +306,11 @@ def main(args):
     if args.seed is not None:
         set_random_seed(args.seed)
     env_id = "LuxAI_S2-v0"
-    invalid_action_masking = True
 
     environments = [make_env(env_id, i, max_episode_steps=args.max_episode_steps) \
                     for i in range(args.n_envs)]
 
-    env = DummyVecEnv(environments) if invalid_action_masking \
-        else SubprocVecEnv(environments)
+    env = SubprocVecEnv(environments)
     env.reset()
 
     policy_kwargs_unit = {
@@ -324,7 +324,7 @@ def main(args):
         "MultiInputPolicy",
         env,
         n_steps=rollout_steps // args.n_envs,
-        batch_size=400,
+        batch_size=16,
         learning_rate=3e-4,
         policy_kwargs=policy_kwargs_unit,
         verbose=1,
@@ -336,7 +336,7 @@ def main(args):
     if args.eval:
         evaluate(args, env_id, model)
     else:
-        train(args, env_id, model, invalid_action_masking)
+        train(args, env_id, model)
 
 
 if __name__ == "__main__":

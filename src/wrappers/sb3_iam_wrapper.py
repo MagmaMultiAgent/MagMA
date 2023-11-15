@@ -5,9 +5,9 @@ for use with stable-baselines3
 from typing import Dict, Callable
 from luxai_s2.env import LuxAI_S2
 from luxai_s2.state import ObservationStateDict
-from luxai_s2.wrappers import SB3Wrapper
+from wrappers.sb3_wrapper import SB3Wrapper
 from luxai_s2.unit import BidActionType, FactoryPlacementActionType
-from action.controllers import MultiUnitController
+from controller.controller import MultiUnitController
 
 class SB3InvalidActionWrapper(SB3Wrapper):
     """
@@ -17,12 +17,8 @@ class SB3InvalidActionWrapper(SB3Wrapper):
     def __init__(
         self,
         env: LuxAI_S2,
-        bid_policy: Callable[
-            [str, ObservationStateDict], Dict[str, BidActionType]
-        ] = None,
-        factory_placement_policy: Callable[
-            [str, ObservationStateDict], Dict[str, FactoryPlacementActionType]
-        ] = None,
+        bid_policy: Callable[[str, ObservationStateDict], Dict[str, BidActionType]] = None,
+        factory_placement_policy: Callable[[str, ObservationStateDict], Dict[str, FactoryPlacementActionType]] = None,
         controller: MultiUnitController = None,
     ) -> None:
         """
