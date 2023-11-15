@@ -24,6 +24,9 @@ ENV PATH /opt/conda/bin:$PATH
 # Copy conda environment file
 COPY envs/conda/environment.yml .
 
+# Copy requirements file
+COPY envs/pip/requirements.txt .
+
 # Create environment from yaml file
 RUN conda env create -f environment.yml && conda clean -afy
 
@@ -33,20 +36,20 @@ SHELL ["conda", "run", "-n", "luxai_s2", "/bin/bash", "-c"]
 # Set PATH for the Conda environment
 ENV PATH /opt/conda/envs/luxai_s2/bin:$PATH
 
-# Install ipykernel
-RUN pip install --no-cache-dir ipykernel
+RUN pip install --no-cache-dir --upgrade pip
+
+# Install requirements
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Add Lux conda env to ipykernel to run Notebooks
 RUN python -m ipykernel install --user --name=luxai_s2 --display-name "LuxAI S2"
-
-# Install Lux AI Python packages
-RUN pip install --no-cache-dir --upgrade pip
 
 # Install basic dev tools, like GCC
 RUN apt update -y && apt upgrade -y && apt install -y build-essential && apt-get install -y manpages-dev
 
 # Intall prerequisites for LUX
-RUN pip install --no-cache-dir pettingzoo vec_noise stable_baselines3 sb3-contrib --upgrade luxai_s2
+
+RUN pip install --no-cache-dir vec_noise --upgrade luxai_s2
 
 # Install Jax with Lux
 

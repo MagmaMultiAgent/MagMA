@@ -14,6 +14,9 @@ from luxai_s2.wrappers.controllers import (
     Controller,
 )
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 class SB3Wrapper(gym.Wrapper):
     def __init__(
@@ -46,6 +49,9 @@ class SB3Wrapper(gym.Wrapper):
             A controller that parameterizes the action space into something more usable and converts parameterized actions to lux actions.
             See luxai_s2/wrappers/controllers.py for available controllers and how to make your own
         """
+        logger.info(f"Creating {self.__class__.__name__}")
+        self.logger = logging.getLogger(f"{__name__}_{id(self)}")
+
         gym.Wrapper.__init__(self, env)
         self.env = env
         
@@ -80,7 +86,8 @@ class SB3Wrapper(gym.Wrapper):
         self.prev_obs = None
 
     def step(self, action: Dict[str, npt.NDArray]):
-        
+        self.logger.debug(f"Stepping environment with action\n{action}")
+
         # here, for each agent in the game we translate their action into a Lux S2 action
         lux_action = dict()
         for agent in self.env.agents:
@@ -97,6 +104,7 @@ class SB3Wrapper(gym.Wrapper):
         return obs, reward, terminated, truncated, info
 
     def reset(self, **kwargs):
+        self.logger.debug("Resetting")
         # we upgrade the reset function here
         
         # we call the original reset function first
@@ -122,5 +130,6 @@ class SB3Wrapper(gym.Wrapper):
                     action[agent] = dict()
             obs, _, _, _, _ = self.env.step(action)
         self.prev_obs = obs
-        
+        for agent in self.env.agents:
+            assert obs[agent]["teams"][agent]["factories_to_place"] == 0
         return obs, {}

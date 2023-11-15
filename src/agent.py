@@ -14,8 +14,8 @@ import os.path as osp
 import numpy as np
 import torch as th
 from sb3_contrib.ppo_mask import MaskablePPO
-from lux.config import EnvConfig
-from wrappers.controllers import SimpleUnitDiscreteController
+from kit.config import EnvConfig
+from controller.controller import MultiUnitController
 from wrappers.obs_wrappers import SimpleUnitObservationWrapper
 
 MODEL_WEIGHTS_RELATIVE_PATH = "best_model"
@@ -37,7 +37,7 @@ class Agent:
         directory = osp.dirname(__file__)
         self.policy = MaskablePPO.load(osp.join(directory, MODEL_WEIGHTS_RELATIVE_PATH))
 
-        self.controller = SimpleUnitDiscreteController(self.env_cfg)
+        self.controller = MultiUnitController(self.env_cfg)
 
     def bid_policy(self, step: int, obs, remainingOverageTime: int = 60):
         """

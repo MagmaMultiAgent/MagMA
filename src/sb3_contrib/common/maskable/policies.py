@@ -11,12 +11,16 @@ from stable_baselines3.common.torch_layers import (
     CombinedExtractor,
     FlattenExtractor,
     MlpExtractor,
+    CustomExtractor,
     NatureCNN,
 )
 from stable_baselines3.common.type_aliases import Schedule
 from torch import nn
 
 from sb3_contrib.common.maskable.distributions import MaskableDistribution, make_masked_proba_distribution
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 class MaskableActorCriticPolicy(BasePolicy):
@@ -57,6 +61,7 @@ class MaskableActorCriticPolicy(BasePolicy):
         optimizer_class: Type[th.optim.Optimizer] = th.optim.Adam,
         optimizer_kwargs: Optional[Dict[str, Any]] = None,
     ):
+
         if optimizer_kwargs is None:
             optimizer_kwargs = {}
             # Small values to avoid NaN in Adam optimizer
@@ -73,7 +78,6 @@ class MaskableActorCriticPolicy(BasePolicy):
             normalize_images=normalize_images,
             squash_output=False,
         )
-
         if isinstance(net_arch, list) and len(net_arch) > 0 and isinstance(net_arch[0], dict):
             warnings.warn(
                 (
@@ -130,15 +134,38 @@ class MaskableActorCriticPolicy(BasePolicy):
             latent_pi, latent_vf = self.mlp_extractor(features)
         else:
             pi_features, vf_features = features
-            latent_pi = self.mlp_extractor.forward_actor(pi_features)
-            latent_vf = self.mlp_extractor.forward_critic(vf_features)
+            latent_pi: th.Tensor = self.mlp_extractor.forward_actor(pi_features)
+            latent_vf: th.Tensor = self.mlp_extractor.forward_critic(vf_features)
         # Evaluate the values for the given observations
+
         values = self.value_net(latent_vf)
+
+        latent_shape = latent_pi.shape
+        assert len(latent_shape) == 4
+
+        if action_masks is not None:
+            assert latent_shape == action_masks.shape
+
+        batch_size, action_channels, height, width = latent_shape
+
+        latent_pi = latent_pi.view(-1, action_channels)
+        assert latent_pi.shape[0] == batch_size * height * width
+
+        if action_masks is not None:
+            action_masks = action_masks.reshape(-1, action_channels)
+            assert latent_pi.shape == action_masks.shape
+
         distribution = self._get_action_dist_from_latent(latent_pi)
         if action_masks is not None:
             distribution.apply_masking(action_masks)
         actions = distribution.get_actions(deterministic=deterministic)
         log_prob = distribution.log_prob(actions)
+        
+
+        actions = actions.view(batch_size, height, width)
+        log_prob = log_prob.view(batch_size, height, width)
+        log_prob = log_prob.sum(axis=[1,2])
+
         return actions, values, log_prob
 
     def extract_features(self, obs: th.Tensor) -> Union[th.Tensor, Tuple[th.Tensor, th.Tensor]]:
@@ -179,11 +206,12 @@ class MaskableActorCriticPolicy(BasePolicy):
         # Note: If net_arch is None and some features extractor is used,
         #       net_arch here is an empty list and mlp_extractor does not
         #       really contain any layers (acts like an identity module).
-        self.mlp_extractor = MlpExtractor(
+        self.mlp_extractor = CustomExtractor(
             self.features_dim,
             net_arch=self.net_arch,
             activation_fn=self.activation_fn,
             device=self.device,
+            obs_shape = self.observation_space['map'].shape[1],
         )
 
     def _build(self, lr_schedule: Schedule) -> None:
@@ -248,7 +276,10 @@ class MaskableActorCriticPolicy(BasePolicy):
         :param action_masks: Action masks to apply to the action distribution
         :return: Taken action according to the policy
         """
-        return self.get_distribution(observation, action_masks).get_actions(deterministic=deterministic)
+        distribution, batch_size, height, width = self.get_distribution(observation, action_masks)
+        actions = distribution.get_actions(deterministic=deterministic)
+        actions = actions.view(batch_size, height, width)
+        return actions
 
     def predict(
         self,
@@ -319,10 +350,29 @@ class MaskableActorCriticPolicy(BasePolicy):
             latent_pi = self.mlp_extractor.forward_actor(pi_features)
             latent_vf = self.mlp_extractor.forward_critic(vf_features)
 
+        latent_shape = latent_pi.shape
+        assert len(latent_shape) == 4
+
+        batch_size, action_channels, height, width = latent_shape
+
+        if action_masks is not None:
+            assert action_masks.shape == (batch_size * height * width, action_channels)
+
+        latent_pi = latent_pi.view(-1, action_channels)
+        assert latent_pi.shape[0] == batch_size * height * width
+
+        if action_masks is not None:
+            assert latent_pi.shape == action_masks.shape
+
         distribution = self._get_action_dist_from_latent(latent_pi)
         if action_masks is not None:
             distribution.apply_masking(action_masks)
+        actions = actions.view(-1)
         log_prob = distribution.log_prob(actions)
+        
+        log_prob = log_prob.view(batch_size, height, width)
+        log_prob = log_prob.sum(axis=[1,2])
+
         values = self.value_net(latent_vf)
         return values, log_prob, distribution.entropy()
 
@@ -334,12 +384,20 @@ class MaskableActorCriticPolicy(BasePolicy):
         :param action_masks: Actions' mask
         :return: the action distribution.
         """
-        features = super().extract_features(obs, self.pi_features_extractor)
-        latent_pi = self.mlp_extractor.forward_actor(features)
+        features = self.extract_features(obs)
+        if self.share_features_extractor:
+            latent_pi, _ = self.mlp_extractor(features)
+        else:
+            pi_features, _ = features
+            latent_pi = self.mlp_extractor.forward_actor(pi_features)
+        batch_size, action_channels, height, width = latent_pi.shape
+        latent_pi = latent_pi.view(-1, action_channels)
+        assert latent_pi.shape[0] == batch_size * height * width
         distribution = self._get_action_dist_from_latent(latent_pi)
         if action_masks is not None:
             distribution.apply_masking(action_masks)
-        return distribution
+
+        return distribution, batch_size, height, width
 
     def predict_values(self, obs: th.Tensor) -> th.Tensor:
         """

@@ -315,9 +315,9 @@ class MaskablePPO(OnPolicyAlgorithm):
             self._update_info_buffer(infos)
             n_steps += 1
 
-            if isinstance(self.action_space, spaces.Discrete):
+            # if isinstance(self.action_space, spaces.Discrete):
                 # Reshape in case of discrete action
-                actions = actions.reshape(-1, 1)
+                # actions = actions.reshape(-1, 1)
 
             # Handle timeout by bootstraping with value function
             # see GitHub issue #633
@@ -466,13 +466,6 @@ class MaskablePPO(OnPolicyAlgorithm):
                     log_ratio = log_prob - rollout_data.old_log_prob
                     approx_kl_div = th.mean((th.exp(log_ratio) - 1) - log_ratio).cpu().numpy()
                     approx_kl_divs.append(approx_kl_div)
-
-                if self.target_kl is not None and approx_kl_div > 1.5 * self.target_kl:
-                    continue_training = False
-                    if self.verbose >= 1:
-                        print(f"Early stopping at step {epoch} due to reaching max kl: {approx_kl_div:.2f}")
-                    break
-
                 # Optimization step
                 self.policy.optimizer.zero_grad()
                 loss.backward()

@@ -148,6 +148,41 @@ def create_mlp(
     return modules
 
 
+class CustomExtractor(nn.Module):
+    def __init__(
+        self,
+        feature_dim: int,
+        net_arch: Union[List[int], Dict[str, List[int]]],
+        activation_fn: Type[nn.Module],
+        device: Union[th.device, str] = "auto",
+        obs_shape: int = 0,
+    ) -> None:
+        super().__init__()
+        device = get_device(device)
+        policy_net: List[nn.Module] = [nn.Identity()]
+        value_net: List[nn.Module] = [nn.Flatten(start_dim=1)]
+
+        self.policy_net = nn.Sequential(*policy_net).to(device)
+        self.value_net = nn.Sequential(*value_net).to(device)
+
+        # TODO: make these sizes dynamic
+        self.latent_dim_pi = feature_dim  # action space
+        self.latent_dim_vf = obs_shape ** 2 * feature_dim  # observation space
+
+    def forward(self, features: th.Tensor) -> Tuple[th.Tensor, th.Tensor]:
+        """
+        :return: latent_policy, latent_value of the specified network.
+            If all layers are shared, then ``latent_policy == latent_value``
+        """
+        return self.forward_actor(features), self.forward_critic(features)
+
+    def forward_actor(self, features: th.Tensor) -> th.Tensor:
+        return self.policy_net(features)
+
+    def forward_critic(self, features: th.Tensor) -> th.Tensor:
+        return self.value_net(features)
+
+
 class MlpExtractor(nn.Module):
     """
     Constructs an MLP that receives the output from a previous features extractor (i.e. a CNN) or directly

@@ -9,25 +9,29 @@ import argparse
 import os.path as osp
 import gymnasium as gym
 import torch as th
-from torch import nn
-from gymnasium.wrappers import TimeLimit
+from wrappers.time_limit_wrapper import TimeLimit
 from luxai_s2.state import StatsStateDict
-from luxai_s2.utils.heuristics.factory_placement import place_near_random_ice
 from stable_baselines3.common.callbacks import (
     BaseCallback,
     EvalCallback,
 )
 from stable_baselines3.common.evaluation import evaluate_policy
-from stable_baselines3.common.monitor import Monitor
+from wrappers.monitor_wrapper import Monitor
 from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecVideoRecorder
 from stable_baselines3.ppo import PPO
 from sb3_contrib.ppo_mask import MaskablePPO
-from wrappers.controllers import SimpleUnitDiscreteController
+from controller.controller import MultiUnitController
 from wrappers.obs_wrappers import SimpleUnitObservationWrapper
-from wrappers.sb3_action_mask import SB3InvalidActionWrapper
+from wrappers.sb3_iam_wrapper import SB3InvalidActionWrapper
+from wrappers.utils import factory_placement, bid_with_log_bias
+from net.mixed_net import UNetWithResnet50Encoder
+from reward.reward import EarlyRewardParser
+import warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning, module="pygame", append=True)
 
-class CustomEnvWrapper(gym.Wrapper):
+
+class EarlyRewardParserWrapper(gym.Wrapper):
     """
     Custom wrapper for the LuxAI_S2 environment
     """
@@ -39,19 +43,18 @@ class CustomEnvWrapper(gym.Wrapper):
         """
         super().__init__(env)
         self.prev_step_metrics = None
+        self.reward_parser = EarlyRewardParser()
 
     def step(self, action):
+        
         agent = "player_0"
         opp_agent = "player_1"
 
         opp_factories = self.env.state.factories[opp_agent]
         for k in opp_factories.keys():
             factory = opp_factories[k]
-            # set enemy factories to have 1000 water to keep them alive the whole around and treat the game as single-agent
             factory.cargo.water = 1000
 
-        # submit actions for just one agent to make it single-agent
-        # and save single-agent versions of the data below
         action = {agent: action}
         obs, _, termination, truncation, info = self.env.step(action)
         done = dict()
@@ -59,25 +62,44 @@ class CustomEnvWrapper(gym.Wrapper):
             done[k] = termination[k] | truncation[k]
         obs = obs[agent]
 
-        # we collect stats on teams here. These are useful stats that can be used to help generate reward functions
         stats: StatsStateDict = self.env.state.stats[agent]
 
+        global_info_own = self.reward_parser.get_global_info(agent, self.env.state)
+        self.reward_parser.reset(global_info_own, stats)
+        reward = self.reward_parser.parse(self.env.state, stats, global_info_own)
 
-        # Below is where you get to have some fun with reward design! we provide a simple reward function that rewards digging ice and producing water
-
+        stats: StatsStateDict = self.env.state.stats[agent]
         info = dict()
         metrics = dict()
         metrics["ice_dug"] = (
             stats["generation"]["ice"]["HEAVY"] + stats["generation"]["ice"]["LIGHT"]
         )
+        metrics["ore_dug"] = (
+            stats["generation"]["ore"]["HEAVY"] + stats["generation"]["ore"]["LIGHT"]
+        )
+        metrics["power_consumed"] = (
+            stats["consumption"]["power"]["HEAVY"] + stats["consumption"]["power"]["LIGHT"] + stats["consumption"]["power"]["FACTORY"]
+        )
+        metrics["water_consumed"] = stats["consumption"]["water"]
+        metrics["metal_consumed"] = stats["consumption"]["metal"]
+        metrics["rubble_destroyed"] = (
+            stats["destroyed"]["rubble"]["LIGHT"] + stats["destroyed"]["rubble"]["HEAVY"]
+        )
+        metrics["ore_transferred"] = stats["transfer"]["ore"]
+        metrics["water_transferred"] = stats["transfer"]["water"]
+        metrics["energy_transferred"] = stats["transfer"]["power"]
+        metrics["energy_pickup"] = stats["pickup"]["power"]
+        metrics["light_robots_built"] = stats["generation"]["built"]["LIGHT"]
+        metrics["heavy_robots_built"] = stats["generation"]["built"]["HEAVY"]
+        metrics["light_power"] = stats["generation"]["power"]["LIGHT"]
+        metrics["heavy_power"] = stats["generation"]["power"]["HEAVY"]
+        metrics["factory_power"] = stats["generation"]["power"]["FACTORY"]
+        metrics["metal_produced"] = stats["generation"]["metal"]
         metrics["water_produced"] = stats["generation"]["water"]
-
-        # we save these two to see how often the agent updates robot action queues and how often the robot has enough
-        # power to do so and succeed (less frequent updates = more power is saved)
         metrics["action_queue_updates_success"] = stats["action_queue_updates_success"]
         metrics["action_queue_updates_total"] = stats["action_queue_updates_total"]
 
-        # we can save the metrics to info so we can use tensorboard to log them to get a glimpse into how our agent is behaving
+        
         info["metrics"] = metrics
 
         reward = 0
@@ -89,7 +111,7 @@ class CustomEnvWrapper(gym.Wrapper):
             )
             # we reward water production more as it is the most important resource for survival
             reward = ice_dug_this_step / 100 + water_produced_this_step
-
+        
         self.prev_step_metrics = copy.deepcopy(metrics)
         return obs, reward, termination[agent], truncation[agent], info
 
@@ -97,7 +119,6 @@ class CustomEnvWrapper(gym.Wrapper):
         """
         Resets the environment
         """
-
         obs, reset_info = self.env.reset(**kwargs)
         self.prev_step_metrics = None
         return obs["player_0"], reset_info
@@ -114,7 +135,7 @@ def parse_args():
         that can succesfully control a heavy unit to dig ice and transfer it back to \
         a factory to keep it alive"
     )
-    parser.add_argument("-s", "--seed", type=int, default=12, help="seed for training")
+    parser.add_argument("-s", "--seed", type=int, default=666, help="seed for training")
     parser.add_argument(
         "-n",
         "--n-envs",
@@ -167,30 +188,26 @@ def make_env(env_id: str, rank: int, seed: int = 0, max_episode_steps=100):
         Initializes the environment
         """
 
-        env = gym.make(env_id, verbose=0, collect_stats=True, MAX_FACTORIES=4, disable_env_checker=True)
-
-        # env = SB3Wrapper(
-        #     env,
-        #     factory_placement_policy=place_near_random_ice,
-        #     controller=SimpleUnitDiscreteController(env.env_cfg),
-        # )
+        env = gym.make(env_id, verbose=1, collect_stats=True, MAX_FACTORIES=4, disable_env_checker=True)
 
         env = SB3InvalidActionWrapper(
             env,
-            factory_placement_policy=place_near_random_ice,
-            controller=SimpleUnitDiscreteController(env.env_cfg),
+            factory_placement_policy=factory_placement,
+            bid_policy=bid_with_log_bias,
+            controller=MultiUnitController(env.env_cfg),
         )
 
         env = SimpleUnitObservationWrapper(
             env
         )
-        env = CustomEnvWrapper(env)
+        env = EarlyRewardParserWrapper(env)
         env = TimeLimit(
             env, max_episode_steps=max_episode_steps
         )
         env = Monitor(env)
         env.reset(seed=seed + rank)
         set_random_seed(seed)
+
         return env
 
     return _init
@@ -256,17 +273,13 @@ def evaluate(args, env_id, model):
     print(out)
 
 
-def train(args, env_id, model: PPO, invalid_action_masking):
+def train(args, env_id, model: PPO):
     """
     Trains the model
     """
 
-    # eval_env = SubprocVecEnv(
-    #     [make_env(env_id, i, max_episode_steps=1000) for i in range(4)]
-    # )
     eval_environments = [make_env(env_id, i, max_episode_steps=1000) for i in range(4)]
-    eval_env = DummyVecEnv(eval_environments) if invalid_action_masking \
-        else SubprocVecEnv(eval_environments)
+    eval_env = SubprocVecEnv(eval_environments)
     eval_env.reset()
     eval_callback = EvalCallback(
         eval_env,
@@ -290,33 +303,32 @@ def main(args):
     Main function
     """
 
-    print("Training with args", args)
     if args.seed is not None:
         set_random_seed(args.seed)
     env_id = "LuxAI_S2-v0"
-    invalid_action_masking = True
-    # env = SubprocVecEnv(
-    #     [
-    #         make_env(env_id, i, max_episode_steps=args.max_episode_steps)
-    #         for i in range(args.n_envs)
-    #     ]
-    # )
+
     environments = [make_env(env_id, i, max_episode_steps=args.max_episode_steps) \
                     for i in range(args.n_envs)]
-    env = DummyVecEnv(environments) if invalid_action_masking \
-        else SubprocVecEnv(environments)
+
+    env = SubprocVecEnv(environments)
     env.reset()
 
-    rollout_steps = 8000
-    policy_kwargs = dict(net_arch=(256, 256, 256))
+    policy_kwargs_unit = {
+        "features_extractor_class": UNetWithResnet50Encoder,
+        "features_extractor_kwargs": {
+            "output_channels": 25,
+            }
+        }
+    rollout_steps = 4000
     model = MaskablePPO(
-        "MlpPolicy",
+        "MultiInputPolicy",
         env,
         n_steps=rollout_steps // args.n_envs,
-        batch_size=800,
+        batch_size=16,
         learning_rate=3e-4,
-        policy_kwargs=policy_kwargs,
+        policy_kwargs=policy_kwargs_unit,
         verbose=1,
+        n_epochs=10,
         target_kl=0.05,
         gamma=0.99,
         tensorboard_log=osp.join(args.log_path),
@@ -324,7 +336,7 @@ def main(args):
     if args.eval:
         evaluate(args, env_id, model)
     else:
-        train(args, env_id, model, invalid_action_masking)
+        train(args, env_id, model)
 
 
 if __name__ == "__main__":
