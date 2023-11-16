@@ -111,7 +111,6 @@ class DummyVecEnv(VecEnv):
                 self.buf_obs[key][env_idx] = obs
             else:
                 self.buf_obs[key][env_idx] = obs[key]  # type: ignore[call-overload]
-        print("env save", [type(v) for v in self.buf_obs.values()])
 
     def _obs_from_buf(self) -> VecEnvObs:
         return dict_to_obs(self.observation_space, copy_obs_dict(self.buf_obs))
@@ -154,13 +153,13 @@ class CustomDummyVecEnv(DummyVecEnv):
         self.keys, _, _ = obs_space_info(obs_space)
 
         self.buf_obs = OrderedDict([(k, np.zeros((self.num_envs)).tolist()) for k in self.keys])
-        print("Vec Env Obs Buffer:\t", self.buf_obs, file=sys. stderr)
+        print("Vec Env Obs Buffer:\t", self.buf_obs, file=sys.stderr)
         self.buf_dones = np.zeros((self.num_envs,), dtype=bool)
-        print("Vec Env Dones Buffer:\t", self.buf_dones, file=sys. stderr)
+        print("Vec Env Dones Buffer:\t", self.buf_dones, file=sys.stderr)
         self.buf_rews = np.zeros((self.num_envs,), dtype=np.float32)
-        print("Vec Env Rews Buffer:\t", self.buf_rews, file=sys. stderr)
+        print("Vec Env Rews Buffer:\t", self.buf_rews, file=sys.stderr)
         self.buf_infos: List[Dict[str, Any]] = [{} for _ in range(self.num_envs)]
-        print("Vec Env Infos Buffer:\t", self.buf_infos, file=sys. stderr)
+        print("Vec Env Infos Buffer:\t", self.buf_infos, file=sys.stderr)
         self.metadata = env.metadata
 
     @staticmethod
@@ -168,29 +167,40 @@ class CustomDummyVecEnv(DummyVecEnv):
         assert isinstance(obs, OrderedDict), f"unexpected type for observations '{type(obs)}'"
 
         # Ok, so here we will assume a lot of things because otherwise this will be really painful
-        dim_key = "entity_count"
+        dim_key = "_ENTITY_COUNT"
         entity_dims = np.array(obs[dim_key])
         max_entity_dim = entity_dims.max()
         obs2 = {
-            "entity_count": entity_dims
+            dim_key: entity_dims
         }
 
         for name, observations in obs.items():
             if name == dim_key:
                 continue
+            
+            # Copy as an array
+            if 'GLOBAL_' in name:
+                if isinstance(observations, list):
+                    obs2[name] = np.array(observations)
+                elif isinstance(observations, np.array):
+                    obs2[name] = np.copy(observations)
+                else:
+                    raise Exception("Unexpected data type for global observation")
+            # Needs entity count information
+            elif 'LOCAL_' in name:
+                shape = [len(observations)] + list(observations[0].shape)
+                shape[1] = max_entity_dim
+                arr = np.zeros(shape)
+                for env_id, observation in enumerate(observations):
+                    entity_dim = observation.shape[0]
+                    arr[env_id, 0:entity_dim, :] = observation
+                obs2[name] = arr
+        
+        print("Saved observations:", {k:v.shape for k,v in obs2.items()}, file=sys.stderr)
 
-            shape = [len(observations)] + list(observations[0].shape)
-            shape[1] = max_entity_dim
-            arr = np.zeros(shape)
-            for env_id, observation in enumerate(observations):
-                entity_dim = observation.shape[0]
-                print(entity_dim, arr[env_id, 0:entity_dim, :].shape, observation.shape)
-                arr[env_id, 0:entity_dim, :] = observation
-            obs2[name] = arr
         obs2 = OrderedDict(obs2)
 
         return obs2
-
 
     def _obs_from_buf(self) -> VecEnvObs:
         return dict_to_obs(self.observation_space, CustomDummyVecEnv.copy_obs_dict(self.buf_obs))

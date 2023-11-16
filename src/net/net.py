@@ -5,6 +5,7 @@ from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from typing import Callable, List, Optional, Tuple, Type, Union
 from torch import Tensor
 from torchvision.models import resnet50
+import sys
 
 
 def conv3x3(in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dilation: int = 1) -> nn.Conv2d:
@@ -441,31 +442,47 @@ class UNetWithResnet50Encoder(BaseFeaturesExtractor):
 
 
 class SimpleEntityNet(BaseFeaturesExtractor):
-    def __init__(self, observation, features_dim):
+    def __init__(self, observation, action_dim):
 
-        self.input_dim = observation["entity_obs"].shape[-1]
-        self.output_dim = features_dim
+        self.entity_input_dim = observation["LOCAL_entity"].shape[-1]
+        self.entity_output_dim = action_dim
+
+        self.global_info_input_dim = observation["GLOBAL_info"].shape[-1]
         
-        super(SimpleEntityNet, self).__init__(self.input_dim, self.output_dim)
+        super(SimpleEntityNet, self).__init__(self.entity_input_dim, self.entity_output_dim)
 
-        self.lin1 = nn.Linear(self.input_dim, self.output_dim)
+        self.local_lin1 = nn.Linear(self.entity_input_dim, self.entity_output_dim)
+        self.global_lin1 = nn.Linear(self.global_info_input_dim, 1)
         
     def forward(self, x):
 
-        entity_obs = x["entity_obs"]
-        entity_count = x["entity_count"]
-        print(entity_obs.shape, entity_count.shape)
+        entity_obs = x["LOCAL_entity"]
+        entity_count = x["_ENTITY_COUNT"]
+        print("Net LOCAL IN:", entity_obs.shape, entity_count.shape, file=sys.stderr)
 
-        assert len(entity_obs.shape), 3
-        assert entity_obs.shape[1], entity_count
+        assert len(entity_obs.shape) == 3
+        assert entity_obs.shape[1] == entity_count.max().item()
 
-        env_count, _, feature_size = entity_obs.shape
+        env_count, max_entity_count, feature_size = entity_obs.shape
+        assert feature_size == self.entity_input_dim
 
-        assert feature_size, self.input_dim
+        global_info_obs = x["GLOBAL_info"]
+        print("Net GLOBAL IN:", global_info_obs.shape, file=sys.stderr)
 
-        x = entity_obs.view(env_count * entity_count, feature_size)
-        x = self.lin1(entity_obs)
-        x = x.view(env_count, entity_count, feature_size)
 
-        return x
+        # Process local observations
+
+        local_x = entity_obs.view(-1, feature_size)
+        local_x = self.local_lin1(entity_obs)
+        local_x = local_x.view(env_count, max_entity_count, self.entity_output_dim)
+
+        print("Net LOCAL OUT:", local_x.shape, entity_count.shape, file=sys.stderr)
+
+        # Process global observations
+        
+        global_x = self.global_lin1(global_info_obs)
+
+        print("Net GLOBAL OUT:", global_x.shape, file=sys.stderr)
+
+        return local_x, global_x
 

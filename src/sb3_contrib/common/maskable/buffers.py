@@ -29,7 +29,6 @@ class MaskableDictRolloutBufferSamples(MaskableRolloutBufferSamples):
     returns: th.Tensor
     action_masks: th.Tensor
 
-
 class MaskableRolloutBuffer(RolloutBuffer):
     """
     Rollout buffer that also stores the invalid action masks associated with each observation.
@@ -120,7 +119,6 @@ class MaskableRolloutBuffer(RolloutBuffer):
         )
         return MaskableRolloutBufferSamples(*map(self.to_torch, data))
 
-
 class MaskableDictRolloutBuffer(DictRolloutBuffer):
     """
     Dict Rollout buffer used in on-policy algorithms like A2C/PPO.
@@ -180,8 +178,10 @@ class MaskableDictRolloutBuffer(DictRolloutBuffer):
         """
         :param action_masks: Masks applied to constrain the choice of possible actions.
         """
+        # TODO: implement for new action mask
+        action_masks = None
         if action_masks is not None:
-            self.action_masks[self.pos] = action_masks.reshape((self.n_envs, self.mask_dims))
+            self.action_masks.append(action_masks)
 
         super().add(*args, **kwargs)
 
@@ -191,12 +191,12 @@ class MaskableDictRolloutBuffer(DictRolloutBuffer):
         # Prepare the data
         if not self.generator_ready:
             for key, obs in self.observations.items():
-                self.observations[key] = self.swap_and_flatten(obs)
+                self.observations[key] = self.swap_and_flatten(obs, name=key)
 
             _tensor_names = ["actions", "values", "log_probs", "advantages", "returns", "action_masks"]
 
             for tensor in _tensor_names:
-                self.__dict__[tensor] = self.swap_and_flatten(self.__dict__[tensor])
+                self.__dict__[tensor] = self.swap_and_flatten(self.__dict__[tensor], name=tensor)
             self.generator_ready = True
 
         # Return everything, don't create minibatches

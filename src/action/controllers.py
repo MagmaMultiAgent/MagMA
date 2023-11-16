@@ -216,18 +216,37 @@ class SimpleUnitDiscreteController(Controller):
 
         shared_obs = obs["player_0"]
         lux_action = {}
-        units = shared_obs["units"][agent]
 
-        unit_id = list(units.keys())
+        factories = shared_obs["factories"][agent]
         factory_id = list(shared_obs["factories"][agent].keys())
+        factory_count = len(factory_id)
+        units = shared_obs["units"][agent]
+        unit_id = list(units.keys())
+        unit_count = len(unit_id)
+
+        assert action.shape[0] >= factory_count + unit_count
 
         logger.debug(f"units are: {unit_id}")
         logger.debug(f"factories are: {factory_id}")
         logger.debug(f"env steps: {shared_obs['real_env_steps']}")
 
-        for unit_id, unit in units.items():
-            pos = tuple(unit['pos'])
-            filtered_action = action[pos]
+        factory_actions = action[:factory_count]
+        unit_actions = action[factory_count:]
+
+        for i, (factory_id, _) in enumerate(factories.items()):
+            filtered_action = factory_actions[i]
+            choice = filtered_action
+            if self._is_light_unit_build_action(choice):
+                lux_action[factory_id] = self._get_light_unit_build_action(choice)
+            elif self._is_heavy_unit_build_action(choice):
+                lux_action[factory_id] = self._get_heavy_unit_build_action(choice)
+            elif self._is_water_lichen_action(choice):
+                lux_action[factory_id] = self._get_water_lichen_action(choice)
+            else:
+                continue
+
+        for i, (unit_id, unit) in enumerate(units.items()):
+            filtered_action = unit_actions[i]
             choice = filtered_action
             action_queue = []
             no_op = False
@@ -250,21 +269,6 @@ class SimpleUnitDiscreteController(Controller):
                     no_op = True
             if not no_op:
                 lux_action[unit_id] = action_queue
-
-        factories = shared_obs["factories"][agent]
-        
-        for factory_id, factory in factories.items():
-            pos = tuple(factory['pos'])
-            filtered_action = action[pos]
-            choice = filtered_action
-            if self._is_light_unit_build_action(choice):
-                lux_action[factory_id] = self._get_light_unit_build_action(choice)
-            elif self._is_heavy_unit_build_action(choice):
-                lux_action[factory_id] = self._get_heavy_unit_build_action(choice)
-            elif self._is_water_lichen_action(choice):
-                lux_action[factory_id] = self._get_water_lichen_action(choice)
-            else:
-                continue
         
         logger.debug(f"Created lux action\n{lux_action}")
         return lux_action

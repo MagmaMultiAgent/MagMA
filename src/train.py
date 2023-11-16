@@ -322,10 +322,10 @@ def main(args):
     env = CustomDummyVecEnv(environments)
     env.reset()
 
-    policy_kwargs_unit = {
+    policy_kwargs = {
         "features_extractor_class": SimpleEntityNet,
         "features_extractor_kwargs": {
-                "features_dim": 25,
+                "action_dim": 25
             }
         }
     rollout_steps = 12
@@ -335,7 +335,7 @@ def main(args):
         n_steps=rollout_steps // args.n_envs,
         batch_size=64,
         learning_rate=3e-4,
-        policy_kwargs=policy_kwargs_unit,
+        policy_kwargs=policy_kwargs,
         verbose=1,
         target_kl=0.05,
         gamma=0.99,

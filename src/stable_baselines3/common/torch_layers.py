@@ -159,29 +159,29 @@ class CustomExtractor(nn.Module):
     ) -> None:
         super().__init__()
         device = get_device(device)
-        policy_net: List[nn.Module] = [nn.Identity()]
-        value_net: List[nn.Module] = [nn.Flatten(start_dim=1)]
+        self.policy_net: List[nn.Module] = None
+        self.value_net: List[nn.Module] = None
 
-        self.policy_net = nn.Sequential(*policy_net).to(device)
-        self.value_net = nn.Sequential(*value_net).to(device)
-
-        # TODO: make these sizes dynamic
         self.latent_dim_pi = feature_dim  # action space
-        # Change: changed this to obs_shape
-        self.latent_dim_vf = obs_shape  # observation space
+        self.latent_dim_vf = 1  # 1
+
+        _, _, _ = net_arch, activation_fn, obs_shape
 
     def forward(self, features: th.Tensor) -> Tuple[th.Tensor, th.Tensor]:
         """
         :return: latent_policy, latent_value of the specified network.
             If all layers are shared, then ``latent_policy == latent_value``
         """
-        return self.forward_actor(features), self.forward_critic(features)
+        local_features, global_features = features
+        return local_features, global_features
 
     def forward_actor(self, features: th.Tensor) -> th.Tensor:
-        return self.policy_net(features)
+        local_features, _ = features
+        return local_features
 
     def forward_critic(self, features: th.Tensor) -> th.Tensor:
-        return self.value_net(features)
+        _, global_features = features
+        return global_features
 
 
 class MlpExtractor(nn.Module):

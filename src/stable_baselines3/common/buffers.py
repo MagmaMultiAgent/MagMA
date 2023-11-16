@@ -56,7 +56,7 @@ class BaseBuffer(ABC):
         self.n_envs = n_envs
 
     @staticmethod
-    def swap_and_flatten(arr: np.ndarray) -> np.ndarray:
+    def swap_and_flatten(arr: np.ndarray, name: str = None) -> np.ndarray:
         """
         Swap and then flatten axes 0 (buffer_size) and 1 (n_envs)
         to convert shape from [n_steps, n_envs, ...] (when ... is the shape of the features)
@@ -65,6 +65,23 @@ class BaseBuffer(ABC):
         :param arr:
         :return:
         """
+        if isinstance(arr, list):
+            assert name is not None, "list arr must have a name"
+
+            if 'GLOBAL_' in name or name == '_ENTITY_COUNT':
+                arr = np.array(arr)
+            elif 'LOCAL_' in name or name == "actions":
+                max_size = max([a.shape[1] for a in arr])
+                shape = list(arr[0].shape)
+                shape[1] = max_size
+                shape = [len(arr)] + shape
+                arr2 = np.zeros(shape)
+                for i, a in enumerate(arr):
+                    size = a.shape[1]
+                    assert size <= max_size
+                    arr2[i, :, 0:size] = a
+                arr = arr2
+
         shape = arr.shape
         if len(shape) < 3:
             shape = (*shape, 1)
@@ -149,7 +166,6 @@ class BaseBuffer(ABC):
         if env is not None:
             return env.normalize_reward(reward).astype(np.float32)
         return reward
-
 
 class ReplayBuffer(BaseBuffer):
     """
@@ -327,7 +343,6 @@ class ReplayBuffer(BaseBuffer):
         if dtype == np.float64:
             return np.float32
         return dtype
-
 
 class RolloutBuffer(BaseBuffer):
     """
@@ -509,7 +524,6 @@ class RolloutBuffer(BaseBuffer):
         )
         return RolloutBufferSamples(*tuple(map(self.to_torch, data)))
 
-
 class DictReplayBuffer(ReplayBuffer):
     """
     Dict Replay buffer used in off-policy algorithms like SAC/TD3.
@@ -674,7 +688,6 @@ class DictReplayBuffer(ReplayBuffer):
             rewards=self.to_torch(self._normalize_reward(self.rewards[batch_inds, env_indices].reshape(-1, 1), env)),
         )
 
-
 class DictRolloutBuffer(RolloutBuffer):
     """
     Dict Rollout buffer used in on-policy algorithms like A2C/PPO.
@@ -726,8 +739,11 @@ class DictRolloutBuffer(RolloutBuffer):
         assert isinstance(self.obs_shape, dict), "DictRolloutBuffer must be used with Dict obs space only"
         self.observations = {}
         for key, obs_input_shape in self.obs_shape.items():
-            self.observations[key] = np.zeros((self.buffer_size, self.n_envs, *obs_input_shape), dtype=np.float32)
-        self.actions = np.zeros((self.buffer_size, self.n_envs, 64, 64), dtype=np.float32)
+            if key == "entity_counts":
+                self.observations[key] = np.zeros((self.buffer_size, self.n_envs, *obs_input_shape), dtype=np.float32)
+            else:
+                self.observations[key] = []
+        self.actions = []
         self.rewards = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
         self.returns = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
         self.episode_starts = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
@@ -766,12 +782,12 @@ class DictRolloutBuffer(RolloutBuffer):
             # as numpy cannot broadcast (n_discrete,) to (n_discrete, 1)
             if isinstance(self.observation_space.spaces[key], spaces.Discrete):
                 obs_ = obs_.reshape((self.n_envs,) + self.obs_shape[key])
-            self.observations[key][self.pos] = obs_
+            self.observations[key].append(obs_)
 
         # Reshape to handle multi-dim and discrete action spaces, see GH #970 #1392
         # action = action.reshape((self.n_envs, self.action_dim))
 
-        self.actions[self.pos] = np.array(action).copy()
+        self.actions.append(np.array(action).copy())
         self.rewards[self.pos] = np.array(reward).copy()
         self.episode_starts[self.pos] = np.array(episode_start).copy()
         self.values[self.pos] = value.clone().cpu().numpy().flatten()

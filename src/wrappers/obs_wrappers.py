@@ -47,8 +47,10 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
 
         # Change: custom observation space
         self.observation_space = spaces.Dict({
-            "entity_obs": spaces.Box(low=-np.inf, high=np.inf, shape=(62,), dtype=np.float32),
-            "entity_count": spaces.Box(low=-np.inf, high=np.inf, shape=(1,), dtype=np.float32)
+            "_ENTITY_COUNT": spaces.Box(low=-np.inf, high=np.inf, shape=(1,), dtype=np.float32),
+            "LOCAL_entity": spaces.Box(low=-np.inf, high=np.inf, shape=(62,), dtype=np.float32),
+            "GLOBAL_info": spaces.Box(low=-999, high=999, shape=(44,), dtype=np.float32),
+            "GLOBAL_map": spaces.Box(low=-999, high=999, shape=(30, env.env_cfg.map_size, env.env_cfg.map_size), dtype=np.float32)
         })
 
         self.observation_parser = ObservationParser()
@@ -84,10 +86,14 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
         # Change: return only entity_obs
         observation = {}
         for _, agent in enumerate(obs.keys()):
-            entity_obs = converted_obs[agent]["entity"]
+            entity = converted_obs[agent]["entity"]
+            global_info = converted_obs[agent]["global"]
+            global_map = converted_obs[agent]["map"]
             observation[agent] = {
-                "entity_obs": entity_obs,
-                "entity_count": entity_obs.shape[0]
+                "_ENTITY_COUNT": entity.shape[0],
+                "LOCAL_entity": entity,
+                "GLOBAL_info": global_info,
+                "GLOBAL_map": global_map
             }
         return observation
 

@@ -5,6 +5,8 @@ import kit.kit
 from typing import NamedTuple
 from luxai_s2.config import EnvConfig
 
+import random
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -440,7 +442,7 @@ class ObservationParser():
                 ore_ratio,
                 water_ratio,
                 metal_ratio,
-                0,  # TODO: distance from center X
+                random.random(),  # TODO: distance from center X
                 0,  # TODO: distance from center Y
                 0,  # TODO: closest_factory X
                 0,  # TODO: closest_factory Y

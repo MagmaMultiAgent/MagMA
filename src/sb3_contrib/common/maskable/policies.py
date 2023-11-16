@@ -136,23 +136,22 @@ class MaskableActorCriticPolicy(BasePolicy):
             pi_features, vf_features = features
             latent_pi: th.Tensor = self.mlp_extractor.forward_actor(pi_features)
             latent_vf: th.Tensor = self.mlp_extractor.forward_critic(vf_features)
+        
         # Evaluate the values for the given observations
 
         values = self.value_net(latent_vf)
 
-        latent_shape = latent_pi.shape
-        assert len(latent_shape) == 4
+        env_dim, entity_dim, feature_dim = latent_pi.shape
+        assert latent_pi.shape[:-1] == obs['LOCAL_entity'].shape[:-1]
+
+        # TODO: change back
+        action_masks = None
+
+        latent_pi = latent_pi.view(-1, feature_dim)
+        assert latent_pi.shape[0] == env_dim * entity_dim
 
         if action_masks is not None:
-            assert latent_shape == action_masks.shape
-
-        batch_size, action_channels, height, width = latent_shape
-
-        latent_pi = latent_pi.view(-1, action_channels)
-        assert latent_pi.shape[0] == batch_size * height * width
-
-        if action_masks is not None:
-            action_masks = action_masks.reshape(-1, action_channels)
+            action_masks = action_masks.reshape(-1, feature_dim)
             assert latent_pi.shape == action_masks.shape
 
         distribution = self._get_action_dist_from_latent(latent_pi)
@@ -160,11 +159,11 @@ class MaskableActorCriticPolicy(BasePolicy):
             distribution.apply_masking(action_masks)
         actions = distribution.get_actions(deterministic=deterministic)
         log_prob = distribution.log_prob(actions)
-        
 
-        actions = actions.view(batch_size, height, width)
-        log_prob = log_prob.view(batch_size, height, width)
-        log_prob = log_prob.sum(axis=[1,2])
+        actions = actions.view(env_dim, entity_dim)
+        log_prob = log_prob.view(env_dim, entity_dim)
+        # TODO: don't add probs from fake rows
+        log_prob = log_prob.sum(axis=[1])
 
         return actions, values, log_prob
 
@@ -212,7 +211,7 @@ class MaskableActorCriticPolicy(BasePolicy):
             activation_fn=self.activation_fn,
             device=self.device,
             # Change: changed observation space
-            obs_shape = self.observation_space["entity_obs"].shape[-1],
+            obs_shape=self.features_dim,
         )
 
     def _build(self, lr_schedule: Schedule) -> None:
@@ -225,7 +224,8 @@ class MaskableActorCriticPolicy(BasePolicy):
         self._build_mlp_extractor()
 
         self.action_net = self.action_dist.proba_distribution_net(latent_dim=self.mlp_extractor.latent_dim_pi)
-        self.value_net = nn.Linear(self.mlp_extractor.latent_dim_vf, 1)
+        # Change
+        self.value_net = nn.Identity()
 
         # Init weights: use orthogonal initialization
         # with small initial weight for the output
@@ -348,18 +348,17 @@ class MaskableActorCriticPolicy(BasePolicy):
             latent_pi = self.mlp_extractor.forward_actor(pi_features)
             latent_vf = self.mlp_extractor.forward_critic(vf_features)
 
-        latent_shape = latent_pi.shape
-        assert len(latent_shape) == 4
+        env_dim, entity_dim, feature_dim = latent_pi.shape
+        assert latent_pi.shape[:-1] == obs['LOCAL_entity'].shape[:-1]
 
-        batch_size, action_channels, height, width = latent_shape
+        # TODO: change back
+        action_masks = None
 
-        if action_masks is not None:
-            assert action_masks.shape == (batch_size * height * width, action_channels)
-
-        latent_pi = latent_pi.view(-1, action_channels)
-        assert latent_pi.shape[0] == batch_size * height * width
+        latent_pi = latent_pi.view(-1, feature_dim)
+        assert latent_pi.shape[0] == env_dim * entity_dim
 
         if action_masks is not None:
+            action_masks = action_masks.reshape(-1, feature_dim)
             assert latent_pi.shape == action_masks.shape
 
         distribution = self._get_action_dist_from_latent(latent_pi)
@@ -367,9 +366,10 @@ class MaskableActorCriticPolicy(BasePolicy):
             distribution.apply_masking(action_masks)
         actions = actions.view(-1)
         log_prob = distribution.log_prob(actions)
-        
-        log_prob = log_prob.view(batch_size, height, width)
-        log_prob = log_prob.sum(axis=[1,2])
+
+        log_prob = log_prob.view(env_dim, entity_dim)
+        # TODO: don't add probs from fake rows
+        log_prob = log_prob.sum(axis=[1])
 
         values = self.value_net(latent_vf)
         return values, log_prob, distribution.entropy()
