@@ -46,6 +46,8 @@ from luxai_s2.team import FactionTypes, Team
 from luxai_s2.unit import Unit, UnitType
 from luxai_s2.utils.utils import get_top_two_power_units, is_day
 
+import sys
+
 # some utility types
 ActionsByType = Dict[str, List[Tuple[Unit, Action]]]
 
@@ -470,8 +472,10 @@ class LuxAI_S2(ParallelEnv):
 
     def _handle_dig_actions(self, actions_by_type: ActionsByType):
         for unit, dig_action in actions_by_type["dig"]:
+            #print("handling digging", file=sys.stderr)
             dig_action: DigAction
             if self.state.board.rubble[unit.pos.x, unit.pos.y] > 0:
+                #print("mining rubble", file=sys.stderr)
                 if self.collect_stats:
                     rubble_before = self.state.board.rubble[unit.pos.x, unit.pos.y]
                 self.state.board.rubble[unit.pos.x, unit.pos.y] = max(
@@ -486,6 +490,7 @@ class LuxAI_S2(ParallelEnv):
                         self.state.board.rubble[unit.pos.x, unit.pos.y] - rubble_before
                     )
             elif self.state.board.lichen[unit.pos.x, unit.pos.y] > 0:
+                #print("mining lichen", file=sys.stderr)
                 if self.collect_stats:
                     lichen_before = self.state.board.lichen[unit.pos.x, unit.pos.y]
                 lichen_left = max(
@@ -505,12 +510,14 @@ class LuxAI_S2(ParallelEnv):
                         self.state.board.lichen[unit.pos.x, unit.pos.y] - lichen_before
                     )
             elif self.state.board.ice[unit.pos.x, unit.pos.y] > 0:
+                #print("MINING ICEEEEEEEEEEEEEEEEEEE", file=sys.stderr)
                 gained = unit.add_resource(0, unit.unit_cfg.DIG_RESOURCE_GAIN)
                 if self.collect_stats:
                     self.state.stats[unit.team.agent]["generation"]["ice"][
                         unit.unit_type.name
                     ] += gained
             elif self.state.board.ore[unit.pos.x, unit.pos.y] > 0:
+                #print("mining ore", file=sys.stderr)
                 gained = unit.add_resource(1, unit.unit_cfg.DIG_RESOURCE_GAIN)
                 if self.collect_stats:
                     self.state.stats[unit.team.agent]["generation"]["ore"][
@@ -636,21 +643,22 @@ class LuxAI_S2(ParallelEnv):
                     # tie, all units break
                     for u in units:
                         destroyed_units.add(u)
-                    self.log_info(
-                        f"{len(destroyed_units)} Units: ({', '.join([u.unit_id for u in destroyed_units])}) collided at {pos_hash}"
-                    )
+                    log_msg = f"{len(destroyed_units)} Units: ({', '.join([u.unit_id for u in destroyed_units])}) collided at {pos_hash}"
+                    #print(log_msg, file=sys.stderr)
+                    self.log_info(log_msg)
                 else:
                     most_power_unit_power_loss = math.ceil(
                         next_most_power_unit.power * self.env_cfg.POWER_LOSS_FACTOR
                     )
                     most_power_unit.power -= most_power_unit_power_loss
+                    #print(f"Power loss: {most_power_unit_power_loss}!")
                     surviving_unit = most_power_unit
                     for u in units:
                         if u.unit_id != surviving_unit.unit_id:
                             destroyed_units.add(u)
-                    self.log_info(
-                        f"{len(destroyed_units)} Units: ({', '.join([u.unit_id for u in destroyed_units])}) collided at {pos_hash} with {surviving_unit} surviving with {surviving_unit.power} power"
-                    )
+                    log_msg = f"{len(destroyed_units)} Units: ({', '.join([u.unit_id for u in destroyed_units])}) collided at {pos_hash} with {surviving_unit} surviving with {surviving_unit.power} power"
+                    #print(log_msg, file=sys.stderr)
+                    self.log_info(log_msg)
                     new_units_map_after_collision[pos_hash].append(surviving_unit)
                 all_destroyed_units.update(destroyed_units)
             elif len(heavy_entered_pos[pos_hash]) > 0:
@@ -659,9 +667,9 @@ class LuxAI_S2(ParallelEnv):
                 for u in units:
                     if u.unit_id != surviving_unit.unit_id:
                         destroyed_units.add(u)
-                self.log_info(
-                    f"{len(destroyed_units)} Units: ({', '.join([u.unit_id for u in destroyed_units])}) collided at {pos_hash} with {surviving_unit} surviving with {surviving_unit.power} power"
-                )
+                log_msg = f"{len(destroyed_units)} Units: ({', '.join([u.unit_id for u in destroyed_units])}) collided at {pos_hash} with {surviving_unit} surviving with {surviving_unit.power} power"
+                #print(log_msg, file=sys.stderr)
+                self.log_info(log_msg)
                 new_units_map_after_collision[pos_hash].append(surviving_unit)
                 all_destroyed_units.update(destroyed_units)
             else:
@@ -674,9 +682,9 @@ class LuxAI_S2(ParallelEnv):
                             heavy_stationary_unit = None
                             # we found >= 2 heavies stationary in a tile where no heavies are entering.
                             # should only happen when spawning units
-                            self.log_info(
-                                f"At {pos_hash}, >= 2 heavies crashed as they were all stationary"
-                            )
+                            log_msg = f"At {pos_hash}, >= 2 heavies crashed as they were all stationary"
+                            #print(log_msg, file=sys.stderr)
+                            self.log_info(log_msg)
                             break
                         heavy_stationary_unit = u
 
@@ -698,6 +706,7 @@ class LuxAI_S2(ParallelEnv):
                                 next_most_power_unit.power
                                 * self.env_cfg.POWER_LOSS_FACTOR
                             )
+                            #print(f"Power loss: {most_power_unit_power_loss}!")
                             most_power_unit.power -= most_power_unit_power_loss
                             surviving_unit = most_power_unit
                     elif len(light_entered_pos[pos_hash]) > 0:
@@ -706,17 +715,17 @@ class LuxAI_S2(ParallelEnv):
                 if surviving_unit is None:
                     for u in units:
                         destroyed_units.add(u)
-                    self.log_info(
-                        f"{len(destroyed_units)} Units: ({', '.join([u.unit_id for u in destroyed_units])}) collided at {pos_hash}"
-                    )
+                    log_msg = f"{len(destroyed_units)} Units: ({', '.join([u.unit_id for u in destroyed_units])}) collided at {pos_hash}"
+                    #print(log_msg, file=sys.stderr)
+                    self.log_info(log_msg)
                     all_destroyed_units.update(destroyed_units)
                 else:
                     for u in units:
                         if u.unit_id != surviving_unit.unit_id:
                             destroyed_units.add(u)
-                    self.log_info(
-                        f"{len(destroyed_units)} Units: ({', '.join([u.unit_id for u in destroyed_units])}) collided at {pos_hash} with {surviving_unit} surviving with {surviving_unit.power} power"
-                    )
+                    log_msg = f"{len(destroyed_units)} Units: ({', '.join([u.unit_id for u in destroyed_units])}) collided at {pos_hash} with {surviving_unit} surviving with {surviving_unit.power} power"
+                    #print(log_msg, file=sys.stderr)
+                    self.log_info(log_msg)
                     new_units_map_after_collision[pos_hash].append(surviving_unit)
                     all_destroyed_units.update(destroyed_units)
         self.state.board.units_map = new_units_map_after_collision
@@ -814,6 +823,7 @@ class LuxAI_S2(ParallelEnv):
                             )
                         elif "unit" in unit_id:
                             unit = self.state.units[agent][unit_id]
+                            #print(f"Unit {unit_id} power: {unit.power}")
                             # if unit does not have more than ACTION_QUEUE_POWER_COST power, we skip updating the action queue and print warning
                             update_power_req = self.state.env_cfg.ROBOTS[
                                 unit.unit_type.name

@@ -15,6 +15,8 @@ if TYPE_CHECKING:
 import luxai_s2.unit as luxai_unit
 from luxai_s2.map.position import Position
 
+import sys
+
 
 # (0 = move, 1 = transfer X amount of R, 2 = pickup X amount of R, 3 = dig, 4 = self destruct, 5 = recharge X)
 class Action:
@@ -204,6 +206,7 @@ def format_action_vec(a: np.ndarray):
     elif a_type == 5:
         act =  RechargeAction(a[3], repeat=a[4], n=a[5])
     else:
+        print(f"invalid action {a}", file=sys.stderr)
         raise ValueError(f"Action {a} is invalid type, {a[0]} is not valid")
     return act
     
@@ -255,16 +258,19 @@ def validate_actions(env_cfg: EnvConfig, state: "State", actions_by_type, verbos
             actions_by_type_validated["transfer"].append((unit, transfer_action))
 
     for unit, dig_action in actions_by_type["dig"]:
+        #print(f"{unit} validating dig", file=sys.stderr)
         valid_action = True
         dig_action: DigAction
         dig_cost = unit.unit_cfg.DIG_COST
         if dig_cost > unit.power:
+            #print(f"{unit} low power :(", file=sys.stderr)
             invalidate_action(
                 f"Invalid Dig Action for unit {unit} - Tried to dig requiring {dig_cost} power"
             )
             continue
         # verify not digging over a factory which is not allowed
         if state.board.factory_occupancy_map[unit.pos.x, unit.pos.y] != -1:
+            #print(f"{unit} factory tile :(", file=sys.stderr)
             invalidate_action(
                 f"Invalid Dig Action for unit {unit} - Tried to dig on top of a factory"
             )

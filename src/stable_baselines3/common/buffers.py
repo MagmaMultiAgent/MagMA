@@ -70,7 +70,7 @@ class BaseBuffer(ABC):
 
             if 'GLOBAL_' in name or name == '_ENTITY_COUNT':
                 arr = np.array(arr)
-            elif 'LOCAL_' in name or name == "actions":
+            elif 'LOCAL_' in name or name == "actions" or name == "action_masks":
                 max_size = max([a.shape[1] for a in arr])
                 shape = list(arr[0].shape)
                 shape[1] = max_size

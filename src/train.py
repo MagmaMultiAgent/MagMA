@@ -30,12 +30,12 @@ from reward.early_reward_parser import EarlyRewardParser
 
 import sys
 import logging
-logging.basicConfig(level=logging.DEBUG,
+logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
                     datefmt='%y-%m-%d %H:%M:%S',
                     handlers=[logging.StreamHandler(sys.stderr)])
 logger = logging.getLogger(__name__)
-logger.info('Creating logger')
+logger.debug('Creating logger')
 
 logging.setLoggerClass
 
@@ -120,8 +120,12 @@ class EarlyRewardParserWrapper(gym.Wrapper):
             )
             # we reward water production more as it is the most important resource for survival
             reward = ice_dug_this_step / 100 + water_produced_this_step
+
+            if reward:
+                reward = 1
         
         self.prev_step_metrics = copy.deepcopy(metrics)
+        
         return obs, reward, termination[agent], truncation[agent], info
 
     def reset(self, **kwargs):
@@ -149,7 +153,7 @@ def parse_args():
         "-n",
         "--n-envs",
         type=int,
-        default=3,
+        default=4,
         help="Number of parallel envs to run. Note that the rollout \
         size is configured separately and invariant to this value",
     )
@@ -328,18 +332,19 @@ def main(args):
                 "action_dim": 25
             }
         }
-    rollout_steps = 12
+    rollout_steps = 2048
     model = MaskablePPO(
         "MultiInputPolicy",
         env,
         n_steps=rollout_steps // args.n_envs,
-        batch_size=64,
-        learning_rate=3e-4,
+        batch_size=1024,
+        learning_rate=0.001,
         policy_kwargs=policy_kwargs,
         verbose=1,
-        target_kl=0.05,
+        target_kl=None,
         gamma=0.99,
         tensorboard_log=osp.join(args.log_path),
+        n_epochs=2
     )
     if args.eval:
         evaluate(args, env_id, model)

@@ -16,7 +16,7 @@ class Controller:
     A controller is a class that takes in an action space and converts it into a lux action
     """
     def __init__(self, action_space: spaces.Space) -> None:
-        logger.info(f"Creating {self.__class__.__name__}")
+        logger.debug(f"Creating {self.__class__.__name__}")
         self.logger = logging.getLogger(f"{__name__}_{id(self)}")
         self.action_space = action_space
 
@@ -54,6 +54,37 @@ class SimpleUnitDiscreteController(Controller):
     that will get spawned.
     """
 
+    ID_TO_ACTION_NAME = {
+        0: "move_up",
+        1: "move_right",
+        2: "move_down",
+        3: "move_left",
+        4: "transfer_1",
+        5: "transfer_2",
+        6: "transfer_3",
+        7: "transfer_4",
+        8: "transfer_5",
+        9: "transfer_6",
+        10: "transfer_7",
+        11: "transfer_8",
+        12: "transfer_9",
+        13: "transfer_10",
+        14: "transfer_11",
+        15: "transfer_12",
+        16: "transfer_13",
+        17: "transfer_14",
+        18: "transfer_15",
+        19: "pickup",
+        20: "dig",
+        21: "recharge",
+        22: "build_light",
+        23: "build_heavy",
+        24: "water_lichen"
+    }
+    UNIT_ACTIONS = [a for a in ID_TO_ACTION_NAME.keys() if a < 22]
+    FACTORY_ACTIONS = [a for a in ID_TO_ACTION_NAME.keys() if a >= 22]
+    ACTION_NAME_TO_ID = {v:k for k,v in ID_TO_ACTION_NAME.items()}
+
     def __init__(self, env_cfg) -> None:
         """
         A simple controller that controls only the robot that will get spawned.
@@ -75,7 +106,7 @@ class SimpleUnitDiscreteController(Controller):
         see how the lux action space is defined in luxai_s2/spaces/action.py
 
         """
-        logger.info(f"Creating SimpleUnitDiscreteController")
+        logger.debug(f"Creating SimpleUnitDiscreteController")
         self.logger = logging.getLogger(f"{__name__}_{id(self)}")
 
         self.env_cfg = env_cfg
@@ -236,6 +267,7 @@ class SimpleUnitDiscreteController(Controller):
         for i, (factory_id, _) in enumerate(factories.items()):
             filtered_action = factory_actions[i]
             choice = filtered_action
+            self.logger.debug(f"Factory action: {factory_id} {choice} -> {self.ID_TO_ACTION_NAME[choice]}")
             if self._is_light_unit_build_action(choice):
                 lux_action[factory_id] = self._get_light_unit_build_action(choice)
             elif self._is_heavy_unit_build_action(choice):
@@ -248,6 +280,10 @@ class SimpleUnitDiscreteController(Controller):
         for i, (unit_id, unit) in enumerate(units.items()):
             filtered_action = unit_actions[i]
             choice = filtered_action
+
+            pos = unit["pos"]
+            has_ice = obs["player_0"]["board"]["ice"][pos[0], pos[1]]
+
             action_queue = []
             no_op = False
             if self._is_move_action(choice):
@@ -257,6 +293,9 @@ class SimpleUnitDiscreteController(Controller):
             elif self._is_pickup_action(choice):
                 action_queue = [self._get_pickup_action(choice)]
             elif self._is_dig_action(choice):
+                if has_ice:
+                    self.logger.debug(f"Unit action: {unit_id} {choice} ice={has_ice} -> {self.ID_TO_ACTION_NAME[choice]}")
+
                 action_queue = [self._get_dig_action(choice)]
             elif self._is_recharge_action(choice):
                 action_queue = [self._get_recharge_action(choice)]
@@ -412,9 +451,139 @@ class SimpleUnitDiscreteController(Controller):
             elif factory["cargo"]["water"] >= 200:
                 action_mask[self.water_lichen_dim_high, pos[0], pos[1]] = True
 
+
+
         # Change: return simple action mask
         # TODO: implement
+        map_size = self.env_cfg.map_size
 
-        action_mask = np.ones((62,))
+        obs = obs[agent]
+        factories = obs["factories"][agent]
+        units = obs["units"][agent]
+        unit_positions = [tuple(u["pos"]) for u in units.values()]
+        entities = list(factories.items()) + list(units.items())
+        entity_count = len(entities)
+        board = obs["board"]
 
+        action_mask = np.ones((entity_count, self.total_act_dims))
+
+        for i, (entity_name, entity) in enumerate(entities):
+            entity_id = int(entity_name.split("_")[1])
+            pos = entity["pos"]
+            is_factory = "factory" in entity_name
+            is_unit = "unit" in entity_name
+            power = entity["power"]
+            ice = entity["cargo"]["ice"]
+            ore = entity["cargo"]["ore"]
+            water = entity["cargo"]["water"]
+            metal = entity["cargo"]["metal"]
+            if is_factory:
+                strain_id = entity["strain_id"]
+            else:
+                strain_id = None
+
+            up, right, down, left, up_left, up_right, down_right, down_left = self.get_neighbours(pos)
+
+            # if factory, don't do unit actions
+            if is_factory:
+                action_mask[i, self.UNIT_ACTIONS] = 0
+            # if unit, don't do factory actions
+            if is_unit:
+                action_mask[i, self.FACTORY_ACTIONS] = 0
+
+            if is_unit:
+                has_ice = board["ice"][pos[0], pos[1]] > 0
+                has_ore = board["ore"][pos[0], pos[1]] > 0
+                has_rubble = board["rubble"][pos[0], pos[1]] > 0
+
+                # if there is no resource or rubble, don't dig
+                if not has_ice and not has_ore and not has_rubble:
+                    action_mask[i, self.ACTION_NAME_TO_ID["dig"]] = 0
+                
+                # if action is out of the map, don't move
+                # if agent is standing in the way, don't move
+                for new_pos, action_name in zip([up, right, down, left], ["move_up", "move_right", "move_down", "move_left"]):
+                    if new_pos is None:
+                        action_mask[i, self.ACTION_NAME_TO_ID[action_name]] = 0
+                        continue
+
+                    has_unit = tuple(new_pos) in unit_positions
+                    if has_unit:
+                        action_mask[i, self.ACTION_NAME_TO_ID[action_name]] = 0
+                    # check if there is another unit next to the new pos
+                    else:
+                        new_pos_neighbours = self.get_neighbours(new_pos)[0:4]
+                        for new_pos_neighbour in new_pos_neighbours:
+                            if (new_pos_neighbour == pos).all():
+                                continue
+                            if new_pos_neighbour is None:
+                                continue
+
+                            has_unit = tuple(new_pos_neighbour) in unit_positions
+                            if has_unit:
+                                action_mask[i, self.ACTION_NAME_TO_ID[action_name]] = 0
+                                break
+                
+                # TODO: remove this
+                # for testing, don't transfer
+                transfer_actions = [a for a in self.UNIT_ACTIONS if "transfer" in self.ID_TO_ACTION_NAME[a]]
+                action_mask[i, transfer_actions] = 0
+                # TODO: remove this
+                # for testing, don't pickup
+                action_mask[i, self.ACTION_NAME_TO_ID["pickup"]] = 0
+                # TODO: remove this
+                # for testing, don't recharge
+                action_mask[i, self.ACTION_NAME_TO_ID["recharge"]] = 0
+
+            if is_factory:
+                factory_positions = [p for p in [pos, up_left, up, up_right, right, down_right, down, down_left, left] if p is not None]
+                assert len(factory_positions) == 9
+
+                can_build_unit = True
+                # if there is already a unit on top of the factory, don't build
+                for p in factory_positions:
+                    has_unit = tuple(p) in unit_positions
+                    if has_unit:
+                        can_build_unit = False
+                        break
+                
+                if not can_build_unit:
+                    action_mask[i, self.ACTION_NAME_TO_ID["build_light"]] = 0
+                    action_mask[i, self.ACTION_NAME_TO_ID["build_heavy"]] = 0
+
+            valid_actions = np.where(action_mask[i] == 1)[0]
+            valid_actions = [self.ID_TO_ACTION_NAME[a] for a in valid_actions]
+            self.logger.debug(f"{entity_name} {pos} {valid_actions}")
+        
         return action_mask
+
+    def get_neighbours(self, pos: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        map_size = self.env_cfg.map_size
+
+        up = pos - [1, 0]
+        down = pos + [1, 0]
+        left = pos - [0, 1]
+        right = pos + [0, 1]
+        if (up < 0).any():
+            up = None
+        if (left < 0).any():
+            left = None
+        if (down >= map_size).any():
+            down = None
+        if (right >= map_size).any():
+            right = None
+        
+        up_left = pos + [-1, -1]
+        down_left = pos + [+1, -1]
+        up_right = pos + [-1, +1]
+        down_right = pos + [+1, +1]
+        if (up_left < 0).any() or (up_left >= map_size).any():
+            up_left = None
+        if (up_right < 0).any() or (up_right >= map_size).any():
+            up_right = None
+        if (down_right < 0).any() or (down_right >= map_size).any():
+            down_right = None
+        if (down_left < 0).any() or (down_left >= map_size).any():
+            down_left = None
+        
+        return up, right, down, left, up_left, up_right, down_right, down_left

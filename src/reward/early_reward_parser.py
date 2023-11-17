@@ -13,8 +13,10 @@ logger = logging.getLogger(__name__)
 class EarlyRewardParser:
 
     def __init__(self,):
-        logger.info(f"Creating {self.__class__.__name__}")
+        logger.debug(f"Creating {self.__class__.__name__}")
         self.logger = logging.getLogger(f"{__name__}_{id(self)}")
+
+        self.step_count = 0
 
     def reset(self, global_info, env_stats):
         self.logger.debug("Resetting environment")
@@ -24,6 +26,8 @@ class EarlyRewardParser:
     def parse(self, game_state: GameState, env_stats, own_global_info, enm_global_info = None, done = False, late = False):
         self.logger.debug("Parsing rewards")
         
+        self.step_count += 1
+
         sub_rewards_keys = [
             "reward_light",
             "reward_heavy",
@@ -131,6 +135,9 @@ class EarlyRewardParser:
 
         self.update_last_count(own_global_info)
         self.update_env_stats(env_stats)
+
+        self.logger.debug(f"Reward: {rewards}, Past reward: {all_past_reward}, Ice increment: {ice_increment}")
+
         return rewards + all_past_reward
     
     def get_global_info(self, player: str, obs: GameState):
@@ -161,6 +168,9 @@ class EarlyRewardParser:
         global_info['player_total_water'] = global_info['player_unit_water'] + global_info['player_factory_water']
         global_info['player_total_metal'] = global_info['player_unit_metal'] + global_info['player_factory_metal']
         global_info['player_total_power'] = global_info['player_unit_power'] + global_info['player_factory_power']
+
+        if (self.step_count % 100) == 0:
+            self.logger.debug(f"Step {self.step_count}, Unit ice: {global_info['player_unit_ice']}, Factory ice: {global_info['player_factory_ice']}")
 
         lichen = obs.board.lichen
         lichen_strains = obs.board.lichen_strains

@@ -14,6 +14,9 @@ import sys
 
 from copy import deepcopy
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 class DummyVecEnv(VecEnv):
     """
@@ -107,7 +110,6 @@ class DummyVecEnv(VecEnv):
     def _save_obs(self, env_idx: int, obs: VecEnvObs) -> None:
         for key in self.keys:
             if key is None:
-                # print([o.shape for o in obs])
                 self.buf_obs[key][env_idx] = obs
             else:
                 self.buf_obs[key][env_idx] = obs[key]  # type: ignore[call-overload]
@@ -148,18 +150,21 @@ class CustomDummyVecEnv(DummyVecEnv):
     def __init__(self, env_fns: List[Callable[[], gym.Env]]):
         super().__init__(env_fns)
 
+        logger.debug(f"Creating {self.__class__.__name__}")
+        self.logger = logging.getLogger(f"{__name__}_{id(self)}")
+
         env = self.envs[0]
         obs_space = env.observation_space
         self.keys, _, _ = obs_space_info(obs_space)
 
         self.buf_obs = OrderedDict([(k, np.zeros((self.num_envs)).tolist()) for k in self.keys])
-        print("Vec Env Obs Buffer:\t", self.buf_obs, file=sys.stderr)
+        self.logger.debug(f"Vec Env Obs Buffer:\t{self.buf_obs}")
         self.buf_dones = np.zeros((self.num_envs,), dtype=bool)
-        print("Vec Env Dones Buffer:\t", self.buf_dones, file=sys.stderr)
+        self.logger.debug(f"Vec Env Dones Buffer:\t{self.buf_dones}")
         self.buf_rews = np.zeros((self.num_envs,), dtype=np.float32)
-        print("Vec Env Rews Buffer:\t", self.buf_rews, file=sys.stderr)
+        self.logger.debug(f"Vec Env Rews Buffer:\t{self.buf_rews}")
         self.buf_infos: List[Dict[str, Any]] = [{} for _ in range(self.num_envs)]
-        print("Vec Env Infos Buffer:\t", self.buf_infos, file=sys.stderr)
+        self.logger.debug(f"Vec Env Infos Buffer:\t{self.buf_infos}")
         self.metadata = env.metadata
 
     @staticmethod
@@ -196,7 +201,7 @@ class CustomDummyVecEnv(DummyVecEnv):
                     arr[env_id, 0:entity_dim, :] = observation
                 obs2[name] = arr
         
-        print("Saved observations:", {k:v.shape for k,v in obs2.items()}, file=sys.stderr)
+        logger.debug("Saved observations:", {k:v.shape for k,v in obs2.items()})
 
         obs2 = OrderedDict(obs2)
 

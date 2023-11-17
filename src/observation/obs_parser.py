@@ -20,7 +20,7 @@ class LuxFeature(NamedTuple):
 class ObservationParser():
 
     def __init__(self):
-        logger.info(f"Creating {self.__class__.__name__}")
+        logger.debug(f"Creating {self.__class__.__name__}")
         self.logger = logging.getLogger(f"{__name__}_{id(self)}")
         self.setup_names()
 
@@ -127,7 +127,7 @@ class ObservationParser():
             # Python version >= 3.7, so the order of the dict elements stay the same luckily
             global_features = np.array(list(global_features.values()))
 
-            assembled_features = self.assemble_entity_features(entity_features, factory_features, unit_features, global_features)
+            assembled_features = self.assemble_entity_features(entity_features, factory_features, unit_features)
             
             map_features = np.array(list(map_features.values()))
             #global_features_broadcasted = global_features.reshape(global_features.shape[0], 1, 1) * np.ones((global_features.shape[0], env_cfg.map_size, env_cfg.map_size))
@@ -350,12 +350,11 @@ class ObservationParser():
 
         return global_feature
 
-    def assemble_entity_features(self, entity_features, factory_features, unit_features, global_features):
-        # Entity features - 62
-        #   entity specific features - 15
+    def assemble_entity_features(self, entity_features, factory_features, unit_features):
+        # Entity features - 20
+        #   entity specific features - 17
         #   unit specific features - 3
         #   factory specific features - 1
-        #   global features - 42
         #
 
         entity_count = entity_features.shape[0]
@@ -367,7 +366,6 @@ class ObservationParser():
         entity_feature_count = entity_features.shape[1]
         factory_feature_count = factory_features.shape[1]
         unit_feature_count = unit_features.shape[1]
-        global_feature_count = global_features.shape[0]
         
         unit_factory_features = np.zeros((unit_count, factory_feature_count))
         factory_unit_features = np.zeros((factory_count, unit_feature_count))
@@ -377,21 +375,18 @@ class ObservationParser():
         assert factory_features.shape == (factory_count, factory_feature_count + unit_feature_count)
         assert unit_features.shape == (unit_count, factory_feature_count + unit_feature_count)
 
-        global_features = np.tile(global_features, (entity_count, 1))
-        assert global_features.shape == (entity_count, global_feature_count)
-
         factory_and_unit_features = np.concatenate((factory_features, unit_features), axis=0)
         assert factory_and_unit_features.shape == (entity_count, factory_feature_count + unit_feature_count)
 
-        features = np.concatenate((entity_features, factory_and_unit_features, global_features), axis=1)
-        assert features.shape == (entity_count, entity_feature_count + factory_feature_count + unit_feature_count + global_feature_count)
+        features = np.concatenate((entity_features, factory_and_unit_features), axis=1)
+        assert features.shape == (entity_count, entity_feature_count + factory_feature_count + unit_feature_count)
         
         self.logger.debug(f"Assembled features: {features.shape}")
 
         return features
 
     def get_entity_features(self, obs: kit.kit.GameState, player: str, env_cfg: EnvConfig, global_feature: np.ndarray, map_feature: np.ndarray):
-        #   entity specific features - 15
+        #   entity specific features - 17
         #       00 is_factory - 0/1
         #       01 is_unit - 0/1
         #       02 power - ratio
@@ -407,6 +402,8 @@ class ObservationParser():
         #       12 closest_friendly Y - [-1, 1]
         #       13 closest_enemy X - [-1, 1]
         #       14 closest_enemy Y - [-1, 1]
+        #       15 closest_ice X - [-1, 1]
+        #       16 closest_ice Y - [-1, 1]
         #
 
         light_cfg = env_cfg.ROBOTS['LIGHT']
@@ -416,7 +413,11 @@ class ObservationParser():
 
         entities = list(obs.factories[player].items()) + list(obs.units[player].items())
         entity_count = len(entities)
-        feature_count = 15
+        feature_count = 17
+
+        map_size = env_cfg.map_size
+        map_half_size = map_size/2
+        middle_coord = np.array([map_half_size, map_half_size]) - 0.5
 
         features = np.zeros((entity_count, feature_count))
 
@@ -434,25 +435,38 @@ class ObservationParser():
             water_ratio = 0 if global_feature['factory_total_water_own'] == 0 else water / global_feature['factory_total_water_own']
             metal_ratio = 0 if global_feature['factory_total_metal_own'] == 0 else metal / global_feature['factory_total_metal_own']
 
+            pos = entity.pos
+            to_middle_vector = (middle_coord - pos) / map_size
+
+            ice_coords = np.array(np.where(obs.board.ice == 1)).reshape(-1, 2)
+            relative_ice_coords = (ice_coords - pos) / 64
+            ice_distances = np.sum(relative_ice_coords ** 2, axis=1)
+            closest_ind = np.argmin(ice_distances)
+            closest_ice = relative_ice_coords[closest_ind, :]
+
             entity_features = np.array([
                 1 if entity_name in factory_keys else 0,
                 1 if entity_name in unit_keys else 0,
-                power_ratio,
-                ice_ratio,
-                ore_ratio,
-                water_ratio,
-                metal_ratio,
-                random.random(),  # TODO: distance from center X
-                0,  # TODO: distance from center Y
+                0, # power_ratio,
+                0, # ice_ratio,
+                0, # ore_ratio,
+                0, # water_ratio,
+                0, # metal_ratio,
+                to_middle_vector[0],
+                to_middle_vector[1],
                 0,  # TODO: closest_factory X
                 0,  # TODO: closest_factory Y
                 0,  # TODO: closest_friendly X
                 0,  # TODO: closest_friendly Y
                 0,  # TODO: closest_enemy X
                 0,  # TODO: closest_enemy Y
+                closest_ice[0],  # TODO: closest_ice X
+                closest_ice[1],  # TODO: closest_ice Y
             ], dtype=np.float32)
 
             features[i] = entity_features
+
+            self.logger.debug(f"Entity features: {entity_name} {entity_features}")
 
         self.logger.debug(f"Entity features: {features.shape}")
 
@@ -462,19 +476,26 @@ class ObservationParser():
         #   unit specific features - 2
         #       00 is_light - 0/1
         #       01 is_heavy - 0/1
+        #       02 on_ice - 0/1
         #       
 
         units = obs.units[player]
         unit_count = len(units.keys())
-        feature_count = 2
+        feature_count = 3
 
         features = np.zeros((unit_count, feature_count))
 
         for i, (_, unit) in enumerate(units.items()):
 
-            self.logger.debug(unit)
+            self.logger.debug(f"Unit {i}: {unit.unit_id} {unit.pos} {unit.unit_type}")
 
-            # TODO: add features
+            unit_features = np.array([
+                int(unit.unit_type == "LIGHT"),
+                int(unit.unit_type == "HEAVY"),
+                obs.board.ice[unit.pos[0], unit.pos[1]]
+            ])
+
+            features[i] = unit_features
 
         self.logger.debug(f"Unit features: {features.shape}")
 
@@ -491,6 +512,8 @@ class ObservationParser():
 
         features = np.zeros((factory_count, feature_count))
         for i, (_, factory) in enumerate(factories.items()):
+
+            self.logger.debug(f"Factory {i}: {factory.unit_id} {factory.pos}")
 
             lichen = factory.owned_lichen_tiles(obs)
             lichen_ratio = 0 if global_feature['total_lichen_own'] == 0 else lichen / global_feature['total_lichen_own']

@@ -7,6 +7,9 @@ from torch import Tensor
 from torchvision.models import resnet50
 import sys
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 def conv3x3(in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dilation: int = 1) -> nn.Conv2d:
 
@@ -443,6 +446,8 @@ class UNetWithResnet50Encoder(BaseFeaturesExtractor):
 
 class SimpleEntityNet(BaseFeaturesExtractor):
     def __init__(self, observation, action_dim):
+        logger.debug(f"Creating {self.__class__.__name__}")
+        self.logger = logging.getLogger(f"{__name__}_{id(self)}")
 
         self.entity_input_dim = observation["LOCAL_entity"].shape[-1]
         self.entity_output_dim = action_dim
@@ -458,16 +463,16 @@ class SimpleEntityNet(BaseFeaturesExtractor):
 
         entity_obs = x["LOCAL_entity"]
         entity_count = x["_ENTITY_COUNT"]
-        print("Net LOCAL IN:", entity_obs.shape, entity_count.shape, file=sys.stderr)
+        self.logger.debug(f"Net LOCAL IN: {entity_obs.shape} {entity_count.shape}")
 
         assert len(entity_obs.shape) == 3
-        assert entity_obs.shape[1] == entity_count.max().item()
+        assert entity_obs.shape[1] >= entity_count.max().item()
 
         env_count, max_entity_count, feature_size = entity_obs.shape
         assert feature_size == self.entity_input_dim
 
         global_info_obs = x["GLOBAL_info"]
-        print("Net GLOBAL IN:", global_info_obs.shape, file=sys.stderr)
+        self.logger.debug(f"Net GLOBAL IN: {global_info_obs.shape}")
 
 
         # Process local observations
@@ -476,13 +481,13 @@ class SimpleEntityNet(BaseFeaturesExtractor):
         local_x = self.local_lin1(entity_obs)
         local_x = local_x.view(env_count, max_entity_count, self.entity_output_dim)
 
-        print("Net LOCAL OUT:", local_x.shape, entity_count.shape, file=sys.stderr)
+        self.logger.debug(f"Net LOCAL OUT: {local_x.shape} {entity_count.shape}")
 
         # Process global observations
         
         global_x = self.global_lin1(global_info_obs)
 
-        print("Net GLOBAL OUT:", global_x.shape, file=sys.stderr)
+        self.logger.debug(f"Net GLOBAL OUT: {global_x.shape}")
 
         return local_x, global_x
 

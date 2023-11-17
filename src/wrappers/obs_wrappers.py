@@ -48,9 +48,9 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
         # Change: custom observation space
         self.observation_space = spaces.Dict({
             "_ENTITY_COUNT": spaces.Box(low=-np.inf, high=np.inf, shape=(1,), dtype=np.float32),
-            "LOCAL_entity": spaces.Box(low=-np.inf, high=np.inf, shape=(62,), dtype=np.float32),
+            "LOCAL_entity": spaces.Box(low=-np.inf, high=np.inf, shape=(21,), dtype=np.float32),
             "GLOBAL_info": spaces.Box(low=-999, high=999, shape=(44,), dtype=np.float32),
-            "GLOBAL_map": spaces.Box(low=-999, high=999, shape=(30, env.env_cfg.map_size, env.env_cfg.map_size), dtype=np.float32)
+            # "GLOBAL_map": spaces.Box(low=-999, high=999, shape=(30, env.env_cfg.map_size, env.env_cfg.map_size), dtype=np.float32)
         })
 
         self.observation_parser = ObservationParser()

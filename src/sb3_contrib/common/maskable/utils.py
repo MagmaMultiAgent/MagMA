@@ -14,7 +14,20 @@ def get_action_masks(env: GymEnv) -> np.ndarray:
     """
 
     if isinstance(env, VecEnv):
-        return np.stack(env.env_method(EXPECTED_METHOD_NAME))
+        action_masks = env.env_method(EXPECTED_METHOD_NAME)
+
+        max_size = max([a.shape[0] for a in action_masks])
+        shape = list(action_masks[0].shape)
+        shape[0] = max_size
+        shape = [len(action_masks)] + shape
+        action_masks2 = np.zeros(shape)
+        for i, a in enumerate(action_masks):
+            size = a.shape[0]
+            assert size <= max_size
+            action_masks2[i, 0:size, :] = a
+        action_masks = action_masks2
+
+        return np.stack(action_masks)
     else:
         return getattr(env, EXPECTED_METHOD_NAME)()
 

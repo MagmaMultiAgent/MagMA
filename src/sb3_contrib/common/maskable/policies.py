@@ -144,9 +144,6 @@ class MaskableActorCriticPolicy(BasePolicy):
         env_dim, entity_dim, feature_dim = latent_pi.shape
         assert latent_pi.shape[:-1] == obs['LOCAL_entity'].shape[:-1]
 
-        # TODO: change back
-        action_masks = None
-
         latent_pi = latent_pi.view(-1, feature_dim)
         assert latent_pi.shape[0] == env_dim * entity_dim
 
@@ -351,9 +348,6 @@ class MaskableActorCriticPolicy(BasePolicy):
         env_dim, entity_dim, feature_dim = latent_pi.shape
         assert latent_pi.shape[:-1] == obs['LOCAL_entity'].shape[:-1]
 
-        # TODO: change back
-        action_masks = None
-
         latent_pi = latent_pi.view(-1, feature_dim)
         assert latent_pi.shape[0] == env_dim * entity_dim
 
@@ -384,8 +378,13 @@ class MaskableActorCriticPolicy(BasePolicy):
         """
         features = super().extract_features(obs, self.pi_features_extractor)
         latent_pi = self.mlp_extractor.forward_actor(features)
-        _, action_channels, _, _ = latent_pi.shape
-        latent_pi = latent_pi.view(-1, action_channels)
+        _, _, feature_dim = latent_pi.shape
+        latent_pi = latent_pi.view(-1, feature_dim)
+
+        if action_masks is not None:
+            action_masks = action_masks.reshape(-1, feature_dim)
+            assert latent_pi.shape == action_masks.shape
+
         distribution = self._get_action_dist_from_latent(latent_pi)
         if action_masks is not None:
             distribution.apply_masking(action_masks)

@@ -54,7 +54,7 @@ class MaskableRolloutBuffer(RolloutBuffer):
         n_envs: int = 1,
     ):
         super().__init__(buffer_size, observation_space, action_space, device, gae_lambda, gamma, n_envs)
-        logger.info(f"Creating {self.__class__.__name__}")
+        logger.debug(f"Creating {self.__class__.__name__}")
         self.logger = logging.getLogger(f"{__name__}_{id(self)}")
         self.action_masks = None
 
@@ -156,7 +156,7 @@ class MaskableDictRolloutBuffer(DictRolloutBuffer):
     ):
         self.action_masks = None
         super().__init__(buffer_size, observation_space, action_space, device, gae_lambda, gamma, n_envs=n_envs)
-        logger.info(f"Creating {self.__class__.__name__}")
+        logger.debug(f"Creating {self.__class__.__name__}")
         self.logger = logging.getLogger(f"{__name__}_{id(self)}")
 
     def reset(self) -> None:
@@ -170,7 +170,7 @@ class MaskableDictRolloutBuffer(DictRolloutBuffer):
             raise ValueError(f"Unsupported action space {type(self.action_space)}")
 
         self.mask_dims = mask_dims
-        self.action_masks = np.ones((self.buffer_size, self.n_envs, self.mask_dims), dtype=np.float32)
+        self.action_masks = []
 
         super().reset()
 
@@ -178,8 +178,6 @@ class MaskableDictRolloutBuffer(DictRolloutBuffer):
         """
         :param action_masks: Masks applied to constrain the choice of possible actions.
         """
-        # TODO: implement for new action mask
-        action_masks = None
         if action_masks is not None:
             self.action_masks.append(action_masks)
 
@@ -216,5 +214,5 @@ class MaskableDictRolloutBuffer(DictRolloutBuffer):
             old_log_prob=self.to_torch(self.log_probs[batch_inds].flatten()),
             advantages=self.to_torch(self.advantages[batch_inds].flatten()),
             returns=self.to_torch(self.returns[batch_inds].flatten()),
-            action_masks=self.to_torch(self.action_masks[batch_inds].reshape(-1, self.mask_dims)),
+            action_masks=self.to_torch(self.action_masks[batch_inds].flatten()),
         )

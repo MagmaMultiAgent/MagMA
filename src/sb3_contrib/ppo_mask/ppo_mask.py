@@ -423,6 +423,10 @@ class MaskablePPO(OnPolicyAlgorithm):
 
                 # ratio between old and new policy, should be one at the first iteration
                 ratio = th.exp(log_prob - rollout_data.old_log_prob)
+                print(f"epoch={epoch}, avg model pi ratio: {ratio.mean()}, avg prob: {th.exp(log_prob).mean()}", file=sys.stderr)
+                # TODO: count different actions and print them
+                # TODO: find out how to append stuff to tensorboard (and/or the training info table)
+                #print(actions)
 
                 # clipped surrogate loss
                 policy_loss_1 = advantages * ratio
