@@ -385,6 +385,53 @@ class ObservationParser():
 
         return features
 
+    @staticmethod
+    def get_closest_coord(coords: np.array, pos: np.array, map_size: int):
+        """
+        Gets the closest relative distance from an array of coordinates
+        """
+        assert len(coords.shape) == 2
+        assert pos.shape == (2,)
+
+        relative_coords = (coords - pos) / map_size
+        distances = np.sum(relative_coords ** 2, axis=1)
+        closest_ind = np.argmin(distances)
+        closest = relative_coords[closest_ind, :]
+
+        return closest
+
+    @staticmethod
+    def get_neighbours(pos: np.ndarray, map_size: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        assert pos.shape == (2,)
+
+        up = pos - [1, 0]
+        down = pos + [1, 0]
+        left = pos - [0, 1]
+        right = pos + [0, 1]
+        if (up < 0).any():
+            up = None
+        if (left < 0).any():
+            left = None
+        if (down >= map_size).any():
+            down = None
+        if (right >= map_size).any():
+            right = None
+        
+        up_left = pos + [-1, -1]
+        down_left = pos + [+1, -1]
+        up_right = pos + [-1, +1]
+        down_right = pos + [+1, +1]
+        if (up_left < 0).any() or (up_left >= map_size).any():
+            up_left = None
+        if (up_right < 0).any() or (up_right >= map_size).any():
+            up_right = None
+        if (down_right < 0).any() or (down_right >= map_size).any():
+            down_right = None
+        if (down_left < 0).any() or (down_left >= map_size).any():
+            down_left = None
+        
+        return up, right, down, left, up_left, up_right, down_right, down_left
+
     def get_entity_features(self, obs: kit.kit.GameState, player: str, env_cfg: EnvConfig, global_feature: np.ndarray, map_feature: np.ndarray):
         #   entity specific features - 17
         #       00 is_factory - 0/1
@@ -408,8 +455,10 @@ class ObservationParser():
 
         light_cfg = env_cfg.ROBOTS['LIGHT']
 
-        factory_keys = obs.factories[player].keys()
-        unit_keys = obs.units[player].keys()
+        factories = obs.factories[player]
+        units = obs.units[player]
+        factory_keys = factories.keys()
+        unit_keys = units.keys()
 
         entities = list(obs.factories[player].items()) + list(obs.units[player].items())
         entity_count = len(entities)
@@ -429,39 +478,57 @@ class ObservationParser():
             ore = cargo.ore / light_cfg.CARGO_SPACE
             water = cargo.water / light_cfg.CARGO_SPACE
             metal = cargo.metal / light_cfg.CARGO_SPACE
-            power_ratio = 0 if global_feature['factory_total_power_own'] == 0 else power / global_feature['factory_total_power_own']
-            ice_ratio = 0 if global_feature['factory_total_ice_own'] == 0 else ice / global_feature['factory_total_ice_own']
-            ore_ratio = 0 if global_feature['factory_total_ore_own'] == 0 else ore / global_feature['factory_total_ore_own']
-            water_ratio = 0 if global_feature['factory_total_water_own'] == 0 else water / global_feature['factory_total_water_own']
-            metal_ratio = 0 if global_feature['factory_total_metal_own'] == 0 else metal / global_feature['factory_total_metal_own']
+
+            total_power = global_feature['factory_total_power_own'] + global_feature['robot_total_power_own']
+            total_ice = global_feature['factory_total_ice_own'] + global_feature['robot_total_ice_own']
+            total_ore = global_feature['factory_total_ore_own'] + global_feature['robot_total_ore_own']
+            total_water = global_feature['factory_total_water_own'] + global_feature['robot_total_water_own']
+            total_metal = global_feature['factory_total_metal_own'] + global_feature['robot_total_metal_own']
+
+            power_ratio = 0 if total_power == 0 else power / total_power
+            ice_ratio = 0 if total_ice == 0 else ice / total_ice
+            ore_ratio = 0 if total_ore == 0 else ore / total_ore
+            water_ratio = 0 if total_water == 0 else water / total_water
+            metal_ratio = 0 if total_metal == 0 else metal / total_metal
 
             pos = entity.pos
             to_middle_vector = (middle_coord - pos) / map_size
 
             ice_coords = np.array(np.where(obs.board.ice == 1)).reshape(-1, 2)
-            relative_ice_coords = (ice_coords - pos) / 64
-            ice_distances = np.sum(relative_ice_coords ** 2, axis=1)
-            closest_ind = np.argmin(ice_distances)
-            closest_ice = relative_ice_coords[closest_ind, :]
+            closest_ice = ObservationParser.get_closest_coord(ice_coords, pos, map_size)
+
+            if not units:
+                unit_postions = None
+                closest_unit = np.array([0, 0])
+            else:
+                unit_postions = np.array([u.pos for u in units.values()])
+                closest_unit = ObservationParser.get_closest_coord(unit_postions, pos, map_size)
+
+            if not factories:
+                factory_positions = None
+                closest_factory = np.array([0, 0])
+            else:
+                factory_positions = np.array([[f.pos] + list(ObservationParser.get_neighbours(f.pos, map_size)) for f in factories.values()]).reshape(-1, 2)
+                closest_factory = ObservationParser.get_closest_coord(factory_positions, pos, map_size)
 
             entity_features = np.array([
                 1 if entity_name in factory_keys else 0,
                 1 if entity_name in unit_keys else 0,
-                0, # power_ratio,
-                0, # ice_ratio,
-                0, # ore_ratio,
-                0, # water_ratio,
-                0, # metal_ratio,
+                power,
+                ice,
+                0,  # ore,
+                water,
+                0,  # metal,
                 to_middle_vector[0],
                 to_middle_vector[1],
-                0,  # TODO: closest_factory X
-                0,  # TODO: closest_factory Y
-                0,  # TODO: closest_friendly X
-                0,  # TODO: closest_friendly Y
+                closest_factory[0],
+                closest_factory[1],
+                0,  # closest_unit[0],
+                0,  # closest_unit[1],
                 0,  # TODO: closest_enemy X
                 0,  # TODO: closest_enemy Y
-                closest_ice[0],  # TODO: closest_ice X
-                closest_ice[1],  # TODO: closest_ice Y
+                closest_ice[0],
+                closest_ice[1],
             ], dtype=np.float32)
 
             features[i] = entity_features

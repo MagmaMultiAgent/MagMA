@@ -13,9 +13,9 @@ from gymnasium.wrappers import TimeLimit
 from luxai_s2.state import StatsStateDict
 from luxai_s2.utils.heuristics.factory_placement import place_near_random_ice
 from stable_baselines3.common.callbacks import (
-    BaseCallback,
-    EvalCallback,
+    BaseCallback
 )
+from sb3_contrib.common.maskable.callbacks import MaskableEvalCallback
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.utils import set_random_seed
@@ -292,7 +292,7 @@ def train(args, env_id, model: PPO, invalid_action_masking):
     eval_environments = [make_env(env_id, i, max_episode_steps=1000) for i in range(4)]
     eval_env = CustomDummyVecEnv(eval_environments)
     eval_env.reset()
-    eval_callback = EvalCallback(
+    eval_callback = MaskableEvalCallback(
         eval_env,
         best_model_save_path=osp.join(args.log_path, "models"),
         log_path=osp.join(args.log_path, "eval_logs"),
@@ -300,6 +300,7 @@ def train(args, env_id, model: PPO, invalid_action_masking):
         deterministic=False,
         render=False,
         n_eval_episodes=5,
+        use_masking=True
     )
 
     model.learn(
@@ -332,12 +333,12 @@ def main(args):
                 "action_dim": 25
             }
         }
-    rollout_steps = 2048
+    rollout_steps = 128
     model = MaskablePPO(
         "MultiInputPolicy",
         env,
         n_steps=rollout_steps // args.n_envs,
-        batch_size=1024,
+        batch_size=128,
         learning_rate=0.001,
         policy_kwargs=policy_kwargs,
         verbose=1,

@@ -274,7 +274,11 @@ class MaskableActorCriticPolicy(BasePolicy):
         :param action_masks: Action masks to apply to the action distribution
         :return: Taken action according to the policy
         """
-        return self.get_distribution(observation, action_masks).get_actions(deterministic=deterministic)
+        actions = self.get_distribution(observation, action_masks).get_actions(deterministic=deterministic)
+        n_envs = observation["_ENTITY_COUNT"].shape[0]
+        entity_size = observation["_ENTITY_COUNT"].max().item()
+        actions = actions.view(n_envs, entity_size)
+        return actions
 
     def predict(
         self,
@@ -318,8 +322,9 @@ class MaskableActorCriticPolicy(BasePolicy):
         if not vectorized_env:
             if state is not None:
                 raise ValueError("Error: The environment must be vectorized when using recurrent policies.")
-            actions = actions.squeeze(axis=0)
-
+            # Why???
+            # actions = actions.squeeze(axis=0)
+        
         return actions, None
 
     def evaluate_actions(

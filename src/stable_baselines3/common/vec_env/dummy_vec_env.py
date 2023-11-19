@@ -176,7 +176,7 @@ class CustomDummyVecEnv(DummyVecEnv):
         entity_dims = np.array(obs[dim_key])
         max_entity_dim = entity_dims.max()
         obs2 = {
-            dim_key: entity_dims
+            dim_key: entity_dims.reshape(-1, 1)
         }
 
         for name, observations in obs.items():

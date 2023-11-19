@@ -7,6 +7,8 @@ import numpy as np
 import numpy.typing as npt
 from gymnasium import spaces
 
+from observation.obs_parser import ObservationParser
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -482,7 +484,7 @@ class SimpleUnitDiscreteController(Controller):
             else:
                 strain_id = None
 
-            up, right, down, left, up_left, up_right, down_right, down_left = self.get_neighbours(pos)
+            up, right, down, left, up_left, up_right, down_right, down_left = ObservationParser.get_neighbours(pos, map_size)
 
             # if factory, don't do unit actions
             if is_factory:
@@ -512,7 +514,7 @@ class SimpleUnitDiscreteController(Controller):
                         action_mask[i, self.ACTION_NAME_TO_ID[action_name]] = 0
                     # check if there is another unit next to the new pos
                     else:
-                        new_pos_neighbours = self.get_neighbours(new_pos)[0:4]
+                        new_pos_neighbours = ObservationParser.get_neighbours(new_pos, map_size)[0:4]
                         for new_pos_neighbour in new_pos_neighbours:
                             if (new_pos_neighbour == pos).all():
                                 continue
@@ -557,33 +559,3 @@ class SimpleUnitDiscreteController(Controller):
         
         return action_mask
 
-    def get_neighbours(self, pos: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        map_size = self.env_cfg.map_size
-
-        up = pos - [1, 0]
-        down = pos + [1, 0]
-        left = pos - [0, 1]
-        right = pos + [0, 1]
-        if (up < 0).any():
-            up = None
-        if (left < 0).any():
-            left = None
-        if (down >= map_size).any():
-            down = None
-        if (right >= map_size).any():
-            right = None
-        
-        up_left = pos + [-1, -1]
-        down_left = pos + [+1, -1]
-        up_right = pos + [-1, +1]
-        down_right = pos + [+1, +1]
-        if (up_left < 0).any() or (up_left >= map_size).any():
-            up_left = None
-        if (up_right < 0).any() or (up_right >= map_size).any():
-            up_right = None
-        if (down_right < 0).any() or (down_right >= map_size).any():
-            down_right = None
-        if (down_left < 0).any() or (down_left >= map_size).any():
-            down_left = None
-        
-        return up, right, down, left, up_left, up_right, down_right, down_left
