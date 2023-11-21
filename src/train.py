@@ -28,6 +28,8 @@ from wrappers.sb3_action_mask import SB3InvalidActionWrapper
 from net.net import SimpleEntityNet
 from reward.early_reward_parser import EarlyRewardParser
 
+import random
+
 import sys
 import logging
 logging.basicConfig(level=logging.INFO,
@@ -94,6 +96,7 @@ class EarlyRewardParserWrapper(gym.Wrapper):
         metrics["rubble_destroyed"] = (
             stats["destroyed"]["rubble"]["LIGHT"] + stats["destroyed"]["rubble"]["HEAVY"]
         )
+        metrics["ice_transferred"] = stats["transfer"]["ice"]
         metrics["ore_transferred"] = stats["transfer"]["ore"]
         metrics["water_transferred"] = stats["transfer"]["water"]
         metrics["energy_transferred"] = stats["transfer"]["power"]
@@ -121,8 +124,10 @@ class EarlyRewardParserWrapper(gym.Wrapper):
             # we reward water production more as it is the most important resource for survival
             reward = ice_dug_this_step / 100 + water_produced_this_step
 
-            if reward:
-                reward = 1
+            ice_transferred_this_step = metrics["ice_transferred"] - self.prev_step_metrics["ice_transferred"]
+
+            if ice_transferred_this_step or water_produced_this_step:
+                print(f"Transferred ice: {ice_transferred_this_step}, Water produced: {water_produced_this_step}, Reward: {reward}", file=sys.stderr)
         
         self.prev_step_metrics = copy.deepcopy(metrics)
         
@@ -216,7 +221,7 @@ def make_env(env_id: str, rank: int, seed: int = 0, max_episode_steps=100):
         env = TimeLimit(
             env, max_episode_steps=max_episode_steps
         )
-        env = Monitor(env)
+        env = Monitor(env)        
         env.reset(seed=seed + rank)
         set_random_seed(seed)
 
@@ -270,7 +275,7 @@ def evaluate(args, env_id, model):
     model = model.load(args.model_path)
     video_length = 1000
     eval_env = SubprocVecEnv(
-        [make_env(env_id, i, max_episode_steps=1000) for i in range(args.n_envs)]
+        [make_env(env_id, i, seed=random.random(), max_episode_steps=1000) for i in range(args.n_envs)]
     )
     eval_env = VecVideoRecorder(
         eval_env,
@@ -330,15 +335,15 @@ def main(args):
     policy_kwargs = {
         "features_extractor_class": SimpleEntityNet,
         "features_extractor_kwargs": {
-                "action_dim": 25
+                "action_dim": SimpleUnitDiscreteController.total_act_dims
             }
         }
-    rollout_steps = 128
+    rollout_steps = 1024
     model = MaskablePPO(
         "MultiInputPolicy",
         env,
         n_steps=rollout_steps // args.n_envs,
-        batch_size=128,
+        batch_size=1024,
         learning_rate=0.001,
         policy_kwargs=policy_kwargs,
         verbose=1,

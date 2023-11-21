@@ -7,6 +7,8 @@ from reward.reward_config import global_information_names
 import numpy as np
 import tree
 
+import sys
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -176,7 +178,8 @@ class EarlyRewardParser:
         lichen_strains = obs.board.lichen_strains
         if factories:
             if lichen.any():
-                lichen_count = sum((np.sum(lichen[lichen_strains == factory.strain_id]) for factory in factories), 0)
+                factories_with_lichen = [f for f in factories if hasattr(f, "strain_id")]
+                lichen_count = sum((np.sum(lichen[lichen_strains == factory.strain_id]) for factory in factories_with_lichen), 0)
                 global_info['lichen_count'] = lichen_count
         else:
             global_info['lichen_count'] = 0

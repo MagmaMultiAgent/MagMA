@@ -435,6 +435,7 @@ class LuxAI_S2(ParallelEnv):
             factory_id = f"factory_{self.state.board.factory_occupancy_map[transfer_pos.x, transfer_pos.y]}"
             if factory_id in self.state.factories[unit.team.agent]:
                 factory = self.state.factories[unit.team.agent][factory_id]
+                print(f"{unit} transfering {transfer_amount} amount of {transfer_action.resource} to factory {factory}")
                 actually_transferred = factory.add_resource(
                     transfer_action.resource, transfer_amount
                 )

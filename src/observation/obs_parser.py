@@ -404,10 +404,13 @@ class ObservationParser():
     def get_neighbours(pos: np.ndarray, map_size: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         assert pos.shape == (2,)
 
-        up = pos - [1, 0]
-        down = pos + [1, 0]
-        left = pos - [0, 1]
-        right = pos + [0, 1]
+        # (1 = up,  2 = right,  3 = down,   4 = left)
+        # [[0, -1], [1, 0],     [0, 1],     [-1, 0]]
+
+        up = pos + [0, -1]
+        down = pos + [0, +1]
+        left = pos + [-1, 0]
+        right = pos + [+1, 0]
         if (up < 0).any():
             up = None
         if (left < 0).any():
@@ -418,8 +421,8 @@ class ObservationParser():
             right = None
         
         up_left = pos + [-1, -1]
-        down_left = pos + [+1, -1]
-        up_right = pos + [-1, +1]
+        down_left = pos + [-1, +1]
+        up_right = pos + [+1, -1]
         down_right = pos + [+1, +1]
         if (up_left < 0).any() or (up_left >= map_size).any():
             up_left = None
