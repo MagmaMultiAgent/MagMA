@@ -255,6 +255,7 @@ class TensorboardCallback(BaseCallback):
                 count += 1
                 for k in info["metrics"]:
                     stat = info["metrics"][k]
+                    self.logger.record_mean(f"{self.tag}/{k}", stat)
         return True
 
 

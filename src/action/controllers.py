@@ -364,6 +364,8 @@ class SimpleUnitDiscreteController(Controller):
         action_mask = np.ones((entity_count, self.total_act_dims))
         self.logger.debug(f"Action mask in controller: {action_mask.shape}")
 
+        collision_avoider = {}
+
         for i, (entity_name, entity) in enumerate(entities):
             entity_id = int(entity_name.split("_")[1])
             pos = entity["pos"]
@@ -404,22 +406,17 @@ class SimpleUnitDiscreteController(Controller):
                         action_mask[i, self.ACTION_NAME_TO_ID[action_name]] = 0
                         continue
 
-                    has_unit = tuple(new_pos) in unit_positions
+                    new_pos_tuple = tuple(new_pos)
+                    has_unit = new_pos_tuple in unit_positions
                     if has_unit:
                         action_mask[i, self.ACTION_NAME_TO_ID[action_name]] = 0
-                    # check if there is another unit next to the new pos
                     else:
-                        new_pos_neighbours = ObservationParser.get_neighbours(new_pos, map_size)[0:4]
-                        for new_pos_neighbour in new_pos_neighbours:
-                            if (new_pos_neighbour == pos).all():
-                                continue
-                            if new_pos_neighbour is None:
-                                continue
-
-                            has_unit = tuple(new_pos_neighbour) in unit_positions
-                            if has_unit:
-                                action_mask[i, self.ACTION_NAME_TO_ID[action_name]] = 0
-                                break
+                        # add unit to collision avoider
+                        tup = ((i, entity_name, entity, action_name), (ice, ore, power))
+                        if new_pos_tuple not in collision_avoider:
+                            collision_avoider[new_pos_tuple] = []
+                        collision_avoider[new_pos_tuple].append(tup)
+                        
                 
                 transfer_actions = [a for a in self.UNIT_ACTIONS if "transfer" in self.ID_TO_ACTION_NAME[a]]
                 transfer_center_actions = [a for a in transfer_actions if "center" in self.ID_TO_ACTION_NAME[a]]
@@ -494,5 +491,16 @@ class SimpleUnitDiscreteController(Controller):
             
             assert (action_mask[i] > 0).any(), "Action mask must contain at least 1 non-zero element"
         
+        if collision_avoider:
+            for pos, lst in collision_avoider.items():
+                lst = sorted(lst, key=lambda x: x[1], reverse=True)
+                (_, entity_name, entity, action_name), _ = lst[0]
+                if len(lst) > 1:
+                    #print(f"Blocking at {pos}, choosen: {entity_name} {entity['pos']} {action_name}")
+                    for u in lst[1:]:
+                        (i, entity_name, entity, action_name), _ = u
+                        #print(f"\tBlocked: {entity_name} {entity['pos']} {action_name}")
+                        action_mask[i, self.ACTION_NAME_TO_ID[action_name]] = 0
+
         return action_mask
 

@@ -442,8 +442,6 @@ class UNetWithResnet50Encoder(BaseFeaturesExtractor):
         return x
     
 
-
-
 class SimpleEntityNet(BaseFeaturesExtractor):
     def __init__(self, observation, action_dim):
         logger.debug(f"Creating {self.__class__.__name__}")
