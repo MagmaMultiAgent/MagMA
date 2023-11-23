@@ -129,6 +129,23 @@ class SimpleUnitDiscreteController(Controller):
     total_act_dims = skip_dim_high
     action_space = spaces.Discrete(total_act_dims)
 
+    power_costs = {
+        "LIGHT": {
+            0: 1,
+            1: 2,
+            2: 3,
+            3: 4,
+            20: 5
+        },
+        "HEAVY": {
+            0: 20,
+            1: 20,
+            2: 20,
+            3: 20,
+            20: 60
+        }
+    }
+
     def __init__(self, env_cfg) -> None:
         """
         A simple controller that controls only the robot that will get spawned.
@@ -371,15 +388,23 @@ class SimpleUnitDiscreteController(Controller):
             pos = entity["pos"]
             is_factory = "factory" in entity_name
             is_unit = "unit" in entity_name
+            assert is_factory or is_unit, "Entity should be either a factory or a unit"
             power = entity["power"]
             ice = entity["cargo"]["ice"]
             ore = entity["cargo"]["ore"]
             water = entity["cargo"]["water"]
             metal = entity["cargo"]["metal"]
+            strain_id = None
             if is_factory:
                 strain_id = entity["strain_id"]
-            else:
-                strain_id = None
+            is_light = None
+            is_heavy = None
+            power_costs = None
+            if is_unit:
+                is_light = entity["unit_type"] == "LIGHT"
+                is_heavy = entity["unit_type"] == "HEAVY"
+                assert is_light or is_heavy, "Unit should be either light or heavy"
+                power_costs = self.power_costs[entity["unit_type"]]
 
             up, right, down, left, up_left, up_right, down_right, down_left = ObservationParser.get_neighbours(pos, map_size)
 
@@ -467,6 +492,13 @@ class SimpleUnitDiscreteController(Controller):
                 # TODO: remove this
                 # for testing, don't recharge
                 action_mask[i, self.ACTION_NAME_TO_ID["recharge"]] = 0
+
+                # if not enough power, don't do action
+                for a in self.UNIT_ACTIONS:
+                    if a in power_costs:
+                        power_cost = power_costs[a]
+                        if power_cost > power:
+                            action_mask[i, a] = 0
 
             if is_factory:
                 factory_positions = [p for p in [pos, up_left, up, up_right, right, down_right, down, down_left, left] if p is not None]
