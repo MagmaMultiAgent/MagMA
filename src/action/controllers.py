@@ -56,6 +56,20 @@ class SimpleUnitDiscreteController(Controller):
     that will get spawned.
     """
 
+    DISABLED_ACTIONS = [
+        "transfer_ore_center",
+        "transfer_ore_up",
+        "transfer_ore_right",
+        "transfer_ore_down",
+        "transfer_ore_left",
+        "transfer_power_center",
+        "transfer_power_up",
+        "transfer_power_right",
+        "transfer_power_down",
+        "transfer_power_left",
+        "pickup"
+    ]
+
     ID_TO_ACTION_NAME = {
         0: "move_up",
         1: "move_right",
@@ -373,6 +387,9 @@ class SimpleUnitDiscreteController(Controller):
         
         factories = obs["factories"][agent]
         units = obs["units"][agent]
+
+        self.logger.debug(f"Count: {len(factories) + len(units)}, {list(factories.keys()) + list(units.keys())}")
+
         unit_positions = [tuple(u["pos"]) for u in units.values()]
         entities = list(factories.items()) + list(units.items())
         entity_count = len(entities)
@@ -441,7 +458,6 @@ class SimpleUnitDiscreteController(Controller):
                         if new_pos_tuple not in collision_avoider:
                             collision_avoider[new_pos_tuple] = []
                         collision_avoider[new_pos_tuple].append(tup)
-                        
                 
                 transfer_actions = [a for a in self.UNIT_ACTIONS if "transfer" in self.ID_TO_ACTION_NAME[a]]
                 transfer_center_actions = [a for a in transfer_actions if "center" in self.ID_TO_ACTION_NAME[a]]
@@ -452,14 +468,6 @@ class SimpleUnitDiscreteController(Controller):
                 transfer_ice_actions = [a for a in transfer_actions if "ice" in self.ID_TO_ACTION_NAME[a]]
                 transfer_ore_actions = [a for a in transfer_actions if "ore" in self.ID_TO_ACTION_NAME[a]]
                 transfer_power_actions = [a for a in transfer_actions if "power" in self.ID_TO_ACTION_NAME[a]]
-                
-                # TODO: change this to only block factories
-                # for testing, don't transfer power
-                action_mask[i, transfer_power_actions] = 0
-
-                # TODO: remove this
-                # for testoing, don't transfer ore
-                action_mask[i, transfer_ore_actions] = 0
 
                 # if no resource, don't transfer
                 if not ice:
@@ -486,19 +494,16 @@ class SimpleUnitDiscreteController(Controller):
                 if not (all_factory_positions == left).all(axis=1).any():
                     action_mask[i, transfer_left_actions] = 0
 
-                # TODO: remove this
-                # for testing, don't pickup
-                action_mask[i, self.ACTION_NAME_TO_ID["pickup"]] = 0
-                # TODO: remove this
-                # for testing, don't recharge
-                action_mask[i, self.ACTION_NAME_TO_ID["recharge"]] = 0
-
                 # if not enough power, don't do action
                 for a in self.UNIT_ACTIONS:
                     if a in power_costs:
                         power_cost = power_costs[a]
                         if power_cost > power:
                             action_mask[i, a] = 0
+
+                # if action is diabled, don't do action
+                disabled_actions = [self.ACTION_NAME_TO_ID[a] for a in self.DISABLED_ACTIONS]
+                action_mask[i, disabled_actions] = 0
 
             if is_factory:
                 factory_positions = [p for p in [pos, up_left, up, up_right, right, down_right, down, down_left, left] if p is not None]
@@ -533,6 +538,14 @@ class SimpleUnitDiscreteController(Controller):
                         (i, entity_name, entity, action_name), _ = u
                         #print(f"\tBlocked: {entity_name} {entity['pos']} {action_name}")
                         action_mask[i, self.ACTION_NAME_TO_ID[action_name]] = 0
+        
+        # for i in range(entity_count):
+        #     # if valid action without skip, don't skip
+        #     skip_action_id = self.ACTION_NAME_TO_ID["skip"]
+        #     if action_mask[i, [a for a in self.ID_TO_ACTION_NAME.keys() if a != skip_action_id]].sum() > 0:
+        #         action_mask[i, skip_action_id] = 0
+
+        self.logger.debug(f"Created action mask: {action_mask.shape}")
 
         return action_mask
 

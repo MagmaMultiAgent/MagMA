@@ -56,15 +56,25 @@ class EarlyRewardParserWrapper(gym.Wrapper):
         self.prev_step_metrics = None
         self.reward_parser = EarlyRewardParser()
 
+        # controller to get action mask
+        self.controller = SimpleUnitDiscreteController(self.env.env_cfg)
+
     def step(self, action):
-        
+
         agent = "player_0"
         opp_agent = "player_1"
 
-        opp_factories = self.env.state.factories[opp_agent]
-        for k in opp_factories.keys():
-            factory = opp_factories[k]
+        factories = self.env.state.factories[opp_agent]
+        for k in factories.keys():
+            factory = factories[k]
             factory.cargo.water = 1000
+        
+        factories = self.env.state.factories[agent]
+        units = self.env.state.units[agent]
+
+        assert self.prev_obs
+        prev_obs = self.prev_obs
+        prev_mask = self.controller.action_masks(agent, prev_obs)
 
         action = {agent: action}
         obs, _, termination, truncation, info = self.env.step(action)
@@ -111,9 +121,9 @@ class EarlyRewardParserWrapper(gym.Wrapper):
         metrics["action_queue_updates_success"] = stats["action_queue_updates_success"]
         metrics["action_queue_updates_total"] = stats["action_queue_updates_total"]
 
-        
-        info["metrics"] = metrics
+    
 
+        # Give rewards
         reward = 0
         if self.prev_step_metrics is not None:
             # we check how much ice and water is produced and reward the agent for generating both
@@ -131,6 +141,44 @@ class EarlyRewardParserWrapper(gym.Wrapper):
         
         self.prev_step_metrics = copy.deepcopy(metrics)
         
+
+        # Record actions
+        action = action[agent]
+        factories = prev_obs[agent]["factories"][agent]
+        units = prev_obs[agent]["units"][agent]
+        mask_size = prev_mask.shape[0]
+        action_size = action.shape[0]
+        entity_size = len(factories) + len(units)
+        
+        assert action_size >= mask_size
+        assert mask_size == entity_size
+
+        action = action[:entity_size]
+
+        actions = {}
+        for action_name, action_id in self.controller.ACTION_NAME_TO_ID.items():
+            if action_name in self.controller.DISABLED_ACTIONS:
+                continue
+
+            # Add actions counts
+            prev_value = 0
+            if self.prev_actions and action_name in self.prev_actions:
+                prev_value = self.prev_actions[action_name]
+            actions[action_name] = prev_value
+            actions[action_name] += (action == action_id).sum()
+
+            # Add action availability counts (not masked actions)
+            action_availability_name = f"{action_name}_availability"
+            prev_value = 0
+            if self.prev_actions and action_availability_name in self.prev_actions:
+                prev_value = self.prev_actions[action_availability_name]
+            actions[action_availability_name] = prev_value
+            actions[action_availability_name] += prev_mask[:, action_id].sum()
+        
+        self.prev_actions = copy.deepcopy(actions)
+
+        info["metrics"] = metrics
+        info["actions"] = actions
         return obs, reward, termination[agent], truncation[agent], info
 
     def reset(self, **kwargs):
@@ -139,6 +187,7 @@ class EarlyRewardParserWrapper(gym.Wrapper):
         """
         obs, reset_info = self.env.reset(**kwargs)
         self.prev_step_metrics = None
+        self.prev_actions = None
         return obs["player_0"], reset_info
 
 
@@ -235,13 +284,14 @@ class TensorboardCallback(BaseCallback):
     Callback for logging metrics to tensorboard
     """
 
-    def __init__(self, tag: str, verbose=0):
+    def __init__(self, tag: str, info_name: str, verbose=0):
         """
         Initializes the callback
         """
 
         super().__init__(verbose)
         self.tag = tag
+        self.info_name = info_name
 
     def _on_step(self) -> bool:
         """
@@ -253,11 +303,10 @@ class TensorboardCallback(BaseCallback):
             if done:
                 info = self.locals["infos"][i]
                 count += 1
-                for k in info["metrics"]:
-                    stat = info["metrics"][k]
+                for k in info[self.info_name]:
+                    stat = info[self.info_name][k]
                     self.logger.record_mean(f"{self.tag}/{k}", stat)
         return True
-
 
 def save_model_state_dict(save_path, model):
     """
@@ -311,7 +360,9 @@ def train(args, env_id, model: PPO, invalid_action_masking):
 
     model.learn(
         args.total_timesteps,
-        callback=[TensorboardCallback(tag="train_metrics"), eval_callback],
+        callback=[TensorboardCallback(tag="train_metrics", info_name="metrics"),
+                  TensorboardCallback(tag="train_actions", info_name="actions"),
+                  eval_callback],
     )
     model.save(osp.join(args.log_path, "models/latest_model"))
 
