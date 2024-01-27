@@ -9,10 +9,17 @@ from gymnasium import spaces
 from observation.obs_parser import ObservationParser
 from collections import deque
 import random
+import socket
+import atexit
 
 MAP_FEATURE_SIZE = 30
 GLOBAL_FEATURE_SIZE = 44
 FACTORY_FEATURE_SIZE = 1 * 4
+
+def exit_handler(socket_to_close):
+    # This function will be called on program exit
+    if socket_to_close:
+        socket_to_close.close()
 
 class SimpleUnitObservationWrapper(gym.ObservationWrapper):
     """
@@ -29,7 +36,7 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
 
     """
 
-    def __init__(self, env: gym.Env) -> None:
+    def __init__(self, env: gym.Env, ind:int = 0) -> None:
         """
         A simple state based observation to work with in pair with the SimpleUnitDiscreteController
         """
@@ -71,12 +78,34 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
         #         }
         #     })
 
+        self.ind = ind
+
+        ADDRESS = "172.19.182.35"
+        UDP_PORT = 8001
+
+        addr = socket.getaddrinfo(
+            ADDRESS, UDP_PORT,
+            socket.AF_INET, socket.SOCK_DGRAM)[0]
+
+        if self.ind == 0:
+            self.socket = socket.socket(*addr[:3])
+            self.socket.setblocking(False)
+            atexit.register(exit_handler, self.socket)
+            self.socket.connect(addr[4])
+        else:
+            self.socket = None
+
+
     def observation(self, obs):
         """
         Takes as input the current "raw observation" and returns
         """
 
-        converted_obs = SimpleUnitObservationWrapper.convert_obs(obs, self.env.state.env_cfg, self.observation_parser)
+        converted_obs, stream_data = SimpleUnitObservationWrapper.convert_obs(obs, self.env.state.env_cfg, self.observation_parser, ind=self.ind)
+
+        if self.ind == 0:
+            self.logger.debug(f"Sending stream data {len(stream_data)}")
+            self.socket.send(stream_data)
 
         # self.observation_queue.append(converted_obs)
         # past_3_observations = list(self.observation_queue)[-3:]
@@ -149,13 +178,13 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
         return converted_obs
 
     @staticmethod
-    def convert_obs(obs: Dict[str, Any], env_cfg: Any, obs_parsers: ObservationParser) -> Dict[str, npt.NDArray]:
+    def convert_obs(obs: Dict[str, Any], env_cfg: Any, obs_parsers: ObservationParser, ind: int = 0) -> Dict[str, npt.NDArray]:
         """
         Takes as input the current "raw observation" and returns converted observation
         """
         observation = {}
         obs_pars = ObservationParser()
-        map_features, global_features, factory_features, assembled_features, _ = obs_pars.parse_observation(obs, env_cfg)
+        map_features, global_features, factory_features, assembled_features, _, stream_data = obs_pars.parse_observation(obs, env_cfg, ind=ind)
         for i, agent in enumerate(obs.keys()):
             observation[agent] = {
                 "map": map_features[i],
@@ -163,4 +192,4 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
                 "factory": factory_features[i],
                 "entity": assembled_features[i]
             }
-        return observation
+        return observation, stream_data

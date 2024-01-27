@@ -207,7 +207,7 @@ def parse_args():
         "-n",
         "--n-envs",
         type=int,
-        default=4,
+        default=2,
         help="Number of parallel envs to run. Note that the rollout \
         size is configured separately and invariant to this value",
     )
@@ -264,7 +264,8 @@ def make_env(env_id: str, rank: int, seed: int = 0, max_episode_steps=100):
         )
 
         env = SimpleUnitObservationWrapper(
-            env
+            env,
+            ind=rank
         )
         env = EarlyRewardParserWrapper(env)
         env = TimeLimit(
@@ -390,19 +391,20 @@ def main(args):
                 "action_dim": SimpleUnitDiscreteController.total_act_dims
             }
         }
-    rollout_steps = 1024
+    rollout_steps = 512
     model = MaskablePPO(
         "MultiInputPolicy",
         env,
         n_steps=rollout_steps // args.n_envs,
-        batch_size=1024,
+        batch_size=512,
         learning_rate=0.001,
         policy_kwargs=policy_kwargs,
         verbose=1,
         target_kl=None,
         gamma=0.99,
         tensorboard_log=osp.join(args.log_path),
-        n_epochs=2
+        n_epochs=2,
+        ent_coef=0.001,
     )
     if args.eval:
         evaluate(args, env_id, model)

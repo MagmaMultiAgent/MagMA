@@ -741,9 +741,11 @@ class LuxAI_S2(ParallelEnv):
         for unit, recharge_action in actions_by_type["recharge"]:
             recharge_action: RechargeAction
             if unit.power < recharge_action.power:
+                #print(f"unit power {unit.power} is less than {recharge_action.power}")
                 pass
             else:
                 # if unit got enough power, handle the action and consider it for repeating
+                #print(f"unit escaped recharge action with {unit.power} power")
                 unit.repeat_action(recharge_action)
 
     def _handle_factory_water_actions(self, actions_by_type: ActionsByType):

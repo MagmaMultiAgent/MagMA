@@ -6,6 +6,7 @@ from typing import NamedTuple
 from luxai_s2.config import EnvConfig
 
 import random
+import gzip
 
 import logging
 logger = logging.getLogger(__name__)
@@ -106,14 +107,14 @@ class ObservationParser():
             'player_lichen_count',
         ]
 
-    def parse_observation(self, obs, env_cfg: EnvConfig):
+    def parse_observation(self, obs, env_cfg: EnvConfig, ind: int = 0):
         self.logger.debug("Parsing observation")
         map_feature_list = []
         global_feature_list = []
         factory_feature_list = []
         assembled_feature_list = []
-        for player, player_obs in obs.items():
 
+        for player, player_obs in obs.items():
             env_step = player_obs['real_env_steps'] + player_obs['board']['factories_per_team'] * 2 + 1
             game_state = kit.kit.obs_to_game_state(env_step, env_cfg, player_obs)
 
@@ -142,7 +143,77 @@ class ObservationParser():
 
         global_info = {player: self.get_global_info(player, game_state) for player in ['player_0', 'player_1']}
 
-        return map_feature_list, global_feature_list, factory_feature_list, assembled_feature_list, global_info
+        stream_data = self.get_stream_data(obs, env_cfg)
+        if stream_data is not None:
+            stream_data = gzip.compress(stream_data.tobytes())
+        return map_feature_list, global_feature_list, factory_feature_list, assembled_feature_list, global_info, stream_data
+
+    def get_stream_data(self, all_obs, env_cfg):
+        map_size = env_cfg.map_size
+        stream_data = np.zeros((map_size, map_size, 3))
+        base_color = [255, 255, 255]
+        stream_data[stream_data[:, :, 0] == 0] = base_color
+
+        # draw rubble
+        for player, obs in all_obs.items():
+            rubble = obs["board"]["rubble"]
+            rubble[rubble > 100] = 100
+            rubble = (1 - (rubble / 100)) * 255
+            rubble = np.stack([rubble, rubble, rubble], axis=-1)
+            stream_data[:, :, :] = rubble
+
+        # draw lichen
+        lichen_color = [255, 255, 153]
+        for player, obs in all_obs.items():
+            lichen = obs["board"]["lichen"]
+            lichen[lichen > 0] = 1
+            stream_data[lichen[:, :] == 1] = lichen_color
+
+        # draw ice
+        ice_color = [153, 204, 255]
+        for player, obs in all_obs.items():
+            ice = obs["board"]["ice"]
+            ice[ice > 0] = 1
+            stream_data[ice[:, :] == 1] = ice_color
+
+        # draw metal
+        ore_color = [255, 204, 153]
+        for player, obs in all_obs.items():
+            ore = obs["board"]["ore"]
+            ore[ore> 0] = 1
+            stream_data[ore[:, :] == 1] = ore_color
+
+        for player, obs in all_obs.items():
+            env_step = obs['real_env_steps'] + obs['board']['factories_per_team'] * 2 + 1
+            game_state = kit.kit.obs_to_game_state(env_step, env_cfg, obs)
+
+            # define colors
+            heavy_color = [0, 153, 0]
+            light_color = [102, 255, 102]
+            factory_color = [0, 51, 0]
+            
+            if player == "player_1":
+                heavy_color = [153, 0, 0]
+                light_color = [255, 102, 102]
+                factory_color = [51, 0, 0]
+            
+            factories = game_state.factories[player]
+            for _, factory in factories.items():
+                pos0_x, pos0_y = factory.pos
+                pos1_x, pos1_y, pos2_x, po2_y, pos3_x, pos3_y, pos4_x, pos4_y = ObservationParser.get_neighbours(factory.pos, map_size)
+                for x, y in [[pos0_x, pos0_y], [pos1_x, pos1_y], [pos2_x, po2_y], [pos3_x, pos3_y], [pos4_x, pos4_y]]:
+                    stream_data[x, y] = factory_color
+
+            units = game_state.units[player]
+            for _, unit in units.items():
+                pos0_x, pos0_y = unit.pos
+                if unit.unit_type == "LIGHT":
+                    stream_data[pos0_x, pos0_y] = light_color
+                else:
+                    stream_data[pos0_x, pos0_y] = heavy_color
+
+        return stream_data
+                
 
     def get_global_info(self, player: str, obs: kit.kit.GameState):
 

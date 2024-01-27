@@ -249,7 +249,8 @@ class SimpleUnitDiscreteController(Controller):
         """
         Converts the action id to a recharge action
         """
-        return np.array([4, 0, 0, 0, 0, 1])
+        # TODO: set a power level instead of 0
+        return np.array([5, 0, 0, 0, 0, 1])
     
     def _is_light_unit_build_action(self, id):
         """
@@ -417,11 +418,13 @@ class SimpleUnitDiscreteController(Controller):
             is_light = None
             is_heavy = None
             power_costs = None
+            unit_type = None
             if is_unit:
-                is_light = entity["unit_type"] == "LIGHT"
-                is_heavy = entity["unit_type"] == "HEAVY"
+                unit_type = entity["unit_type"]
+                is_light = unit_type == "LIGHT"
+                is_heavy = unit_type == "HEAVY"
                 assert is_light or is_heavy, "Unit should be either light or heavy"
-                power_costs = self.power_costs[entity["unit_type"]]
+                power_costs = self.power_costs[unit_type]
 
             up, right, down, left, up_left, up_right, down_right, down_left = ObservationParser.get_neighbours(pos, map_size)
 
@@ -440,6 +443,14 @@ class SimpleUnitDiscreteController(Controller):
                 # if there is no resource or rubble, don't dig
                 if not has_ice and not has_ore and not has_rubble:
                     action_mask[i, self.ACTION_NAME_TO_ID["dig"]] = 0
+                else:
+                    # if there is no cargo space, don't dig
+                    cargo_requirement = 2
+                    if is_heavy:
+                        cargo_requirement = 20
+                    cargo_space = self.env_cfg.ROBOTS[unit_type].CARGO_SPACE
+                    if (cargo_space - ice - ore - metal - water) < cargo_requirement:
+                        action_mask[i, self.ACTION_NAME_TO_ID["dig"]] = 0
                 
                 # if action is out of the map, don't move
                 # if agent is standing in the way, don't move
@@ -504,6 +515,12 @@ class SimpleUnitDiscreteController(Controller):
                 # if action is diabled, don't do action
                 disabled_actions = [self.ACTION_NAME_TO_ID[a] for a in self.DISABLED_ACTIONS]
                 action_mask[i, disabled_actions] = 0
+
+                # # if recharge available, don't do skip
+                # skip_action_id = self.ACTION_NAME_TO_ID["skip"]
+                # recharge_action_id = self.ACTION_NAME_TO_ID["recharge"]
+                # if action_mask[i, recharge_action_id]:
+                #     action_mask[i, skip_action_id] = 0
 
             if is_factory:
                 factory_positions = [p for p in [pos, up_left, up, up_right, right, down_right, down, down_left, left] if p is not None]
