@@ -4,14 +4,17 @@
 
 MagmaCore is a comprehensive toolkit designed to facilitate multi-agent system development within the LuxAI ecosystem. Our current branches have the following status:
 
-Live Branches:
+## Live Branches:
 
 ✅ v0.0.1-CNN-mixed
+
 ✅ v0.0.1-CNN-fixed
+
 ✅ v0.0.1-CNN-action-per-unit
 
-Deprecated Branches:
+## Deprecated Branches:
 
 ❌ v0.0.1-factory-net
+
 ❌ alpha-*
 
