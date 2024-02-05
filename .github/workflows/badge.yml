@@ -2,9 +2,9 @@ name: Badge Updater
 on:
   push:
     branches:
-      - v0.0.1-CNN-mixed
-      - v0.0.1-CNN-fixed
-      - v0.0.1-CNN-action-per-unit
+      - 'v0.0.1-CNN-mixed'
+      - 'v0.0.1-CNN-fixed'
+      - 'v0.0.1-CNN-action-per-unit'
     paths:
       - README.md
       - .github/workflows/badge.yml
