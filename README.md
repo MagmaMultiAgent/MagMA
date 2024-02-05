@@ -1,5 +1,6 @@
 <p align="center">
-    <img width="100%"  src="https://raw.githubusercontent.com/MagmaMultiAgent/.github/main/logo.png"/>
+    <img width="49%"  src="docs/images/logo.png"/>
+    <img width="49%"  src="docs/images/core.png"/>
 </p>
 
 
