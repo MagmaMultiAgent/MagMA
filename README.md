@@ -27,5 +27,5 @@ MagmaCore is a comprehensive toolkit designed to facilitate multi-agent system d
 ❌ alpha-*
 
 <p align="center">
-    <img width="25%"  src="docs/images/core.png"/>
+    <img width="15%"  src="docs/images/core.png"/>
 </p>
