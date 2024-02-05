@@ -14,6 +14,8 @@ MagmaCore is a comprehensive toolkit designed to facilitate multi-agent system d
 
 ## Deprecated Branches:
 
+❌ v0.0.1-CNN
+
 ❌ v0.0.1-factory-net
 
 ❌ alpha-*
