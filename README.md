@@ -1,4 +1,4 @@
-# VigIL - Lux AI Competition
+# MagMA - Lux AI Competition
 
 This repository contains a thesis research exploring **AI-based Game Validation**, along with a partial submission and template for the second edition of the annual **NeurIPS** conference in 2023.
 
