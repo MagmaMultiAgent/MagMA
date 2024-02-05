@@ -3,9 +3,9 @@ name: Docker
 on:
   push:
     branches:
-      - "v0.0.1-CNN-mixed"
-      - "v0.0.1-CNN-fixed"
-      - "v0.0.1-CNN-action-per-unit"
+      - v0.0.1-CNN-mixed
+      - v0.0.1-CNN-fixed
+      - v0.0.1-CNN-action-per-unit
     # Publish semver tags as releases.
     tags: [ 'v*.*.*' ]
 
