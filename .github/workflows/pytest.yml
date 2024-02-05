@@ -2,8 +2,9 @@ name: PyTest
 
 on:
   push:
-    branches-ignore:
-      - main
+    branches:
+      - '**'
+      - '!master'
 
 jobs:
   build:
