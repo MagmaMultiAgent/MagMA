@@ -2,7 +2,10 @@ name: "CodeQL Advanced"
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - "v0.0.1-CNN-mixed"
+      - "v0.0.1-CNN-fixed"
+      - "v0.0.1-CNN-action-per-unit"
 
 jobs:
   analyze:
