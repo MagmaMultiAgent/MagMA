@@ -26,7 +26,3 @@ MagmaCore is a comprehensive toolkit designed to facilitate multi-agent system d
 ❌ v0.0.1-factory-net
 
 ❌ alpha-*
-
-<p align="left">
-    <img width="10%"  src="docs/images/core.png"/>
-</p>
