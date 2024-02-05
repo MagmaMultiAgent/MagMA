@@ -1,8 +1,8 @@
 name: Badge Updater
 on:
   push:
-    branches:
-      - 'v0.0.1**'
+    branches-ignore:
+      - main
     paths:
       - README.md
       - .github/workflows/badge.yml

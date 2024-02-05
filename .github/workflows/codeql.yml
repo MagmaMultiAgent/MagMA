@@ -2,8 +2,8 @@ name: "CodeQL Advanced"
 
 on:
   push:
-    branches:
-      - 'v0.0.1**'
+    branches-ignore:
+      - main
 
 jobs:
   analyze:

@@ -2,8 +2,8 @@ name: Pylint
 
 on:
   push:
-    branches:
-      - 'v0.0.1**'
+    branches-ignore:
+      - main
 
 jobs:
   build:
