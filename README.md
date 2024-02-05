@@ -1,23 +1,17 @@
+[![Docker Publish](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/docker-publish.yml/badge.svg?branch=main)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/docker-publish.yml)&nbsp;[![Pylint](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pylint.yml/badge.svg)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pylint.yml)&nbsp;[![CodeQL](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/github-code-scanning/codeql/badge.svg?branch=main)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/github-code-scanning/codeql)&nbsp;[![PyTest](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pytest.yml/badge.svg?branch=main)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pytest.yml)&nbsp;![Version](https://img.shields.io/badge/python-v3.9-blue)&nbsp;![GitHub issues](https://img.shields.io/github/issues/Getlar/VigIL-Game-Validation)&nbsp;![GitHub](https://img.shields.io/github/license/Getlar/VigIL-Game-Validation)&nbsp;![GitHub release (with filter)](https://img.shields.io/github/v/release/Getlar/VigIL-Game-Validation)&nbsp;![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Getlar/5a256487d767cc5d606d29bd521a18ae/raw/algo.json)
 
-<p align="center">
-    <img width="100%"  src="docs/images/logo.png" />
-</p>
+# MagmaCore - Multi-Agent Tooling for LuxAI
 
-# VigIL - Lux AI Competition
+MagmaCore is a comprehensive toolkit designed to facilitate multi-agent system development within the LuxAI ecosystem. Our current branches have the following status:
 
-This repository contains a thesis research exploring **AI-based Game Validation**, along with a partial submission and template for the second edition of the annual **NeurIPS** conference in 2023.
+Live Branches:
 
-The **Lux AI Challenge** is a competition where competitors design agents to tackle a multi-variable optimization, resource gathering, and allocation problem in a 1v1 scenario against other competitors. In addition to optimization, successful agents must be capable of analyzing their opponents and developing appropriate policies to get the upper hand.
+✅ v0.0.1-CNN-mixed
+✅ v0.0.1-CNN-fixed
+✅ v0.0.1-CNN-action-per-unit
 
+Deprecated Branches:
 
+❌ v0.0.1-factory-net
+❌ alpha-*
 
-# Getting Started
-
-I highly recommend utilizing Docker to set up and manage the environment on your system. Alternatively, a binary installation is also a viable option, especially considering the excellent performance and reliability of the official [pip](https://pypi.org/project/luxai-s2/) package.
-
-
-# Core Contributors
-
-I would like to extend my heartfelt gratitude to [Gulyás László](https://github.com/lesIII) for their invaluable guidance and insightful mentorship throughout the course of this project.
-
-I am also thankful to **Eötvös Lóránd University** for providing the necessary resources and environment that facilitated the development of this project.
