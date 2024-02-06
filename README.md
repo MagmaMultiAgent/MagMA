@@ -11,9 +11,7 @@ MagmaCore is a comprehensive toolkit designed to facilitate multi-agent system d
 
 ## Live Branches:
 
-✅ v0.0.1-CNN-mixed
-
-✅ v0.0.1-CNN-fixed
+✅ v0.0.2-AQ
 
 ✅ v0.0.1-CNN-action-per-unit
 
@@ -21,6 +19,10 @@ MagmaCore is a comprehensive toolkit designed to facilitate multi-agent system d
 
 ❌ v0.0.1-CNN
 
+❌ v0.0.1-CNN-mixed
+
 ❌ v0.0.1-factory-net
+
+❌ v0.0.1-CNN-fixed
 
 ❌ alpha-*
