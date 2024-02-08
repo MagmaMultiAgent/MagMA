@@ -2,7 +2,9 @@ name: "CodeQL Advanced"
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - 'v0.0.1-CNN-mixed'
+      - '!master'
 
 jobs:
   analyze:
@@ -41,8 +43,8 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
+        pip install --no-cache-dir vec_noise
         pip install --no-cache-dir -r envs/pip/requirements.txt
-        pip install --no-cache-dir vec_noise --upgrade luxai_s2
         pip install --no-cache-dir --upgrade "jax[cuda11_cudnn82]==0.4.7" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
         pip install --no-cache-dir git+https://github.com/RoboEden/jux.git@dev
         
