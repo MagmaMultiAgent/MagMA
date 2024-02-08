@@ -1,11 +1,11 @@
 [![Docker Publish](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/docker-publish.yml/badge.svg?branch=v0.0.1-CNN-mixed)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/docker-publish.yml)&nbsp;[![Pylint](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pylint.yml/badge.svg?branch=v0.0.1-CNN-mixed)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pylint.yml)&nbsp;[![CodeQL Advanced](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/codeql.yml/badge.svg?branch=v0.0.1-CNN-mixed)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/github-code-scanning/codeql)&nbsp;[![PyTest](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pytest.yml/badge.svg?branch=v0.0.1-CNN-mixed)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pytest.yml)&nbsp;
 
 
-# MagMA - 
+# Monolithic CNN-based solution 
 
-This repository contains a thesis research exploring **AI-based Game Validation**, along with a partial submission and template for the second edition of the annual **NeurIPS** conference in 2023.
+In this system, we're essentially orchestrating a **monolithic solution** where a central brain controls all units and factories across the grid. The process involves generating actions for all grid spaces initially, then filtering out those grid spaces where units exist, and subsequently executing actions for those units. This centralized approach ensures that all units and factories are managed and coordinated efficiently within the grid.
 
-The **Lux AI Challenge** is a competition where competitors design agents to tackle a multi-variable optimization, resource gathering, and allocation problem in a 1v1 scenario against other competitors. In addition to optimization, successful agents must be capable of analyzing their opponents and developing appropriate policies to get the upper hand.
+![Architecture](/docs/images/Architecture.jpg)
 
 # Getting Started
 
@@ -67,11 +67,7 @@ apt update -y && apt upgrade -y && apt install -y build-essential && apt-get ins
 ```
 #### Base packages:
 ```bash
-pip install pettingzoo vec_noise stable_baselines3 sb3-contrib
-```
-#### Lux packages:
-```bash
-pip install --upgrade luxai_s2
+pip install pettingzoo vec_noise
 ```
 
 #### Install JAX support: (Optional)
@@ -81,9 +77,3 @@ pip install git+https://github.com/RoboEden/jux.git@dev
 ```
 
 To test the existing implementation check out the [running docs](https://github.com/Getlar/VigIL-Game-Validation/blob/main/src/README.MD).
-
-# Core Contributors
-
-I would like to extend my heartfelt gratitude to [Gulyás László](https://github.com/lesIII) for their invaluable guidance and insightful mentorship throughout the course of this project.
-
-I am also thankful to **Eötvös Lóránd University** for providing the necessary resources and environment that facilitated the development of this project.
