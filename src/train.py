@@ -28,6 +28,8 @@ from wrappers.sb3_action_mask import SB3InvalidActionWrapper
 from net.net import SimpleEntityNet
 from reward.early_reward_parser import EarlyRewardParser
 
+from MagmaVizClient.client import Client
+
 import random
 
 import sys
@@ -47,7 +49,7 @@ class EarlyRewardParserWrapper(gym.Wrapper):
     Custom wrapper for the LuxAI_S2 environment
     """
 
-    def __init__(self, env: gym.Env) -> None:
+    def __init__(self, env: gym.Env, ind: int = 0) -> None:
         """
         Adds a custom reward and turns the LuxAI_S2 environment \
         into a single-agent environment for easy training
@@ -55,6 +57,10 @@ class EarlyRewardParserWrapper(gym.Wrapper):
         super().__init__(env)
         self.prev_step_metrics = None
         self.reward_parser = EarlyRewardParser()
+
+        self.ind = ind
+        self.step_id = 0
+        self.viz_client = Client()
 
         # controller to get action mask
         self.controller = SimpleUnitDiscreteController(self.env.env_cfg)
@@ -179,6 +185,17 @@ class EarlyRewardParserWrapper(gym.Wrapper):
 
         info["metrics"] = metrics
         info["actions"] = actions
+
+        self.viz_client.send([{
+            "property_name": "reward",
+            "env": self.ind,
+            "episode": 0,
+            "step": self.step_id,
+            "data": float(reward),
+            "file_name": "test"
+        }])
+        self.step_id += 1
+
         return obs, reward, termination[agent], truncation[agent], info
 
     def reset(self, **kwargs):
@@ -267,7 +284,7 @@ def make_env(env_id: str, rank: int, seed: int = 0, max_episode_steps=100):
             env,
             ind=rank
         )
-        env = EarlyRewardParserWrapper(env)
+        env = EarlyRewardParserWrapper(env, ind=rank)
         env = TimeLimit(
             env, max_episode_steps=max_episode_steps
         )

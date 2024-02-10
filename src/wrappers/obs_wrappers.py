@@ -12,6 +12,9 @@ import random
 import socket
 import atexit
 
+from MagmaVizClient.client import Client
+
+
 MAP_FEATURE_SIZE = 30
 GLOBAL_FEATURE_SIZE = 44
 FACTORY_FEATURE_SIZE = 1 * 4
@@ -79,21 +82,8 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
         #     })
 
         self.ind = ind
-
-        ADDRESS = "172.19.182.35"
-        UDP_PORT = 8001
-
-        addr = socket.getaddrinfo(
-            ADDRESS, UDP_PORT,
-            socket.AF_INET, socket.SOCK_DGRAM)[0]
-
-        if self.ind == 0:
-            self.socket = socket.socket(*addr[:3])
-            self.socket.setblocking(False)
-            atexit.register(exit_handler, self.socket)
-            self.socket.connect(addr[4])
-        else:
-            self.socket = None
+        self.step_id = 0
+        self.viz_client = Client()
 
 
     def observation(self, obs):
@@ -103,9 +93,16 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
 
         converted_obs, stream_data = SimpleUnitObservationWrapper.convert_obs(obs, self.env.state.env_cfg, self.observation_parser, ind=self.ind)
 
-        if self.ind == 0:
-            self.logger.debug(f"Sending stream data {len(stream_data)}")
-            self.socket.send(stream_data)
+        self.viz_client.send([{
+            "property_name": "board",
+            "env": self.ind,
+            "episode": 0,
+            "step": self.step_id,
+            "data": stream_data,
+            "file_name": "test"
+        }])
+
+        self.step_id += 1
 
         # self.observation_queue.append(converted_obs)
         # past_3_observations = list(self.observation_queue)[-3:]
@@ -193,3 +190,4 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
                 "entity": assembled_features[i]
             }
         return observation, stream_data
+    

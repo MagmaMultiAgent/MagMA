@@ -144,8 +144,6 @@ class ObservationParser():
         global_info = {player: self.get_global_info(player, game_state) for player in ['player_0', 'player_1']}
 
         stream_data = self.get_stream_data(obs, env_cfg)
-        if stream_data is not None:
-            stream_data = gzip.compress(stream_data.tobytes())
         return map_feature_list, global_feature_list, factory_feature_list, assembled_feature_list, global_info, stream_data
 
     def get_stream_data(self, all_obs, env_cfg):
