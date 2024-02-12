@@ -3,7 +3,7 @@ name: Pylint
 on:
   push:
     branches:
-      - 'v0.0.1-CNN-mixed'
+      - 'v0.0.2-AQ'
       - '!master'
 
 jobs:
@@ -45,4 +45,4 @@ jobs:
         pip install --no-cache-dir pylint
     - name: Analysing the code with pylint
       run: |
-        pylint $(git ls-files '*.py' ':!:src/luxai_s2/*' ':!:src/sb3_contrib/*' ':!:src/stable_baselines3/*') --fail-under=5
+        pylint $(git ls-files '*.py' ':!:src/luxai_s2/*') --fail-under=5

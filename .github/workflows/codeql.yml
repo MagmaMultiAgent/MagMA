@@ -3,7 +3,7 @@ name: "CodeQL Advanced"
 on:
   push:
     branches:
-      - 'v0.0.1-CNN-mixed'
+      - 'v0.0.2-AQ'
       - '!master'
 
 jobs:

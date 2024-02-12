@@ -7,7 +7,6 @@ def my_turn_to_place_factory(place_first: bool, step: int):
             return True
     return False
 
-
 # direction (0 = center, 1 = up, 2 = right, 3 = down, 4 = left)
 def direction_to(src, target):
     ds = target - src
@@ -17,7 +16,7 @@ def direction_to(src, target):
         return 0
     if abs(dx) > abs(dy):
         if dx > 0:
-            return 2
+            return 2 
         else:
             return 4
     else:

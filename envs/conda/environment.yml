@@ -2,7 +2,6 @@ name: luxai_s2
 channels:
   - conda-forge
   - defaults
-  - pytorch
 dependencies:
   - python=3.9
   - numpy
@@ -17,7 +16,6 @@ dependencies:
   - pyyaml
   - notebook
   - tensorboard
-  - pytorch
   - dm-tree
   - seaborn
   - gymnasium
