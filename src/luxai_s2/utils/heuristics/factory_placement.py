@@ -12,11 +12,12 @@ def random_factory_placement(player, obs: ObservationStateDict) -> FactoryPlacem
     return dict(spawn=spawn_loc, metal=150, water=150)
 
 def place_near_random_ice(player, obs: ObservationStateDict):
-
+    if obs["teams"][player]["metal"] == 0:
+        return dict()
     potential_spawns = list(zip(*np.where(obs["board"]["valid_spawns_mask"] == 1)))
     potential_spawns_set = set(potential_spawns)
     done_search = False
- 
+    # if player == "player_1":
     ice_diff = np.diff(obs["board"]["ice"])
     pot_ice_spots = np.argwhere(ice_diff == 1)
     if len(pot_ice_spots) == 0:
@@ -43,4 +44,5 @@ def place_near_random_ice(player, obs: ObservationStateDict):
     if not done_search:
         pos = spawn_loc
 
-    return dict(spawn=pos, metal=150, water=150)
+    metal = obs["teams"][player]["metal"]
+    return dict(spawn=pos, metal=metal, water=metal)
