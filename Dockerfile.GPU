@@ -1,4 +1,4 @@
-FROM nvidia/cuda:12.3.1-devel-ubuntu20.04
+FROM nvidia/cuda:12.3.1-devel-ubuntu22.04
 
 # Set working directory
 WORKDIR '/usr/src/magmacore'
@@ -50,8 +50,6 @@ RUN python -m ipykernel install --user --name=luxai_s2 --display-name "LuxAI S2"
 # Install Jax with Lux
 
 RUN pip install -U "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-
-RUN pip install git+https://github.com/RoboEden/jux.git@dev
 
 # Switch back to bash
 SHELL ["/bin/bash","-c"]

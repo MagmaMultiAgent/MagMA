@@ -56,7 +56,6 @@ jobs:
       run: |
         pip install --no-cache-dir -r envs/pip/requirements_GH.txt
         pip install --no-cache-dir --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-        pip install --no-cache-dir git+https://github.com/RoboEden/jux.git@dev
         
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v2
