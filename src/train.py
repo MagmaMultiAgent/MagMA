@@ -149,7 +149,19 @@ np2torch = lambda x, dtype: torch.tensor(x).type(dtype).to(device)
 torch2np = lambda x, dtype: x.cpu().numpy().astype(dtype)
 
 
-def sample_actions(envs, agent, next_obs):
+def sample_action_for_player(agent, obs, valid_action, forced_action = None):
+    logprob, value, action, entropy = agent(
+        np2torch(obs['global_feature'], torch.float32),
+        np2torch(obs['map_feature'], torch.float32), 
+        tree.map_structure(lambda x: np2torch(x, torch.int16), obs['action_feature']),
+        tree.map_structure(lambda x: np2torch(x, torch.bool), valid_action),
+        None if forced_action is None else tree.map_structure(lambda x: np2torch(x, torch.float32), forced_action)
+    )
+
+    return logprob, value, action, entropy
+
+
+def sample_actions_for_players(envs, agent, next_obs):
     action = dict()
     valid_action = dict()
     logprob = dict()
@@ -159,12 +171,7 @@ def sample_actions(envs, agent, next_obs):
         with torch.no_grad():
             _valid_action = envs.get_valid_actions(player_id)
             
-            _logprob, _value, _action, _ = agent(
-                np2torch(next_obs[player]['global_feature'], torch.float32),
-                np2torch(next_obs[player]['map_feature'], torch.float32), 
-                tree.map_structure(lambda x: np2torch(x, torch.int16), next_obs[player]['action_feature']),
-                tree.map_structure(lambda x: np2torch(x, torch.bool), _valid_action)
-            )
+            _logprob, _value, _action, _ = sample_action_for_player(agent, next_obs[player], _valid_action, None)
 
             action[player_id] = _action
             valid_action[player_id] = _valid_action
@@ -178,7 +185,7 @@ def calculate_returns(envs, agent, next_obs, values, device, max_train_step, num
     returns = dict(player_0=torch.zeros((max_train_step, num_envs)).to(device),player_1=torch.zeros((max_train_step, num_envs)).to(device))
     advantages = dict(player_0=torch.zeros((max_train_step, num_envs)).to(device),player_1=torch.zeros((max_train_step, num_envs)).to(device))
     with torch.no_grad():
-        _, _, _, value = sample_actions(envs, agent, next_obs)
+        _, _, _, value = sample_actions_for_players(envs, agent, next_obs)
 
         for player_id, player in enumerate(['player_0', 'player_1']):
             next_value = value[player_id]
@@ -198,7 +205,36 @@ def calculate_returns(envs, agent, next_obs, values, device, max_train_step, num
     return returns, advantages
 
 
-def optimize_for_player(player, agent, optimizer, b_obs, b_va, b_actions, b_logprobs, b_advantages, b_returns, b_values, train_num_collect, minibatch_size, clip_coef, ent_coef, vf_coef, max_grad_norm):
+def calculate_loss(mb_inds, mb_advantages, newvalue, entropy, ratio, clip_coef, ent_coef, vf_coef):
+    # Policy loss
+    pg_loss1 = -mb_advantages * ratio
+    pg_loss2 = -mb_advantages * torch.clamp(ratio, 1 - clip_coef, 1 + clip_coef)
+    pg_loss = torch.max(pg_loss1, pg_loss2).mean()
+
+    # Value loss
+    newvalue = newvalue.view(-1)
+    if args.clip_vloss:
+        v_loss_unclipped = (newvalue - b_returns[player][mb_inds]) ** 2
+        v_clipped = b_values[player][mb_inds] + torch.clamp(
+            newvalue - b_values[player][mb_inds],
+            -clip_coef,
+            clip_coef,
+        )
+        v_loss_clipped = (v_clipped - b_returns[player][mb_inds]) ** 2
+        v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
+        v_loss = 0.5 * v_loss_max.mean()
+    else:
+        v_loss = 0.5 * ((newvalue - b_returns[player][mb_inds]) ** 2).mean()
+
+    # Entropy loss
+    entropy_loss = entropy.mean()
+
+    loss = pg_loss - ent_coef * entropy_loss + v_loss * vf_coef
+
+    return loss, pg_loss, entropy_loss, v_loss
+
+
+def optimize_for_player(player, agent, optimizer, b_obs, b_va, b_actions, b_logprobs, b_advantages, b_returns, b_values, train_num_collect, minibatch_size, clip_coef, norm_adv, ent_coef, vf_coef, max_grad_norm):
     clipfracs = []
     for start in range(0, train_num_collect, minibatch_size):
         end = start + minibatch_size
@@ -207,13 +243,9 @@ def optimize_for_player(player, agent, optimizer, b_obs, b_va, b_actions, b_logp
         mb_obs = envs.concatenate_obs(list(map(lambda i: b_obs[player][i], mb_inds)))
         mb_va = envs.concatenate_va(list(map(lambda i: b_va[player][i], mb_inds)))
         mb_actions = envs.concatenate_action(list(map(lambda i: b_actions[player][i], mb_inds)))
-        newlogprob, newvalue, _, entropy = agent(
-            np2torch(mb_obs['global_feature'], torch.float32),
-            np2torch(mb_obs['map_feature'], torch.float32), 
-            tree.map_structure(lambda x: np2torch(x, torch.int16), mb_obs['action_feature']),
-            tree.map_structure(lambda x: np2torch(x, torch.bool), mb_va), 
-            tree.map_structure(lambda x: np2torch(x, torch.float32), mb_actions)
-        )
+
+        newlogprob, newvalue, _, entropy = sample_action_for_player(agent, mb_obs, mb_va, mb_actions)
+
         logratio = newlogprob - b_logprobs[player][mb_inds]
         ratio = logratio.exp()
 
@@ -223,32 +255,14 @@ def optimize_for_player(player, agent, optimizer, b_obs, b_va, b_actions, b_logp
             clipfracs += [((ratio - 1.0).abs() > clip_coef).float().mean().item()]
 
         mb_advantages = b_advantages[player][mb_inds]
-        if args.norm_adv:
+        if norm_adv:
             if len(mb_inds)==1:
                 mb_advantages = mb_advantages
             else:
                 mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
-        # Policy loss
-        pg_loss1 = -mb_advantages * ratio
-        pg_loss2 = -mb_advantages * torch.clamp(ratio, 1 - clip_coef, 1 + clip_coef)
-        pg_loss = torch.max(pg_loss1, pg_loss2).mean()
 
-        # Value loss
-        newvalue = newvalue.view(-1)
-        if args.clip_vloss:
-            v_loss_unclipped = (newvalue - b_returns[player][mb_inds]) ** 2
-            v_clipped = b_values[player][mb_inds] + torch.clamp(
-                newvalue - b_values[player][mb_inds],
-                -clip_coef,
-                clip_coef,
-            )
-            v_loss_clipped = (v_clipped - b_returns[player][mb_inds]) ** 2
-            v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
-            v_loss = 0.5 * v_loss_max.mean()
-        else:
-            v_loss = 0.5 * ((newvalue - b_returns[player][mb_inds]) ** 2).mean()
-        entropy_loss = entropy.mean()
-        loss = pg_loss - ent_coef * entropy_loss + v_loss * vf_coef
+        loss, pg_loss, entropy_loss, v_loss = calculate_loss(mb_inds, mb_advantages, newvalue, entropy, ratio, clip_coef, ent_coef, vf_coef)
+
         optimizer.zero_grad()
         loss.backward()
         nn.utils.clip_grad_norm_(agent.parameters(), max_grad_norm)
@@ -350,7 +364,7 @@ if __name__ == "__main__":
                 dones[train_step] = next_done
 
             # Sample actions
-            action, valid_action, logprob, value = sample_actions(envs, agent, next_obs)
+            action, valid_action, logprob, value = sample_actions_for_players(envs, agent, next_obs)
 
             # Save actions for PPO
             for player_id, player in enumerate(['player_0', 'player_1']):
@@ -414,7 +428,7 @@ if __name__ == "__main__":
                 for epoch in range(args.update_epochs):
                     np.random.shuffle(b_inds)
                     for player_id, player in enumerate(['player_0', 'player_1']):
-                        v_loss, pg_loss, entropy_loss, approx_kl, old_approx_kl, clipfracs = optimize_for_player(player, agent, optimizer, b_obs, b_va, b_actions, b_logprobs, b_advantages, b_returns, b_values, args.train_num_collect, args.minibatch_size, args.clip_coef, args.ent_coef, args.vf_coef, args.max_grad_norm)
+                        v_loss, pg_loss, entropy_loss, approx_kl, old_approx_kl, clipfracs = optimize_for_player(player, agent, optimizer, b_obs, b_va, b_actions, b_logprobs, b_advantages, b_returns, b_values, args.train_num_collect, args.minibatch_size, args.clip_coef, args.norm_adv, args.ent_coef, args.vf_coef, args.max_grad_norm)
                         clipfracs += clipfracs
 
                         if args.target_kl is not None:
