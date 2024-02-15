@@ -499,6 +499,10 @@ class LuxSyncVectorEnv(gym.vector.AsyncVectorEnv):
         return deepcopy(self.vas)
     
     def split(self, action):
+        """
+        Split dict of actions or observations into list of dicts, where each dict belongs to one env.
+        """
+        
         actions = [{} for _ in range(self.num_envs)]
         for key, value in action.items():
             if isinstance(value, Tensor):

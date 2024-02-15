@@ -6,6 +6,17 @@ import gymnasium as gym
 from luxenv import LuxEnv
 import time
 from collections import deque
+import sys
+
+import logging
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s %(levelname)s %(module)s %(funcName)s %(message)s',
+                    handlers=[logging.StreamHandler()])
+stream_handler = [h for h in logging.root.handlers if isinstance(h , logging.StreamHandler)][0]
+stream_handler.setLevel(logging.INFO)
+stream_handler.setStream(sys.stderr)
+logger = logging.getLogger("utils")
+
 
 def save_args(args, file_path):
     args_dict = vars(args)
@@ -107,8 +118,9 @@ class LuxRecordEpisodeStatistics(gym.Wrapper):
             infos
         )
 
-def make_env(seed,replay_dir):
+def make_env(env_id, seed, replay_dir):
     def thunk():
+        logger.info(f"Creating environment {env_id} with seed {seed}")
         env = LuxEnv(replay_dir)
         env = LuxRecordEpisodeStatistics(env)
         env.seed(seed)
