@@ -1,7 +1,7 @@
 FROM ubuntu:latest
 
 # Set working directory
-WORKDIR '/usr/src/luxai'
+WORKDIR '/usr/src/magmacore'
 
 # Install required system packages
 RUN apt-get update --fix-missing && \
@@ -38,17 +38,14 @@ ENV PATH /opt/conda/envs/luxai_s2/bin:$PATH
 
 RUN pip install --no-cache-dir --upgrade pip
 
+# Install basic dev tools, like GCC
+RUN apt update -y && apt upgrade -y && apt install -y build-essential && apt-get install -y manpages-dev
+
 # Install requirements
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Add Lux conda env to ipykernel to run Notebooks
 RUN python -m ipykernel install --user --name=luxai_s2 --display-name "LuxAI S2"
-
-# Install basic dev tools, like GCC
-RUN apt update -y && apt upgrade -y && apt install -y build-essential && apt-get install -y manpages-dev
-
-# Intall prerequisites for LUX
-RUN pip install --no-cache-dir vec_noise --upgrade luxai_s2
 
 # Switch back to bash
 SHELL ["/bin/bash","-c"]
