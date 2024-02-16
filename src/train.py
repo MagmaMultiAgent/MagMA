@@ -21,6 +21,8 @@ import gzip
 from kit.load_from_replay import replay_to_state_action, get_obs_action_from_json
 from utils import save_args, save_model, load_model, eval_model, _process_eval_resluts, cal_mean_return, make_env
 
+import cProfile
+
 import logging
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(levelname)s %(module)s %(funcName)s %(message)s',
@@ -34,6 +36,11 @@ import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore")
 
+# Types
+ObservationForPlayer = dict[str, np.ndarray]
+ObservationForPlayers = dict[str, ObservationForPlayer]
+ActionForPlayer = dict[str, np.ndarray]
+ActionForPlayers = dict[str, ActionForPlayer]
 
 LOG = True
 
@@ -125,7 +132,7 @@ def layer_init(layer, std: float = np.sqrt(2), bias_const: float = 0.0):
     return layer
 
 
-def create_model(device: torch.device, eval: bool, load_model_path: Union[str, None], evaluate_num: int, learning_rate: float):
+def create_model(device: torch.device, eval: bool, load_model_path: Union[str, None], evaluate_num: int, learning_rate: float, writer: Union[None, SummaryWriter] = None):
     """
     Create the model
     """
@@ -142,18 +149,15 @@ def create_model(device: torch.device, eval: bool, load_model_path: Union[str, N
                 eval_results = _process_eval_resluts(eval_results)
                 if LOG:
                     for key, value in eval_results.items():
-                        writer.add_scalar(f"eval/{key}", value, i)
+                        if writer:
+                            writer.add_scalar(f"eval/{key}", value, i)
                 pprint(eval_results)
             sys.exit()
     optimizer = optim.Adam(agent.parameters(), lr=learning_rate, eps=1e-5)
     return agent, optimizer
 
 
-np2torch = lambda x, dtype: torch.tensor(x).type(dtype).to(device)
-torch2np = lambda x, dtype: x.cpu().numpy().astype(dtype)
-
-
-def sample_action_for_player(agent: Net, obs: dict[str, np.ndarray], valid_action: dict[str, np.ndarray], forced_action: Union[dict[str, np.ndarray], None] = None):
+def sample_action_for_player(agent: Net, obs: ObservationForPlayer, valid_action: ObservationForPlayer, forced_action: Union[ActionForPlayer, None] = None):
     """
     Sample action and value from the agent
     """
@@ -168,7 +172,10 @@ def sample_action_for_player(agent: Net, obs: dict[str, np.ndarray], valid_actio
     return logprob, value, action, entropy
 
 
-def sample_actions_for_players(envs: LuxSyncVectorEnv, agent: Net, next_obs: dict[str, np.ndarray]):
+def sample_actions_for_players(envs: LuxSyncVectorEnv,
+                               agent: Net,
+                               next_obs: dict[str, dict[str, np.ndarray]]
+                               ) -> tuple[dict[str, dict[str, np.ndarray]], dict[str, dict[str, np.ndarray]], dict[str, dict[str, np.ndarray]], dict[str, dict[str, np.ndarray]]]:
     """
     Sample action and value for both players
     """
@@ -194,7 +201,10 @@ def sample_actions_for_players(envs: LuxSyncVectorEnv, agent: Net, next_obs: dic
 def calculate_returns(envs: LuxSyncVectorEnv,
                       agent: Net,
                       next_obs: dict[str, np.ndarray],
-                      values,
+                      next_done: torch.Tensor,
+                      dones: torch.Tensor,
+                      rewards: dict[str, torch.Tensor],
+                      values: dict[str, torch.Tensor],
                       device: torch.device,
                       max_train_step: int,
                       num_envs: int,
@@ -271,7 +281,9 @@ def calculate_loss(advantages: torch.Tensor,
 
 def optimize_for_player(player: str,
                         agent: Net,
+                        envs: LuxSyncVectorEnv,
                         optimizer: optim.Optimizer,
+                        b_inds: np.ndarray,
                         b_obs: dict[str, np.ndarray],
                         b_va: dict[str, np.ndarray],
                         b_actions: dict[str, np.ndarray],
@@ -286,7 +298,8 @@ def optimize_for_player(player: str,
                         norm_adv: bool,
                         ent_coef: float,
                         vf_coef: float,
-                        max_grad_norm: float):
+                        max_grad_norm: float
+                        ) -> tuple[float, float, float, float, float, list[float]]:
     """
     Update weights for a player with PPO
     """
@@ -328,9 +341,7 @@ def optimize_for_player(player: str,
         return v_loss, pg_loss, entropy_loss, approx_kl, old_approx_kl, clipfracs
 
 
-
-if __name__ == "__main__":
-    args = parse_args()
+def main(args, device):
     player_id = 0
     enemy_id = 1 - player_id
     player = f'player_{player_id}'
@@ -345,6 +356,8 @@ if __name__ == "__main__":
             "hyperparameters",
             "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
         )
+    else:
+        writer = None
 
     save_args(args, save_path+'args.json')
 
@@ -354,17 +367,13 @@ if __name__ == "__main__":
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = args.torch_deterministic
 
-    # Get device
-    device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
-    logger.info(f"Device: {device}")
-
     # env setup
     envs = LuxSyncVectorEnv(
         [make_env(i, args.seed + i, args.replay_dir) for i in range(args.num_envs)]
     )
     
     # Create model
-    agent, optimizer = create_model(device, args.eval, args.load_model_path, args.evaluate_num, args.learning_rate)
+    agent, optimizer = create_model(device, args.eval, args.load_model_path, args.evaluate_num, args.learning_rate, writer)
 
     # Start the game
     global_step = 0
@@ -468,7 +477,7 @@ if __name__ == "__main__":
             # Train with PPO
             if train_step >= args.max_train_step-1 or step == args.num_steps-1:  
                 logger.info("Training with PPO")
-                returns, advantages = calculate_returns(envs, agent, next_obs, values, device, args.max_train_step, args.num_envs, args.gamma, args.gae_lambda)
+                returns, advantages = calculate_returns(envs, agent, next_obs, next_done, dones, rewards, values, device, args.max_train_step, args.num_envs, args.gamma, args.gae_lambda)
 
                 # flatten the batch
                 b_obs = obs   
@@ -485,7 +494,7 @@ if __name__ == "__main__":
                 for epoch in range(args.update_epochs):
                     np.random.shuffle(b_inds)
                     for player_id, player in enumerate(['player_0', 'player_1']):
-                        v_loss, pg_loss, entropy_loss, approx_kl, old_approx_kl, clipfracs = optimize_for_player(player, agent, optimizer, b_obs, b_va, b_actions, b_logprobs, b_advantages, b_returns, b_values, args.train_num_collect, args.minibatch_size, args.clip_vloss, args.clip_coef, args.norm_adv, args.ent_coef, args.vf_coef, args.max_grad_norm)
+                        v_loss, pg_loss, entropy_loss, approx_kl, old_approx_kl, clipfracs = optimize_for_player(player, agent, envs, optimizer, b_inds, b_obs, b_va, b_actions, b_logprobs, b_advantages, b_returns, b_values, args.train_num_collect, args.minibatch_size, args.clip_vloss, args.clip_coef, args.norm_adv, args.ent_coef, args.vf_coef, args.max_grad_norm)
                         clipfracs += clipfracs
 
                         if args.target_kl is not None:
@@ -542,3 +551,16 @@ if __name__ == "__main__":
     envs.close()
     if LOG:
         writer.close()
+
+
+if __name__ == "__main__":
+    args = parse_args()
+
+    # Get device
+    device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
+    logger.info(f"Device: {device}")
+
+    np2torch = lambda x, dtype: torch.tensor(x).type(dtype).to(device)
+    torch2np = lambda x, dtype: x.cpu().numpy().astype(dtype)
+ 
+    main(args, device)
