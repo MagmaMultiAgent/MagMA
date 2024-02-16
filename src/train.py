@@ -5,6 +5,7 @@ import time
 from distutils.util import strtobool
 from pprint import pprint
 import sys
+from typing import Union
 
 import numpy as np
 import torch
@@ -118,22 +119,25 @@ def parse_args():
     return args
 
 
-def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
+def layer_init(layer, std: float = np.sqrt(2), bias_const: float = 0.0):
     torch.nn.init.orthogonal_(layer.weight, std)
     torch.nn.init.constant_(layer.bias, bias_const)
     return layer
 
 
-def create_model(args, device):
+def create_model(device: torch.device, eval: bool, load_model_path: Union[str, None], evaluate_num: int, learning_rate: float):
+    """
+    Create the model
+    """
     agent = Net().to(device)
-    if args.load_model_path is not None:
-        agent.load_state_dict(torch.load(args.load_model_path))
+    if load_model_path is not None:
+        agent.load_state_dict(torch.load(load_model_path))
         print('load successfully')
-        if args.eval:
+        if eval:
             import sys
             for i in range(10):
                 eval_results = []
-                for _ in range(args.evaluate_num):
+                for _ in range(evaluate_num):
                     eval_results.append(eval_model(agent))
                 eval_results = _process_eval_resluts(eval_results)
                 if LOG:
@@ -141,7 +145,7 @@ def create_model(args, device):
                         writer.add_scalar(f"eval/{key}", value, i)
                 pprint(eval_results)
             sys.exit()
-    optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
+    optimizer = optim.Adam(agent.parameters(), lr=learning_rate, eps=1e-5)
     return agent, optimizer
 
 
@@ -149,7 +153,10 @@ np2torch = lambda x, dtype: torch.tensor(x).type(dtype).to(device)
 torch2np = lambda x, dtype: x.cpu().numpy().astype(dtype)
 
 
-def sample_action_for_player(agent, obs, valid_action, forced_action = None):
+def sample_action_for_player(agent: Net, obs: dict[str, np.ndarray], valid_action: dict[str, np.ndarray], forced_action: Union[dict[str, np.ndarray], None] = None):
+    """
+    Sample action and value from the agent
+    """
     logprob, value, action, entropy = agent(
         np2torch(obs['global_feature'], torch.float32),
         np2torch(obs['map_feature'], torch.float32), 
@@ -161,7 +168,10 @@ def sample_action_for_player(agent, obs, valid_action, forced_action = None):
     return logprob, value, action, entropy
 
 
-def sample_actions_for_players(envs, agent, next_obs):
+def sample_actions_for_players(envs: LuxSyncVectorEnv, agent: Net, next_obs: dict[str, np.ndarray]):
+    """
+    Sample action and value for both players
+    """
     action = dict()
     valid_action = dict()
     logprob = dict()
@@ -181,7 +191,19 @@ def sample_actions_for_players(envs, agent, next_obs):
     return action, valid_action, logprob, value
 
 
-def calculate_returns(envs, agent, next_obs, values, device, max_train_step, num_envs, gamma, gae_lambda):
+def calculate_returns(envs: LuxSyncVectorEnv,
+                      agent: Net,
+                      next_obs: dict[str, np.ndarray],
+                      values,
+                      device: torch.device,
+                      max_train_step: int,
+                      num_envs: int,
+                      gamma: float,
+                      gae_lambda: float
+                      ) -> tuple[torch.Tensor, torch.Tensor]:
+    """
+    Calculate GAE returns
+    """
     returns = dict(player_0=torch.zeros((max_train_step, num_envs)).to(device),player_1=torch.zeros((max_train_step, num_envs)).to(device))
     advantages = dict(player_0=torch.zeros((max_train_step, num_envs)).to(device),player_1=torch.zeros((max_train_step, num_envs)).to(device))
     with torch.no_grad():
@@ -205,26 +227,39 @@ def calculate_returns(envs, agent, next_obs, values, device, max_train_step, num
     return returns, advantages
 
 
-def calculate_loss(mb_inds, mb_advantages, newvalue, entropy, ratio, clip_coef, ent_coef, vf_coef):
+def calculate_loss(advantages: torch.Tensor,
+                   returns: torch.Tensor,
+                   values: torch.Tensor,
+                   newvalue: torch.Tensor,
+                   entropy: torch.Tensor,
+                   ratio: torch.Tensor,
+                   clip_vloss: bool,
+                   clip_coef: float,
+                   ent_coef: float,
+                   vf_coef: float
+                   ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    """
+    Calculate the loss
+    """
     # Policy loss
-    pg_loss1 = -mb_advantages * ratio
-    pg_loss2 = -mb_advantages * torch.clamp(ratio, 1 - clip_coef, 1 + clip_coef)
+    pg_loss1 = -advantages * ratio
+    pg_loss2 = -advantages * torch.clamp(ratio, 1 - clip_coef, 1 + clip_coef)
     pg_loss = torch.max(pg_loss1, pg_loss2).mean()
 
     # Value loss
     newvalue = newvalue.view(-1)
-    if args.clip_vloss:
-        v_loss_unclipped = (newvalue - b_returns[player][mb_inds]) ** 2
-        v_clipped = b_values[player][mb_inds] + torch.clamp(
-            newvalue - b_values[player][mb_inds],
+    if clip_vloss:
+        v_loss_unclipped = (newvalue - returns) ** 2
+        v_clipped = values + torch.clamp(
+            newvalue - values,
             -clip_coef,
             clip_coef,
         )
-        v_loss_clipped = (v_clipped - b_returns[player][mb_inds]) ** 2
+        v_loss_clipped = (v_clipped - returns) ** 2
         v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
         v_loss = 0.5 * v_loss_max.mean()
     else:
-        v_loss = 0.5 * ((newvalue - b_returns[player][mb_inds]) ** 2).mean()
+        v_loss = 0.5 * ((newvalue - returns) ** 2).mean()
 
     # Entropy loss
     entropy_loss = entropy.mean()
@@ -234,7 +269,27 @@ def calculate_loss(mb_inds, mb_advantages, newvalue, entropy, ratio, clip_coef, 
     return loss, pg_loss, entropy_loss, v_loss
 
 
-def optimize_for_player(player, agent, optimizer, b_obs, b_va, b_actions, b_logprobs, b_advantages, b_returns, b_values, train_num_collect, minibatch_size, clip_coef, norm_adv, ent_coef, vf_coef, max_grad_norm):
+def optimize_for_player(player: str,
+                        agent: Net,
+                        optimizer: optim.Optimizer,
+                        b_obs: dict[str, np.ndarray],
+                        b_va: dict[str, np.ndarray],
+                        b_actions: dict[str, np.ndarray],
+                        b_logprobs: dict[str, np.ndarray],
+                        b_advantages: dict[str, np.ndarray],
+                        b_returns: dict[str, np.ndarray],
+                        b_values: dict[str, np.ndarray],
+                        train_num_collect: int,
+                        minibatch_size: int,
+                        clip_vloss: bool,
+                        clip_coef: float,
+                        norm_adv: bool,
+                        ent_coef: float,
+                        vf_coef: float,
+                        max_grad_norm: float):
+    """
+    Update weights for a player with PPO
+    """
     clipfracs = []
     for start in range(0, train_num_collect, minibatch_size):
         end = start + minibatch_size
@@ -260,8 +315,10 @@ def optimize_for_player(player, agent, optimizer, b_obs, b_va, b_actions, b_logp
                 mb_advantages = mb_advantages
             else:
                 mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
+        mb_returns = b_returns[player][mb_inds]
+        mb_values = b_values[player][mb_inds]
 
-        loss, pg_loss, entropy_loss, v_loss = calculate_loss(mb_inds, mb_advantages, newvalue, entropy, ratio, clip_coef, ent_coef, vf_coef)
+        loss, pg_loss, entropy_loss, v_loss = calculate_loss(mb_advantages, mb_returns, mb_values, newvalue, entropy, ratio, clip_vloss, clip_coef, ent_coef, vf_coef)
 
         optimizer.zero_grad()
         loss.backward()
@@ -307,7 +364,7 @@ if __name__ == "__main__":
     )
     
     # Create model
-    agent, optimizer = create_model(args, device)
+    agent, optimizer = create_model(device, args.eval, args.load_model_path, args.evaluate_num, args.learning_rate)
 
     # Start the game
     global_step = 0
@@ -428,7 +485,7 @@ if __name__ == "__main__":
                 for epoch in range(args.update_epochs):
                     np.random.shuffle(b_inds)
                     for player_id, player in enumerate(['player_0', 'player_1']):
-                        v_loss, pg_loss, entropy_loss, approx_kl, old_approx_kl, clipfracs = optimize_for_player(player, agent, optimizer, b_obs, b_va, b_actions, b_logprobs, b_advantages, b_returns, b_values, args.train_num_collect, args.minibatch_size, args.clip_coef, args.norm_adv, args.ent_coef, args.vf_coef, args.max_grad_norm)
+                        v_loss, pg_loss, entropy_loss, approx_kl, old_approx_kl, clipfracs = optimize_for_player(player, agent, optimizer, b_obs, b_va, b_actions, b_logprobs, b_advantages, b_returns, b_values, args.train_num_collect, args.minibatch_size, args.clip_vloss, args.clip_coef, args.norm_adv, args.ent_coef, args.vf_coef, args.max_grad_norm)
                         clipfracs += clipfracs
 
                         if args.target_kl is not None:
