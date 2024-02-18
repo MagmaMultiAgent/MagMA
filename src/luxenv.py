@@ -7,7 +7,7 @@ import gymnasium as gym
 from gymnasium import spaces
 import tree
 from luxai_s2.env import EnvConfig, LuxAI_S2
-from parsers import ActionParser,FeatureParser,DenseRewardParser,Dense2RewardParser,SparseRewardParser
+from parsers import ActionParser,FeatureParser,DenseRewardParser,Dense2RewardParser,SparseRewardParser,IceRewardParser
 from kit.kit import obs_to_game_state
 from replay import random_init
 from player import Player
@@ -179,6 +179,33 @@ def get_single_observation_space(map_size):
     map_featrue_space = np.tile(np.array(list(map_featrue_names.values())).reshape(30, 1, 1), (1, map_size, map_size))
     map_featrue_space = spaces.MultiDiscrete(map_featrue_space, dtype=np.float64)
 
+    entity_feature_names = {
+        'factory': 2,
+        'unit': 2,
+        'light': 2,
+        'heavy': 2,
+        'ice': 2,
+        'ore': 2,
+        'rubble': 2,
+        'lichen': 2,
+        'closest_ice_direction.x': 9999,
+        'closest_ice_direction.y': 9999,
+        'closest_ore_direction.x': 9999,
+        'closest_ore_direction.y': 9999,
+        'closest_unit_direction.x': 9999,
+        'closest_unit_direction.y': 9999,
+        'closest_factory_direction.x': 9999,
+        'closest_factory_direction.y': 9999,
+        'cargo_ice': 9999,
+        'cargo_ore': 9999,
+        'cargo_water': 9999,
+        'cargo_metal': 9999,
+        'cargo_power': 9999,
+        'lichen_strain': 9999
+    }
+    entity_feature_space = np.tile(np.array(list(entity_feature_names.values())).reshape(22, 1, 1), (1, map_size, map_size))
+    entity_feature_space = spaces.MultiDiscrete(entity_feature_space, dtype=np.float64)
+
     action_feature_space = spaces.Dict(
         {
             'unit_indicator': spaces.MultiDiscrete(np.full((map_size, map_size), 2), dtype=np.float64),
@@ -192,9 +219,8 @@ def get_single_observation_space(map_size):
     )
     obs_space = spaces.Dict(
         {
-            'global_feature': global_feature_space, 
-            'map_feature': map_featrue_space, 
-            'action_feature': action_feature_space
+            'global_feature': global_feature_space,
+            'entity_feature': entity_feature_space
         }
     )
     return obs_space
@@ -247,6 +273,8 @@ class LuxEnv(gym.Env):
             self.reward_parser = DenseRewardParser()
         elif EnvParam.parser == 'dense2':
             self.reward_parser = Dense2RewardParser()
+        elif EnvParam.parser == 'ice':
+            self.reward_parser = IceRewardParser()
         else:
             raise NotImplementedError
         self.feature_parser = FeatureParser()
@@ -357,8 +385,7 @@ class LuxEnv(gym.Env):
                 valid_action = self.get_valid_actions(id)
                 _, _, raw_action, _ = policy(
                     np2torch([obs_list[f'player_{id}']['global_feature']], torch.float32),
-                    np2torch([obs_list[f'player_{id}']['map_feature']], torch.float32), 
-                    tree.map_structure(lambda x: np2torch([x], torch.int16), obs_list['player_'+str(id)]['action_feature']),
+                    np2torch([obs_list[f'player_{id}']['entity_feature']], torch.float32),
                     tree.map_structure(lambda x: np2torch([x], torch.bool), valid_action)
                 )
                 actions[id] = raw_action

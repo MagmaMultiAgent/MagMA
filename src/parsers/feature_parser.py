@@ -7,11 +7,12 @@ from typing import NamedTuple
 from luxai_s2.config import EnvConfig
 from functools import reduce
 
+import sys
+
 
 class LuxFeature(NamedTuple):
     global_feature: np.ndarray
-    map_feature: np.ndarray
-    action_feature: dict
+    entity_feature: np.ndarray
 
 
 class FeatureParser():
@@ -75,6 +76,31 @@ class FeatureParser():
             'unit_enm',
             'unit_light',
             'unit_heavy',
+        ]
+
+        self.entity_feature_names = [
+            'factory',
+            'unit',
+            'light',
+            'heavy',
+            'ice',
+            'ore',
+            'rubble',
+            'lichen',
+            'closest_ice_direction.x',
+            'closest_ice_direction.y',
+            'closest_ore_direction.x',
+            'closest_ore_direction.y',
+            'closest_unit_direction.x',
+            'closest_unit_direction.y',
+            'closest_factory_direction.x',
+            'closest_factory_direction.y',
+            'cargo_ice',
+            'cargo_ore',
+            'cargo_water',
+            'cargo_metal',
+            'cargo_power',
+            'lichen_strain'
         ]
 
         self.global_info_names = [
@@ -309,13 +335,137 @@ class FeatureParser():
             global_feature[f'robot_total_metal_{own_enm}'] = global_feature[f'robot_total_metal_{own_enm}'] / light_cfg.CARGO_SPACE
             # yapf: enable
 
+
+        # Entity features
+        entity_feature = {}
+
+        # Unit positions
+        units = obs.units[player]
+        unit_pos = np.array([unit.pos for unit in units.values()])
+        units_on_board = np.zeros((env_cfg.map_size, env_cfg.map_size), dtype=np.bool8)
+        if len(unit_pos) > 0:
+            units_on_board[unit_pos[:, 0], unit_pos[:, 1]] = 1
+        light_units = [unit for unit in units.values() if unit.unit_type == 'LIGHT']
+        heavy_units = [unit for unit in units.values() if unit.unit_type == 'HEAVY']
+        light_pos = np.array([unit.pos for unit in light_units])
+        heavy_pos = np.array([unit.pos for unit in heavy_units])
+        light_on_board = np.zeros((env_cfg.map_size, env_cfg.map_size), dtype=np.bool8)
+        if len(light_pos) > 0:
+            light_on_board[light_pos[:, 0], light_pos[:, 1]] = 1
+        heavy_on_board = np.zeros((env_cfg.map_size, env_cfg.map_size), dtype=np.bool8)
+        if len(heavy_pos) > 0:
+            heavy_on_board[heavy_pos[:, 0], heavy_pos[:, 1]] = 1
+
+        # Factory positions
+        factories = obs.factories[player]
+        factory_pos = np.array([factory.pos for factory in factories.values()])
+        factories_on_board = np.zeros((env_cfg.map_size, env_cfg.map_size), dtype=np.bool8)
+        if len(factory_pos) > 0:
+            factories_on_board[factory_pos[:, 0], factory_pos[:, 1]] = 1
+        not_factory_tile = ~factories_on_board
+
+        entities_on_board = np.clip(units_on_board + factories_on_board, None, 1)
+
+        # Resources on map
+        ice = (np.array(obs.board.ice) > 0)
+        ore = (np.array(obs.board.ore) > 0)
+        rubble = (np.array(obs.board.rubble) > 0)
+        lichen = (np.array(obs.board.lichen) > 0)
+
+        closest_ice_direction = self.get_closest_coords(entities_on_board, ice)
+        closest_ore_direction = self.get_closest_coords(entities_on_board, ore)
+        closest_unit_direction = self.get_closest_coords(entities_on_board, units_on_board, can_match=False)
+        closest_factory_direction = self.get_closest_coords(entities_on_board, factories_on_board, can_match=False)
+
+        # Cargo
+        cargo_ice = np.zeros((env_cfg.map_size, env_cfg.map_size), dtype=np.float32)
+        if len(factory_pos) > 0:
+            cargo_ice[factory_pos[:, 0], factory_pos[:, 1]] = [factory.cargo.ice for factory in factories.values()]
+        if len(unit_pos) > 0:
+            cargo_ice[unit_pos[:, 0], unit_pos[:, 1]] = [unit.cargo.ice for unit in units.values()]
+        cargo_ice /= env_cfg.ROBOTS['HEAVY'].CARGO_SPACE
+
+        cargo_ore = np.zeros((env_cfg.map_size, env_cfg.map_size), dtype=np.float32)
+        if len(factory_pos) > 0:
+            cargo_ore[factory_pos[:, 0], factory_pos[:, 1]] = [factory.cargo.ore for factory in factories.values()]
+        if len(unit_pos) > 0:
+            cargo_ore[unit_pos[:, 0], unit_pos[:, 1]] = [unit.cargo.ore for unit in units.values()]
+        cargo_ore /= env_cfg.ROBOTS['HEAVY'].CARGO_SPACE
+
+        cargo_water = np.zeros((env_cfg.map_size, env_cfg.map_size), dtype=np.float32)
+        if len(factory_pos) > 0:
+            cargo_water[factory_pos[:, 0], factory_pos[:, 1]] = [factory.cargo.water for factory in factories.values()]
+        if len(unit_pos) > 0:
+            cargo_water[unit_pos[:, 0], unit_pos[:, 1]] = [unit.cargo.water for unit in units.values()]
+        cargo_water /= env_cfg.ROBOTS['HEAVY'].CARGO_SPACE
+
+        cargo_metal = np.zeros((env_cfg.map_size, env_cfg.map_size), dtype=np.float32)
+        if len(factory_pos) > 0:
+            cargo_metal[factory_pos[:, 0], factory_pos[:, 1]] = [factory.cargo.metal for factory in factories.values()]
+        if len(unit_pos) > 0:
+            cargo_metal[unit_pos[:, 0], unit_pos[:, 1]] = [unit.cargo.metal for unit in units.values()]
+        cargo_metal /= env_cfg.ROBOTS['HEAVY'].CARGO_SPACE
+
+        cargo_power = np.zeros((env_cfg.map_size, env_cfg.map_size), dtype=np.float32)
+        if len(factory_pos) > 0:
+            cargo_power[factory_pos[:, 0], factory_pos[:, 1]] = [factory.power for factory in factories.values()]
+        if len(unit_pos) > 0:
+            cargo_power[unit_pos[:, 0], unit_pos[:, 1]] = [unit.power for unit in units.values()]
+        cargo_power /= env_cfg.ROBOTS['HEAVY'].CARGO_SPACE
+
+        lichen_strain = np.zeros((env_cfg.map_size, env_cfg.map_size), dtype=np.float32)  # TODO: do
+        
+        entity_feature['factory'] = (factories_on_board).astype(np.float32)
+        entity_feature['unit'] = (units_on_board & not_factory_tile).astype(np.float32)
+        entity_feature['light'] = (light_on_board & not_factory_tile).astype(np.float32)
+        entity_feature['heavy'] = (heavy_on_board & not_factory_tile).astype(np.float32)
+        entity_feature['ice'] = (ice & not_factory_tile).astype(np.float32)
+        entity_feature['ore'] = (ore & not_factory_tile).astype(np.float32)
+        entity_feature['rubble'] = (rubble & not_factory_tile).astype(np.float32)
+        entity_feature['lichen'] = (lichen & not_factory_tile).astype(np.float32)
+        entity_feature['closest_ice_direction.x'] = (closest_ice_direction[:, :, 0]).astype(np.float32) / (env_cfg.map_size*2)
+        entity_feature['closest_ice_direction.y'] = (closest_ice_direction[:, :, 1]).astype(np.float32) / (env_cfg.map_size*2)
+        entity_feature['closest_ore_direction.x'] = (closest_ore_direction[:, :, 0]).astype(np.float32) / (env_cfg.map_size*2)
+        entity_feature['closest_ore_direction.y'] = (closest_ore_direction[:, :, 1]).astype(np.float32) / (env_cfg.map_size*2)
+        entity_feature['closest_unit_direction.x'] = (closest_unit_direction[:, :, 0]).astype(np.float32) / (env_cfg.map_size*2)
+        entity_feature['closest_unit_direction.y'] = (closest_unit_direction[:, :, 1]).astype(np.float32) / (env_cfg.map_size*2)
+        entity_feature['closest_factory_direction.x'] = (closest_factory_direction[:, :, 0]).astype(np.float32) / (env_cfg.map_size*2)
+        entity_feature['closest_factory_direction.y'] = (closest_factory_direction[:, :, 1]).astype(np.float32) / (env_cfg.map_size*2)
+        entity_feature['cargo_ice'] = cargo_ice
+        entity_feature['cargo_ore'] = cargo_ore
+        entity_feature['cargo_water'] = cargo_water
+        entity_feature['cargo_metal'] = cargo_metal
+        entity_feature['cargo_power'] = cargo_power
+        entity_feature['lichen_strain'] = lichen_strain
+
         global_feature = np.array(list(global_feature.values()))
         map_feature = np.array(list(map_feature.values()))
+        entity_feature = np.array(list(entity_feature.values()))
 
         if output_dict:
-            return {'global_feature': global_feature, 'map_feature': map_feature, 'action_feature': action_feature}
+            return {'global_feature': global_feature, 'entity_feature': entity_feature}
 
-        return LuxFeature(global_feature, map_feature, action_feature)
+        return LuxFeature(global_feature, entity_feature)
+
+    @staticmethod
+    def get_closest_coords(entities, targets, can_match=True):
+        base = np.zeros(entities.shape + (2,), dtype=np.float32)
+
+        if not can_match:
+            targets = targets & ~entities
+
+        entity_coords = np.argwhere(entities)
+        target_coords = np.argwhere(targets)
+
+        if len(entity_coords) == 0 or len(target_coords) == 0:
+            return base
+
+        target_directions = entity_coords[:, None] - target_coords
+        closest_target = np.abs(target_directions).sum(axis=-1).argmin(axis=-1)
+        closest_target_direction = target_directions[np.arange(len(entity_coords)), closest_target]
+
+        base[entity_coords[:, 0], entity_coords[:, 1]] = closest_target_direction
+        return base
 
     @staticmethod
     def log_env_stats(env_stats):

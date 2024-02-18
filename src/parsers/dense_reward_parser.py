@@ -4,6 +4,8 @@ from impl_config import RewardParam
 from scipy.stats import gamma
 from kit.kit import EnvConfig
 
+import sys
+
 
 class GammaTransform:
     alpha: int = 2
@@ -67,6 +69,8 @@ class DenseRewardParser:
             light_increment = own_global_info["light_count"] - last_count['light_count']
             heavy_increment = own_global_info["heavy_count"] - last_count['heavy_count']
             ice_increment = own_global_info["total_ice"] - last_count['total_ice']
+            if ice_increment > 0:
+                print("ice increment is ", ice_increment, file=sys.stderr)
             ore_increment = own_global_info["total_ore"] - last_count['total_ore']
             water_increment = own_global_info["total_water"] - last_count['total_water']
             metal_increment = own_global_info["total_metal"] - last_count['total_metal']

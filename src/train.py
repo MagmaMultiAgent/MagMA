@@ -62,13 +62,13 @@ def parse_args():
     # Algorithm specific arguments
     parser.add_argument("--env-id", type=str, default="LuxAI_S2-v0",
         help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=128,
+    parser.add_argument("--total-timesteps", type=int, default=1000000,
         help="total timesteps of the experiments")
     parser.add_argument("--learning-rate", type=float, default=3e-4,
         help="the learning rate of the optimizer")
-    parser.add_argument("--num-envs", type=int, default=1,
+    parser.add_argument("--num-envs", type=int, default=4,
         help="the number of parallel game environments")
-    parser.add_argument("--num-steps", type=int, default=64,
+    parser.add_argument("--num-steps", type=int, default=512,
         help="the number of steps to run in each environment per policy rollout")
     parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggle learning rate annealing for policy and value networks")
@@ -76,7 +76,7 @@ def parse_args():
         help="the discount factor gamma")
     parser.add_argument("--gae-lambda", type=float, default=0.95,
         help="the lambda for the general advantage estimation")
-    parser.add_argument("--train-num-collect", type=int, default=64,
+    parser.add_argument("--train-num-collect", type=int, default=2048,
         help="the number of data collections in training process")
     parser.add_argument("--num-minibatches", type=int, default=4,
         help="the number of mini-batches")
@@ -96,11 +96,11 @@ def parse_args():
         help="the maximum norm for the gradient clipping")
     parser.add_argument("--target-kl", type=float, default=None,
         help="the target KL divergence threshold")
-    parser.add_argument("--save-interval", type=int, default=100000, 
+    parser.add_argument("--save-interval", type=int, default=8192, 
         help="global step interval to save model")
     parser.add_argument("--load-model-path", type=str, default=None,
         help="path for pretrained model loading")
-    parser.add_argument("--evaluate-interval", type=int, default=128,
+    parser.add_argument("--evaluate-interval", type=int, default=4096,
         help="evaluation steps")
     parser.add_argument("--evaluate-num", type=int, default=5,
         help="evaluation numbers")
@@ -112,8 +112,6 @@ def parse_args():
     args = parser.parse_args()
     # size of a batch
     args.batch_size = int(args.num_envs * args.num_steps)
-    # number of steps from all envs
-    args.num_steps = args.num_steps*args.num_envs
     # number of steps to train on from all envs
     args.train_num_collect = args.minibatch_size if args.train_num_collect is None else args.train_num_collect
     # size of a minibatch
@@ -188,8 +186,7 @@ def sample_action_for_player(agent: Net, obs: TensorPerKey, valid_action: Tensor
     """
     logprob, value, action, entropy = agent(
         obs['global_feature'],
-        obs['map_feature'], 
-        obs['action_feature'],
+        obs['entity_feature'],
         valid_action,
         forced_action
     )
@@ -408,20 +405,20 @@ def main(args, device):
     last_eval_step = 0
     start_time = time.time()
     num_updates = args.total_timesteps // args.batch_size
+
+    # Init value stores for PPO
+    obs = {}
+    actions = {}
+    valid_actions = {}
+    logprobs = dict(player_0=torch.zeros((args.max_train_step, args.num_envs)).to(device), player_1=torch.zeros((args.max_train_step, args.num_envs)).to(device))
+    rewards = dict(player_0=torch.zeros((args.max_train_step, args.num_envs)).to(device),player_1=torch.zeros((args.max_train_step, args.num_envs)).to(device))
+    dones = torch.zeros((args.max_train_step, args.num_envs)).to(device)
+    values = dict(player_0=torch.zeros((args.max_train_step, args.num_envs)).to(device),player_1=torch.zeros((args.max_train_step, args.num_envs)).to(device))
     
     logger.info("Starting train")
     for update in range(1, num_updates + 1):
 
         logger.info(f"Update {update} / {num_updates}")
-        
-        # Init value stores for PPO
-        obs = {}
-        actions = {}
-        valid_actions = {}
-        logprobs = dict(player_0=torch.zeros((args.max_train_step, args.num_envs)).to(device), player_1=torch.zeros((args.max_train_step, args.num_envs)).to(device))
-        rewards = dict(player_0=torch.zeros((args.max_train_step, args.num_envs)).to(device),player_1=torch.zeros((args.max_train_step, args.num_envs)).to(device))
-        dones = torch.zeros((args.max_train_step, args.num_envs)).to(device)
-        values = dict(player_0=torch.zeros((args.max_train_step, args.num_envs)).to(device),player_1=torch.zeros((args.max_train_step, args.num_envs)).to(device))
 
         # Reset envs, get obs
         next_obs, _ = envs.reset()
@@ -446,7 +443,7 @@ def main(args, device):
         
         for step in range(0, args.num_steps):
 
-            if (step+1) % (2**4) == 0:
+            if (step+1) % (args.num_steps / 8) == 0:
                 logger.info(f"Step {step + 1} / {args.num_steps}")
 
             train_step += 1 

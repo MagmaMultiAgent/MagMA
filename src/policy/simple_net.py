@@ -11,38 +11,49 @@ class SimpleNet(nn.Module):
     def __init__(self):
         super(SimpleNet, self).__init__()
 
-        self.critic_head = nn.Linear(4, 1, bias=True)
+        self.global_feature_dims = 32
+        self.critic_head = nn.Linear(self.global_feature_dims, 1, bias=True)
+        
+        self.entity_feature_dims = 22
+        self.entity_feature_parser_dims = 32
+        self.entity_feature_parser = nn.Sequential(
+            nn.Linear(self.entity_feature_dims, self.entity_feature_parser_dims, bias=True),
+            nn.ReLU(),
+        )
 
-        self.factory_head = nn.Linear(4, ActDims.factory_act, bias=True)
-        self.unit_act_type = nn.Linear(4, len(UnitActType), bias=True)
+        self.combined_dims = self.global_feature_dims + self.entity_feature_parser_dims
+        self.combined_net = nn.Sequential(
+            nn.Linear(self.combined_dims, self.combined_dims, bias=True),
+            nn.ReLU(),
+        )
+
+        self.factory_head = nn.Linear(self.combined_dims, ActDims.factory_act, bias=True)
+        self.unit_act_type = nn.Linear(self.combined_dims, len(UnitActType), bias=True)
 
         self.param_heads = nn.ModuleDict({
             unit_act_type.name: nn.ModuleDict({
-                "direction": nn.Linear(4, ActDims.direction, bias=True),
-                "resource": nn.Linear(4, ActDims.resource, bias=True),
-                "amount": nn.Linear(4, ActDims.amount, bias=True),
-                "repeat": nn.Linear(4, ActDims.repeat, bias=True),
+                "direction": nn.Linear(self.combined_dims, ActDims.direction, bias=True),
+                "resource": nn.Linear(self.combined_dims, ActDims.resource, bias=True),
+                "amount": nn.Linear(self.combined_dims, ActDims.amount, bias=True),
+                "repeat": nn.Linear(self.combined_dims, ActDims.repeat, bias=True),
             }) for unit_act_type in UnitActType
         })
 
-    def forward(self, global_feature, map_feature, action_feature, va, action=None):
-        B, _, H, W = map_feature.shape
 
-        # TODO: remove and use real input
-        x = torch.rand(B, 4, H, W, device=map_feature.device)
-        logp, action, entropy = self.actor(x, va, action)
+    def forward(self, global_feature, entity_feature, va, action=None):
+        critic_value = self.critic_head(global_feature)
+        critic_value = torch.squeeze(critic_value)
 
-        x = torch.rand(B, 4, device=map_feature.device)
-        critic_value = self.critic_head(x)
+        logp, action, entropy = self.actor(global_feature, entity_feature, va, action)
 
         return logp, critic_value, action, entropy
 
 
-    def actor(self, x, va, action=None):
-        B, _, H, W = x.shape
+    def actor(self, global_feature, entity_feature, va, action=None):
+        B, _, H, W = entity_feature.shape
 
-        logp = torch.zeros(B, device=x.device)
-        entropy = torch.zeros(B, device=x.device)
+        logp = torch.zeros(B, device=entity_feature.device)
+        entropy = torch.zeros(B, device=entity_feature.device)
         output_action = {}
 
         def _gather_from_map(x, pos):
@@ -56,12 +67,15 @@ class SimpleNet(nn.Module):
 
         # factory actor
         factory_pos = torch.where(va['factory_act'].any(1))
-        factory_emb = _gather_from_map(x, factory_pos)
+        factory_emb = _gather_from_map(entity_feature, factory_pos)
+        factory_emb = self.entity_feature_parser(factory_emb)
+        combined_emb = torch.cat([global_feature[factory_pos[0], ...], factory_emb], dim=1)
+        combined_emb = self.combined_net(combined_emb)
+
         factory_va = _gather_from_map(va['factory_act'], factory_pos)
         factory_action = action and _gather_from_map(action['factory_act'], factory_pos)
-
         factory_logp, factory_action, factory_entropy = self.factory_actor(
-            factory_emb,
+            combined_emb,
             factory_va,
             factory_action,
         )
@@ -83,7 +97,11 @@ class SimpleNet(nn.Module):
             axis=1,
         )
         unit_pos = torch.where(unit_act_type_va.any(1))
-        unit_emb = _gather_from_map(x, unit_pos)
+        unit_emb = _gather_from_map(entity_feature, unit_pos)
+        unit_emb = self.entity_feature_parser(unit_emb)
+        combined_emb = torch.cat([global_feature[unit_pos[0], ...], unit_emb], dim=1)
+        combined_emb = self.combined_net(combined_emb)
+
         unit_va = {
             'act_type': _gather_from_map(unit_act_type_va, unit_pos),
             'move': _gather_from_map(va['move'], unit_pos),
@@ -96,7 +114,7 @@ class SimpleNet(nn.Module):
         }
         unit_action = action and _gather_from_map(action['unit_act'], unit_pos)
         unit_logp, unit_action, unit_entropy = self.unit_actor(
-            unit_emb,
+            combined_emb,
             unit_va,
             unit_action,
         )
