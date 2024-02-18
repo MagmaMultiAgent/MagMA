@@ -11,6 +11,7 @@ from parsers import ActionParser,FeatureParser,DenseRewardParser,Dense2RewardPar
 from kit.kit import obs_to_game_state
 from replay import random_init
 from player import Player
+import sys
 
 from torch import Tensor
 import torch
@@ -363,7 +364,9 @@ class LuxEnv(gym.Env):
                 actions[id] = raw_action
             actions = tree.map_structure(lambda x: torch2np(x), actions)                
             obs_list, reward, terminated, truncation, info = self.step(actions)
-            done = terminated | truncation
+            _terminated = list(terminated.values())
+            _truncation = list(truncation.values())
+            done = sum(_terminated + _truncation) > 0
             return_own += reward[own_id]
             return_enemy += reward[enemy_id]
             episode_length += 1

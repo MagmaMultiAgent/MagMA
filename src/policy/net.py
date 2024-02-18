@@ -2,11 +2,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from impl_config import ModelParam, ActDims
-from .actor_head import ActorHead
+from impl_config import ModelParam, ActDims, UnitActChannel
+from .actor_head import ActorHead, sample_from_categorical
 from tree import map_structure
 import tree
 import copy
+
 
 class SELayer(nn.Module):
 

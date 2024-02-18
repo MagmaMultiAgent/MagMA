@@ -13,7 +13,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
-from policy.net import Net
+from policy.net import Net, SimpleNet
 from luxenv import LuxSyncVectorEnv,LuxEnv
 import tree
 import json
@@ -99,7 +99,7 @@ def parse_args():
         help="global step interval to save model")
     parser.add_argument("--load-model-path", type=str, default=None,
         help="path for pretrained model loading")
-    parser.add_argument("--evaluate-interval", type=int, default=128,
+    parser.add_argument("--evaluate-interval", type=int, default=64,
         help="evaluation steps")
     parser.add_argument("--evaluate-num", type=int, default=5,
         help="evaluation numbers")
