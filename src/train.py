@@ -13,7 +13,8 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
-from policy.net import Net, SimpleNet
+from policy.net import Net
+from policy.simple_net import SimpleNet
 from luxenv import LuxSyncVectorEnv,LuxEnv
 import tree
 import json
@@ -75,7 +76,7 @@ def parse_args():
         help="the discount factor gamma")
     parser.add_argument("--gae-lambda", type=float, default=0.95,
         help="the lambda for the general advantage estimation")
-    parser.add_argument("--train-num-collect", type=int, default=64,
+    parser.add_argument("--train-num-collect", type=int, default=32,
         help="the number of data collections in training process")
     parser.add_argument("--num-minibatches", type=int, default=4,
         help="the number of mini-batches")
@@ -99,7 +100,7 @@ def parse_args():
         help="global step interval to save model")
     parser.add_argument("--load-model-path", type=str, default=None,
         help="path for pretrained model loading")
-    parser.add_argument("--evaluate-interval", type=int, default=64,
+    parser.add_argument("--evaluate-interval", type=int, default=128,
         help="evaluation steps")
     parser.add_argument("--evaluate-num", type=int, default=5,
         help="evaluation numbers")
@@ -148,9 +149,9 @@ def reset_store(store: dict):
             reset_store(store[key])
         else:
             if store[key].dtype in {torch.float32, torch.float64, torch.int32, torch.int64}:
-                store[key] = 0
+                store[key][:] = 0
             elif store[key].dtype in {torch.bool}: 
-                store[key] = False
+                store[key][:] = False
             else:
                 raise NotImplementedError(f"store[key].dtype={store[key].dtype}")
 
@@ -564,10 +565,10 @@ def main(args, device):
                 reset_store(valid_actions)
 
                 for player_id, player in enumerate(['player_0', 'player_1']):
-                    logprobs[player] = 0
-                    rewards[player] = 0
-                    dones = 0
-                    values[player] = 0
+                    logprobs[player][:] = 0
+                    rewards[player][:] = 0
+                    dones[:] = 0
+                    values[player][:] = 0
 
                 train_step = -1
             
