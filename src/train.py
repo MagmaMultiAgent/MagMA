@@ -76,7 +76,7 @@ def parse_args():
         help="the discount factor gamma")
     parser.add_argument("--gae-lambda", type=float, default=0.95,
         help="the lambda for the general advantage estimation")
-    parser.add_argument("--train-num-collect", type=int, default=32,
+    parser.add_argument("--train-num-collect", type=int, default=64,
         help="the number of data collections in training process")
     parser.add_argument("--num-minibatches", type=int, default=4,
         help="the number of mini-batches")
@@ -160,7 +160,8 @@ def create_model(device: torch.device, eval: bool, load_model_path: Union[str, N
     """
     Create the model
     """
-    agent = Net().to(device)
+    agent = SimpleNet().to(device)
+    # agent = Net().to(device)
     if load_model_path is not None:
         agent.load_state_dict(torch.load(load_model_path))
         print('load successfully')
