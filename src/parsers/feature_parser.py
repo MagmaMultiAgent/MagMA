@@ -81,26 +81,26 @@ class FeatureParser():
         self.entity_feature_names = [
             'factory',
             'unit',
-            'light',
-            'heavy',
+            # 'light',
+            # 'heavy',
             'ice',
-            'ore',
-            'rubble',
-            'lichen',
+            # 'ore',
+            # 'rubble',
+            # 'lichen',
             'closest_ice_direction.x',
             'closest_ice_direction.y',
-            'closest_ore_direction.x',
-            'closest_ore_direction.y',
-            'closest_unit_direction.x',
-            'closest_unit_direction.y',
-            'closest_factory_direction.x',
-            'closest_factory_direction.y',
-            'cargo_ice',
-            'cargo_ore',
-            'cargo_water',
-            'cargo_metal',
-            'cargo_power',
-            'lichen_strain'
+            # 'closest_ore_direction.x',
+            # 'closest_ore_direction.y',
+            # 'closest_unit_direction.x',
+            # 'closest_unit_direction.y',
+            # 'closest_factory_direction.x',
+            # 'closest_factory_direction.y',
+            # 'cargo_ice',
+            # 'cargo_ore',
+            # 'cargo_water',
+            # 'cargo_metal',
+            # 'cargo_power',
+            # 'lichen_strain'
         ]
 
         self.global_info_names = [
@@ -175,6 +175,12 @@ class FeatureParser():
         global_info['total_water'] = global_info['unit_water'] + global_info['factory_water']
         global_info['total_metal'] = global_info['unit_metal'] + global_info['factory_metal']
         global_info['total_power'] = global_info['unit_power'] + global_info['factory_power']
+
+        units_positions = [u.pos for u in units]
+        ice_board = obs.board.ice
+        units_standing_on_ice = [(ice_board[pos[0], pos[1]] > 0) for pos in units_positions]
+        unit_count_on_ice = sum(units_standing_on_ice)
+        global_info['units_on_ice'] = unit_count_on_ice
 
         lichen = obs.board.lichen
         lichen_strains = obs.board.lichen_strains
@@ -418,25 +424,25 @@ class FeatureParser():
         entity_feature['factory'] = (factories_on_board).astype(np.float32)
         entity_feature['unit'] = (units_on_board & not_factory_tile).astype(np.float32)
         entity_feature['light'] = (light_on_board & not_factory_tile).astype(np.float32)
-        entity_feature['heavy'] = (heavy_on_board & not_factory_tile).astype(np.float32)
-        entity_feature['ice'] = (ice & not_factory_tile).astype(np.float32)
-        entity_feature['ore'] = (ore & not_factory_tile).astype(np.float32)
-        entity_feature['rubble'] = (rubble & not_factory_tile).astype(np.float32)
-        entity_feature['lichen'] = (lichen & not_factory_tile).astype(np.float32)
+        # entity_feature['heavy'] = (heavy_on_board & not_factory_tile).astype(np.float32)
+        # entity_feature['ice'] = (ice & not_factory_tile).astype(np.float32)
+        # entity_feature['ore'] = (ore & not_factory_tile).astype(np.float32)
+        # entity_feature['rubble'] = (rubble & not_factory_tile).astype(np.float32)
+        # entity_feature['lichen'] = (lichen & not_factory_tile).astype(np.float32)
         entity_feature['closest_ice_direction.x'] = (closest_ice_direction[:, :, 0]).astype(np.float32) / (env_cfg.map_size*2)
         entity_feature['closest_ice_direction.y'] = (closest_ice_direction[:, :, 1]).astype(np.float32) / (env_cfg.map_size*2)
-        entity_feature['closest_ore_direction.x'] = (closest_ore_direction[:, :, 0]).astype(np.float32) / (env_cfg.map_size*2)
-        entity_feature['closest_ore_direction.y'] = (closest_ore_direction[:, :, 1]).astype(np.float32) / (env_cfg.map_size*2)
-        entity_feature['closest_unit_direction.x'] = (closest_unit_direction[:, :, 0]).astype(np.float32) / (env_cfg.map_size*2)
-        entity_feature['closest_unit_direction.y'] = (closest_unit_direction[:, :, 1]).astype(np.float32) / (env_cfg.map_size*2)
-        entity_feature['closest_factory_direction.x'] = (closest_factory_direction[:, :, 0]).astype(np.float32) / (env_cfg.map_size*2)
-        entity_feature['closest_factory_direction.y'] = (closest_factory_direction[:, :, 1]).astype(np.float32) / (env_cfg.map_size*2)
-        entity_feature['cargo_ice'] = cargo_ice
-        entity_feature['cargo_ore'] = cargo_ore
-        entity_feature['cargo_water'] = cargo_water
-        entity_feature['cargo_metal'] = cargo_metal
-        entity_feature['cargo_power'] = cargo_power
-        entity_feature['lichen_strain'] = lichen_strain
+        # entity_feature['closest_ore_direction.x'] = (closest_ore_direction[:, :, 0]).astype(np.float32) / (env_cfg.map_size*2)
+        # entity_feature['closest_ore_direction.y'] = (closest_ore_direction[:, :, 1]).astype(np.float32) / (env_cfg.map_size*2)
+        # entity_feature['closest_unit_direction.x'] = (closest_unit_direction[:, :, 0]).astype(np.float32) / (env_cfg.map_size*2)
+        # entity_feature['closest_unit_direction.y'] = (closest_unit_direction[:, :, 1]).astype(np.float32) / (env_cfg.map_size*2)
+        # entity_feature['closest_factory_direction.x'] = (closest_factory_direction[:, :, 0]).astype(np.float32) / (env_cfg.map_size*2)
+        # entity_feature['closest_factory_direction.y'] = (closest_factory_direction[:, :, 1]).astype(np.float32) / (env_cfg.map_size*2)
+        # entity_feature['cargo_ice'] = cargo_ice
+        # entity_feature['cargo_ore'] = cargo_ore
+        # entity_feature['cargo_water'] = cargo_water
+        # entity_feature['cargo_metal'] = cargo_metal
+        # entity_feature['cargo_power'] = cargo_power
+        # entity_feature['lichen_strain'] = lichen_strain
 
         global_feature = np.array(list(global_feature.values()))
         map_feature = np.array(list(map_feature.values()))

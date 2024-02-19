@@ -102,7 +102,7 @@ def parse_args():
         help="path for pretrained model loading")
     parser.add_argument("--evaluate-interval", type=int, default=4096,
         help="evaluation steps")
-    parser.add_argument("--evaluate-num", type=int, default=5,
+    parser.add_argument("--evaluate-num", type=int, default=10,
         help="evaluation numbers")
     parser.add_argument("--replay-dir", type=str, default=None,
         help="replay dirs to reset state")

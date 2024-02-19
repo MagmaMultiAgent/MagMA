@@ -14,28 +14,17 @@ class SimpleNet(nn.Module):
         self.global_feature_dims = 32
         self.critic_head = nn.Linear(self.global_feature_dims, 1, bias=True)
         
-        self.entity_feature_dims = 22
-        self.entity_feature_parser_dims = 32
-        self.entity_feature_parser = nn.Sequential(
-            nn.Linear(self.entity_feature_dims, self.entity_feature_parser_dims, bias=True),
-            nn.ReLU(),
-        )
+        self.entity_feature_dims = 5
 
-        self.combined_dims = self.global_feature_dims + self.entity_feature_parser_dims
-        self.combined_net = nn.Sequential(
-            nn.Linear(self.combined_dims, self.combined_dims, bias=True),
-            nn.ReLU(),
-        )
-
-        self.factory_head = nn.Linear(self.combined_dims, ActDims.factory_act, bias=True)
-        self.unit_act_type = nn.Linear(self.combined_dims, len(UnitActType), bias=True)
+        self.factory_head = nn.Linear(self.entity_feature_dims, ActDims.factory_act, bias=True)
+        self.unit_act_type = nn.Linear(self.entity_feature_dims, len(UnitActType), bias=True)
 
         self.param_heads = nn.ModuleDict({
             unit_act_type.name: nn.ModuleDict({
-                "direction": nn.Linear(self.combined_dims, ActDims.direction, bias=True),
-                "resource": nn.Linear(self.combined_dims, ActDims.resource, bias=True),
-                "amount": nn.Linear(self.combined_dims, ActDims.amount, bias=True),
-                "repeat": nn.Linear(self.combined_dims, ActDims.repeat, bias=True),
+                "direction": nn.Linear(self.entity_feature_dims, ActDims.direction, bias=True),
+                "resource": nn.Linear(self.entity_feature_dims, ActDims.resource, bias=True),
+                "amount": nn.Linear(self.entity_feature_dims, ActDims.amount, bias=True),
+                "repeat": nn.Linear(self.entity_feature_dims, ActDims.repeat, bias=True),
             }) for unit_act_type in UnitActType
         })
 
@@ -68,14 +57,11 @@ class SimpleNet(nn.Module):
         # factory actor
         factory_pos = torch.where(va['factory_act'].any(1))
         factory_emb = _gather_from_map(entity_feature, factory_pos)
-        factory_emb = self.entity_feature_parser(factory_emb)
-        combined_emb = torch.cat([global_feature[factory_pos[0], ...], factory_emb], dim=1)
-        combined_emb = self.combined_net(combined_emb)
 
         factory_va = _gather_from_map(va['factory_act'], factory_pos)
         factory_action = action and _gather_from_map(action['factory_act'], factory_pos)
         factory_logp, factory_action, factory_entropy = self.factory_actor(
-            combined_emb,
+            factory_emb,
             factory_va,
             factory_action,
         )
@@ -98,9 +84,6 @@ class SimpleNet(nn.Module):
         )
         unit_pos = torch.where(unit_act_type_va.any(1))
         unit_emb = _gather_from_map(entity_feature, unit_pos)
-        unit_emb = self.entity_feature_parser(unit_emb)
-        combined_emb = torch.cat([global_feature[unit_pos[0], ...], unit_emb], dim=1)
-        combined_emb = self.combined_net(combined_emb)
 
         unit_va = {
             'act_type': _gather_from_map(unit_act_type_va, unit_pos),
@@ -114,7 +97,7 @@ class SimpleNet(nn.Module):
         }
         unit_action = action and _gather_from_map(action['unit_act'], unit_pos)
         unit_logp, unit_action, unit_entropy = self.unit_actor(
-            combined_emb,
+            unit_emb,
             unit_va,
             unit_action,
         )

@@ -182,28 +182,28 @@ def get_single_observation_space(map_size):
     entity_feature_names = {
         'factory': 2,
         'unit': 2,
-        'light': 2,
-        'heavy': 2,
+        # 'light': 2,
+        # 'heavy': 2,
         'ice': 2,
-        'ore': 2,
-        'rubble': 2,
-        'lichen': 2,
+        # 'ore': 2,
+        # 'rubble': 2,
+        # 'lichen': 2,
         'closest_ice_direction.x': 9999,
         'closest_ice_direction.y': 9999,
-        'closest_ore_direction.x': 9999,
-        'closest_ore_direction.y': 9999,
-        'closest_unit_direction.x': 9999,
-        'closest_unit_direction.y': 9999,
-        'closest_factory_direction.x': 9999,
-        'closest_factory_direction.y': 9999,
-        'cargo_ice': 9999,
-        'cargo_ore': 9999,
-        'cargo_water': 9999,
-        'cargo_metal': 9999,
-        'cargo_power': 9999,
-        'lichen_strain': 9999
+        # 'closest_ore_direction.x': 9999,
+        # 'closest_ore_direction.y': 9999,
+        # 'closest_unit_direction.x': 9999,
+        # 'closest_unit_direction.y': 9999,
+        # 'closest_factory_direction.x': 9999,
+        # 'closest_factory_direction.y': 9999,
+        # 'cargo_ice': 9999,
+        # 'cargo_ore': 9999,
+        # 'cargo_water': 9999,
+        # 'cargo_metal': 9999,
+        # 'cargo_power': 9999,
+        # 'lichen_strain': 9999
     }
-    entity_feature_space = np.tile(np.array(list(entity_feature_names.values())).reshape(22, 1, 1), (1, map_size, map_size))
+    entity_feature_space = np.tile(np.array(list(entity_feature_names.values())).reshape(5, 1, 1), (1, map_size, map_size))
     entity_feature_space = spaces.MultiDiscrete(entity_feature_space, dtype=np.float64)
 
     action_feature_space = spaces.Dict(

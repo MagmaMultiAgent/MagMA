@@ -291,7 +291,6 @@ class ActionParser():
                 unit_on_pos = unit_map[_x, _y]
                 if unit_on_pos != -1:
                     units_on_factory += 1
-            
             # valid build light
             if factory.cargo.metal >= env_cfg.ROBOTS['LIGHT'].METAL_COST\
                 and factory.power >= env_cfg.ROBOTS['LIGHT'].POWER_COST\
@@ -313,6 +312,8 @@ class ActionParser():
                 no_ore = (board.ore[adj_x, adj_y] == 0)
                 if (no_ruble & no_ice & no_ore).any():
                     factory_va[FactoryActType.WATER, x, y] = True
+                # ICE OVERRIDE, TODO: remove
+                factory_va[FactoryActType.WATER, x, y] = False
 
             # always can do nothing
             factory_va[FactoryActType.DO_NOTHING, x, y] = True
@@ -405,6 +406,12 @@ class ActionParser():
             # check if full power
             if unit.power < unit.unit_cfg.BATTERY_CAPACITY:
                 valid_actions["unit_act"]["recharge"]['repeat'][0, x, y] = True
+
+        # ICE OVERRIDE, TODO: remove
+        valid_actions["unit_act"]["act_type"][UnitActType.TRANSFER][:] = False
+        valid_actions["unit_act"]["act_type"][UnitActType.PICKUP][:] = False
+        valid_actions["unit_act"]["act_type"][UnitActType.SELF_DESTRUCT][:] = False
+        valid_actions["unit_act"]["act_type"][UnitActType.RECHARGE][:] = False
 
         # calculate va for the flattened action space
         move_va = valid_actions["unit_act"]["move"]
