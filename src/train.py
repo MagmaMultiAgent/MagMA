@@ -112,8 +112,8 @@ def parse_args():
     args = parser.parse_args()
 
     # Test arguments
-    args.num_steps = 64
-    args.train_num_collect = 64
+    args.num_steps = 128
+    args.train_num_collect = args.num_envs*128
 
     # size of a batch
     args.batch_size = int(args.num_envs * args.num_steps)
