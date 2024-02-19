@@ -110,6 +110,11 @@ def parse_args():
         help="is eval model")
     
     args = parser.parse_args()
+
+    # Test arguments
+    args.num_steps = 64
+    args.train_num_collect = 64
+
     # size of a batch
     args.batch_size = int(args.num_envs * args.num_steps)
     # number of steps to train on from all envs

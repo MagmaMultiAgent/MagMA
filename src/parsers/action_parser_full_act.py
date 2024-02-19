@@ -17,6 +17,8 @@ from luxai_s2.actions import move_deltas
 import tree
 import dataclasses
 
+import sys
+
 factory_adjacent_delta_xy = np.array([
     [-2, -1],
     [-2, +0],
@@ -269,16 +271,36 @@ class ActionParser():
         valid_actions = tree.map_structure(
             lambda dim: np.zeros((dim, EnvParam.map_size, EnvParam.map_size), dtype=np.bool8), act_dims_mapping)
 
+        # construct unit_map
+        enemy_units = game_state.units[enemy]
+        enemy_unit_positions = [tuple(u.pos) for u in enemy_units.values()]
+        unit_map = np.full_like(game_state.board.rubble, fill_value=-1, dtype=np.int32)
+        for unit_id, unit in game_state.units[player].items():
+            x, y = unit.pos
+            unit_map[x, y] = int(unit_id[len("unit_"):])
+
+        # factory actions
         factory_va = valid_actions["factory_act"]
+        max_units_on_factory = 4  # arbitrary value
         for unit_id, factory in game_state.factories[player].items():
             x, y = factory.pos
+
+            units_on_factory = 0
+            # 3x3 factory
+            for _x, _y in [(x-1, y-1), (x-1, y), (x-1, y+1), (x, y-1), (x, y), (x, y+1), (x+1, y-1), (x+1, y), (x+1, y+1)]:
+                unit_on_pos = unit_map[_x, _y]
+                if unit_on_pos != -1:
+                    units_on_factory += 1
+            
             # valid build light
             if factory.cargo.metal >= env_cfg.ROBOTS['LIGHT'].METAL_COST\
-                and factory.power >= env_cfg.ROBOTS['LIGHT'].POWER_COST:
+                and factory.power >= env_cfg.ROBOTS['LIGHT'].POWER_COST\
+                and units_on_factory < max_units_on_factory:
                 factory_va[FactoryActType.BUILD_LIGHT, x, y] = True
             # valid build heavy
             if factory.cargo.metal >= env_cfg.ROBOTS['HEAVY'].METAL_COST\
-                and factory.power >= env_cfg.ROBOTS['HEAVY'].POWER_COST:
+                and factory.power >= env_cfg.ROBOTS['HEAVY'].POWER_COST\
+                and units_on_factory < max_units_on_factory:
                 factory_va[FactoryActType.BUILD_HEAVY, x, y] = True
             # valid grow lichen
             lichen_strains_size = np.sum(board.lichen_strains == factory.strain_id)
@@ -295,12 +317,7 @@ class ActionParser():
             # always can do nothing
             factory_va[FactoryActType.DO_NOTHING, x, y] = True
 
-        # construct unit_map
-        unit_map = np.full_like(game_state.board.rubble, fill_value=-1, dtype=np.int32)
-        for unit_id, unit in game_state.units[player].items():
-            x, y = unit.pos
-            unit_map[x, y] = int(unit_id[len("unit_"):])
-
+        # unit actions
         for unit_id, unit in game_state.units[player].items():
             x, y = unit.pos
             action_queue_cost = unit.action_queue_cost(game_state)
@@ -323,7 +340,17 @@ class ActionParser():
                         or target_pos[1] >= EnvParam.map_size):
                     continue
 
+                # don't step on enemy factories
                 if factory_under_unit(target_pos, game_state.factories[enemy]) is not None:
+                    continue
+
+                # don't step on other units
+                unit_at_target = unit_map[target_pos[0], target_pos[1]]
+                if unit_at_target != -1:
+                    continue
+
+                # only step on enemy if unit is heavy
+                if unit.unit_type != "HEAVY" and tuple(target_pos) in enemy_unit_positions:
                     continue
 
                 power_required = unit.move_cost(game_state, direction)
@@ -399,6 +426,8 @@ class ActionParser():
 
         self_destruct_va = valid_actions["unit_act"]["act_type"][UnitActType.SELF_DESTRUCT][None] \
             & valid_actions["unit_act"]["self_destruct"]['repeat']  # 2
+        # no self destruct allowed
+        self_destruct_va[:] = False
 
         recharge_va = valid_actions["unit_act"]["act_type"][UnitActType.RECHARGE][None] \
             & valid_actions["unit_act"]["recharge"]['repeat']  # 2

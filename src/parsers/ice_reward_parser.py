@@ -14,8 +14,6 @@ class IceRewardParser(DenseRewardParser):
             last_count = self.last_count[player]
 
             ice_increment = own_global_info["total_ice"] - last_count['total_ice']
-            if ice_increment > 0:
-                print("ice increment is ", ice_increment, file=sys.stderr)
             reward[team] += max(ice_increment, 0)
 
         return reward, sub_rewards
