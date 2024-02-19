@@ -402,7 +402,9 @@ class ActionParser():
                 valid_actions["unit_act"]["self_destruct"]['repeat'][0, x, y] = True
 
             # valid recharge
-            valid_actions["unit_act"]["recharge"]['repeat'][0, x, y] = True
+            # check if full power
+            if unit.power < unit.unit_cfg.BATTERY_CAPACITY:
+                valid_actions["unit_act"]["recharge"]['repeat'][0, x, y] = True
 
         # calculate va for the flattened action space
         move_va = valid_actions["unit_act"]["move"]
