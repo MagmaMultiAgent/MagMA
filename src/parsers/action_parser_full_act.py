@@ -313,7 +313,7 @@ class ActionParser():
                 if (no_ruble & no_ice & no_ore).any():
                     factory_va[FactoryActType.WATER, x, y] = True
                 # ICE OVERRIDE, TODO: remove
-                factory_va[FactoryActType.WATER, x, y] = False
+                #factory_va[FactoryActType.WATER, x, y] = False
 
             # always can do nothing
             factory_va[FactoryActType.DO_NOTHING, x, y] = True
@@ -408,10 +408,10 @@ class ActionParser():
                 valid_actions["unit_act"]["recharge"]['repeat'][0, x, y] = True
 
         # ICE OVERRIDE, TODO: remove
-        valid_actions["unit_act"]["act_type"][UnitActType.TRANSFER][:] = False
-        valid_actions["unit_act"]["act_type"][UnitActType.PICKUP][:] = False
-        valid_actions["unit_act"]["act_type"][UnitActType.SELF_DESTRUCT][:] = False
-        valid_actions["unit_act"]["act_type"][UnitActType.RECHARGE][:] = False
+        #valid_actions["unit_act"]["act_type"][UnitActType.TRANSFER][:] = False
+        #valid_actions["unit_act"]["act_type"][UnitActType.PICKUP][:] = False
+        #valid_actions["unit_act"]["act_type"][UnitActType.SELF_DESTRUCT][:] = False
+        #valid_actions["unit_act"]["act_type"][UnitActType.RECHARGE][:] = False
 
         # calculate va for the flattened action space
         move_va = valid_actions["unit_act"]["move"]
