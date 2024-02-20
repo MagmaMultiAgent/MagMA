@@ -1,3 +1,5 @@
+#%%writefile src/train.py
+
 import argparse
 import os
 import random
@@ -42,6 +44,28 @@ TensorPerKey = dict[str, torch.Tensor]
 TensorPerPlayer = dict[str, dict[str, torch.Tensor]]
 
 LOG = True
+log_from_global_info = [
+    'factory_count',
+    'unit_count',
+    'light_count',
+    'heavy_count',
+    'unit_ice',
+    'unit_ore',
+    'unit_water',
+    'unit_metal',
+    'unit_power',
+    'factory_ice',
+    'factory_ore',
+    'factory_water',
+    'factory_metal',
+    'factory_power',
+    'total_ice',
+    'total_ore',
+    'total_water',
+    'total_metal',
+    'total_power',
+    'lichen_count',
+]
 
 def parse_args():
     # fmt: off
@@ -68,7 +92,7 @@ def parse_args():
         help="the learning rate of the optimizer")
     parser.add_argument("--num-envs", type=int, default=4,
         help="the number of parallel game environments")
-    parser.add_argument("--num-steps", type=int, default=512,
+    parser.add_argument("--num-steps", type=int, default=1024,
         help="the number of steps to run in each environment per policy rollout")
     parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggle learning rate annealing for policy and value networks")
@@ -76,7 +100,7 @@ def parse_args():
         help="the discount factor gamma")
     parser.add_argument("--gae-lambda", type=float, default=0.95,
         help="the lambda for the general advantage estimation")
-    parser.add_argument("--train-num-collect", type=int, default=2048,
+    parser.add_argument("--train-num-collect", type=int, default=4096,
         help="the number of data collections in training process")
     parser.add_argument("--num-minibatches", type=int, default=4,
         help="the number of mini-batches")
@@ -505,12 +529,28 @@ def main(args, device):
             if (step== args.num_steps-1):
                 logger.info(f"global_step={global_step}, total_return={np.mean(episode_return_list)}")
                 if LOG:
-                    writer.add_scalar("charts/avg_steps", (step*args.num_envs)/total_done, global_step)
                     writer.add_scalar("charts/episodic_total_return", np.mean(episode_return_list), global_step)
                     mean_episode_sub_return = {}
                     for key in episode_sub_return.keys():
                         mean_episode_sub_return[key] = np.mean(list(map(lambda sub: sub[key], episode_sub_return_list)))
                         writer.add_scalar(f"sub_reward/{key}", mean_episode_sub_return[key], global_step)
+                    global_info_log = {
+                        "total": {},
+                        "player_0": {},
+                        "player_1": {}
+                    }
+                    for key in log_from_global_info:
+                        for env_id in range(args.num_envs):
+                            for player in ["player_0", "player_1"]:
+                                if key not in global_info_log[player]:
+                                    global_info_log[player][key] = []
+                                if key not in global_info_log["total"]:
+                                    global_info_log["total"][key] = []
+                                global_info_log[player][key].append(info[player][env_id][key])
+                                global_info_log["total"][key].append(info[player][env_id][key])
+                    for groupname, group in global_info_log.items():
+                        for key, value in group.items():
+                            writer.add_scalar(f"global_info/{groupname}_{key}", sum(value)/len(value), global_step)
 
             # Train with PPO
             if train_step >= args.max_train_step-1 or step == args.num_steps-1:  

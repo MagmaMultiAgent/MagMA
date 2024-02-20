@@ -81,30 +81,31 @@ class FeatureParser():
         self.entity_feature_names = [
             'factory',
             'unit',
-            # 'light',
-            # 'heavy',
+            'light',
+            'heavy',
             'ice',
-            # 'ore',
-            # 'rubble',
-            # 'lichen',
+            'ore',
+            'rubble',
+            'lichen',
             'closest_ice_direction.x',
             'closest_ice_direction.y',
-            # 'closest_ore_direction.x',
-            # 'closest_ore_direction.y',
-            # 'closest_unit_direction.x',
-            # 'closest_unit_direction.y',
-            # 'closest_factory_direction.x',
-            # 'closest_factory_direction.y',
-            # 'cargo_ice',
-            # 'cargo_ore',
-            # 'cargo_water',
-            # 'cargo_metal',
-            # 'cargo_power',
-            # 'lichen_strain'
+            'closest_ore_direction.x',
+            'closest_ore_direction.y',
+            'closest_unit_direction.x',
+            'closest_unit_direction.y',
+            'closest_factory_direction.x',
+            'closest_factory_direction.y',
+            'cargo_ice',
+            'cargo_ore',
+            'cargo_water',
+            'cargo_metal',
+            'cargo_power',
+            'lichen_strain'
         ]
 
         self.global_info_names = [
             'factory_count',
+            'unit_count',
             'light_count',
             'heavy_count',
             'unit_ice',
@@ -156,6 +157,7 @@ class FeatureParser():
 
         global_info['light_count'] = sum(int(u.unit_type == 'LIGHT') for u in units)
         global_info['heavy_count'] = sum(int(u.unit_type == 'HEAVY') for u in units)
+        global_info['unit_count'] = global_info['light_count'] + global_info['heavy_count']
         global_info["factory_count"] = len(factories)
 
         global_info['unit_ice'] = sum(u.cargo.ice for u in units)

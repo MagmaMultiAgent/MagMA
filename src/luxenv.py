@@ -367,6 +367,7 @@ class LuxEnv(gym.Env):
                 "action_stats": action_stats[team]
             }
             info["agents"].append(agent_info)
+        info = info | global_info
         return obs_list, reward, terminations, truncations, info
     
     def eval(self, own_policy, enemy_policy):
