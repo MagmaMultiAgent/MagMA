@@ -15,16 +15,21 @@ class SimpleNet(nn.Module):
         self.critic_head = nn.Linear(self.global_feature_dims, 1, bias=True)
         
         self.entity_feature_dims = 5
+        self.entity_feature_parser_dims = 32
+        self.entity_feature_parser = nn.Sequential(
+            nn.Linear(self.entity_feature_dims, self.entity_feature_parser_dims, bias=True),
+            nn.ReLU(),
+        )
 
         self.factory_head = nn.Linear(self.entity_feature_dims, ActDims.factory_act, bias=True)
-        self.unit_act_type = nn.Linear(self.entity_feature_dims, len(UnitActType), bias=True)
+        self.unit_act_type = nn.Linear(self.entity_feature_parser_dims, len(UnitActType), bias=True)
 
         self.param_heads = nn.ModuleDict({
             unit_act_type.name: nn.ModuleDict({
-                "direction": nn.Linear(self.entity_feature_dims, ActDims.direction, bias=True),
-                "resource": nn.Linear(self.entity_feature_dims, ActDims.resource, bias=True),
-                "amount": nn.Linear(self.entity_feature_dims, ActDims.amount, bias=True),
-                "repeat": nn.Linear(self.entity_feature_dims, ActDims.repeat, bias=True),
+                "direction": nn.Linear(self.entity_feature_parser_dims, ActDims.direction, bias=True),
+                "resource": nn.Linear(self.entity_feature_parser_dims, ActDims.resource, bias=True),
+                "amount": nn.Linear(self.entity_feature_parser_dims, ActDims.amount, bias=True),
+                "repeat": nn.Linear(self.entity_feature_parser_dims, ActDims.repeat, bias=True),
             }) for unit_act_type in UnitActType
         })
 
@@ -84,6 +89,7 @@ class SimpleNet(nn.Module):
         )
         unit_pos = torch.where(unit_act_type_va.any(1))
         unit_emb = _gather_from_map(entity_feature, unit_pos)
+        unit_emb = self.entity_feature_parser(unit_emb)
 
         unit_va = {
             'act_type': _gather_from_map(unit_act_type_va, unit_pos),
