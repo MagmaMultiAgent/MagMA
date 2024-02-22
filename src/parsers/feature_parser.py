@@ -470,10 +470,10 @@ class FeatureParser():
         closest_ice_cluster = self.get_closest_coords(units_on_board, ice_clusters)
         closest_ice_cluster_x = closest_ice_cluster[..., 0]
         closest_ice_cluster_y = closest_ice_cluster[..., 1]
-        closest_ice_cluster_x_pos = closest_ice_cluster_x >= 0
-        closest_ice_cluster_y_pos = closest_ice_cluster_y >= 0
-        closest_ice_cluster_x_neg = closest_ice_cluster_x <= 0
-        closest_ice_cluster_y_neg = closest_ice_cluster_y <= 0
+        closest_ice_cluster_x_pos = closest_ice_cluster_x > 0
+        closest_ice_cluster_y_pos = closest_ice_cluster_y > 0
+        closest_ice_cluster_x_neg = closest_ice_cluster_x < 0
+        closest_ice_cluster_y_neg = closest_ice_cluster_y < 0
 
         unit_feature['cloest_ice_up'] = (closest_ice_cluster_y_neg & ~ice).astype(np.float32)
         unit_feature['cloest_ice_down'] = (closest_ice_cluster_y_pos & ~ice).astype(np.float32)
