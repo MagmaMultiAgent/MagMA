@@ -413,7 +413,8 @@ class LuxEnv(gym.Env):
                 valid_action = self.get_valid_actions(id)
                 _, _, raw_action, _ = policy(
                     np2torch([obs_list[f'player_{id}']['global_feature']], torch.float32),
-                    np2torch([obs_list[f'player_{id}']['entity_feature']], torch.float32),
+                    np2torch([obs_list[f'player_{id}']['factory_feature']], torch.float32),
+                    np2torch([obs_list[f'player_{id}']['unit_feature']], torch.float32),
                     tree.map_structure(lambda x: np2torch([x], torch.bool), valid_action)
                 )
                 actions[id] = raw_action
