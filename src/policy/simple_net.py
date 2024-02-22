@@ -18,15 +18,21 @@ class SimpleNet(nn.Module):
         self.factory_feature_dims = 6
         self.unit_feature_dims = 14
 
+        self.unit_net_dim = 16
+        self.unit_net = nn.Sequential(
+            nn.Linear(self.unit_feature_dims, self.unit_net_dim, bias=True),
+            nn.ReLU(),
+        ))
+
         self.factory_head = nn.Linear(self.factory_feature_dims, ActDims.factory_act, bias=True)
-        self.unit_act_type = nn.Linear(self.unit_feature_dims, len(UnitActType), bias=True)
+        self.unit_act_type = nn.Linear(self.unit_net_dim, len(UnitActType), bias=True)
 
         self.param_heads = nn.ModuleDict({
             unit_act_type.name: nn.ModuleDict({
-                "direction": nn.Linear(self.unit_feature_dims, ActDims.direction, bias=True),
-                "resource": nn.Linear(self.unit_feature_dims, ActDims.resource, bias=True),
-                "amount": nn.Linear(self.unit_feature_dims, ActDims.amount, bias=True),
-                "repeat": nn.Linear(self.unit_feature_dims, ActDims.repeat, bias=True),
+                "direction": nn.Linear(self.unit_net_dim, ActDims.direction, bias=True),
+                "resource": nn.Linear(self.unit_net_dim, ActDims.resource, bias=True),
+                "amount": nn.Linear(self.unit_net_dim, ActDims.amount, bias=True),
+                "repeat": nn.Linear(self.unit_net_dim, ActDims.repeat, bias=True),
             }) for unit_act_type in UnitActType
         })
 
@@ -86,6 +92,8 @@ class SimpleNet(nn.Module):
         )
         unit_pos = torch.where(unit_act_type_va.any(1))
         unit_emb = _gather_from_map(unit_feature, unit_pos)
+        #print(unit_emb[:, -8:], file=sys.stderr)
+        unit_emb = self.unit_net(unit_emb)
 
         unit_va = {
             'act_type': _gather_from_map(unit_act_type_va, unit_pos),
