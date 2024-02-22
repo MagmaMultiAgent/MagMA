@@ -206,6 +206,32 @@ def get_single_observation_space(map_size):
     entity_feature_space = np.tile(np.array(list(entity_feature_names.values())).reshape(5, 1, 1), (1, map_size, map_size))
     entity_feature_space = spaces.MultiDiscrete(entity_feature_space, dtype=np.float64)
 
+    factory_feature_names = {
+        'factory_power': 9999,
+        'factory_ice': 9999,
+        'factory_water': 9999,
+        'factory_ore': 9999,
+        'factory_metal': 9999,
+        'factory_water_cost': 9999
+    }
+    factory_feature_space = np.tile(np.array(list(factory_feature_names.values())).reshape(6, 1, 1), (1, map_size, map_size))
+    factory_feature_space = spaces.MultiDiscrete(factory_feature_space, dtype=np.float64)
+
+    unit_feature_names = {
+        'factory': 2,
+        'light': 2,
+        'heavy': 2,
+        'ice': 2,
+        'power': 9999,
+        'cargo_ice': 9999,
+        'cloest_ice_up': 9999,
+        'cloest_ice_down': 9999,
+        'cloest_ice_left': 9999,
+        'cloest_ice_right': 9999
+    }
+    unit_feature_space = np.tile(np.array(list(unit_feature_names.values())).reshape(10, 1, 1), (1, map_size, map_size))
+    unit_feature_space = spaces.MultiDiscrete(unit_feature_space, dtype=np.float64)
+
     action_feature_space = spaces.Dict(
         {
             'unit_indicator': spaces.MultiDiscrete(np.full((map_size, map_size), 2), dtype=np.float64),
@@ -220,7 +246,8 @@ def get_single_observation_space(map_size):
     obs_space = spaces.Dict(
         {
             'global_feature': global_feature_space,
-            'entity_feature': entity_feature_space
+            'factory_feature': factory_feature_space,
+            'unit_feature': unit_feature_space
         }
     )
     return obs_space

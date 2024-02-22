@@ -12,7 +12,8 @@ import sys
 
 class LuxFeature(NamedTuple):
     global_feature: np.ndarray
-    entity_feature: np.ndarray
+    factory_feature: np.ndarray
+    unit_feature: np.ndarray
 
 
 class FeatureParser():
@@ -101,6 +102,28 @@ class FeatureParser():
             'cargo_metal',
             'cargo_power',
             'lichen_strain'
+        ]
+
+        self.factory_feature_names = [
+            'factory_power',
+            'factory_ice',
+            'factory_water',
+            'factory_ore',
+            'factory_metal',
+            'factory_water_cost'
+        ]
+
+        self.unit_feature_names = [
+            'factory',
+            'light',
+            'heavy',
+            'ice',
+            'power',
+            'cargo_ice',
+            'cloest_ice_up',
+            'cloest_ice_down',
+            'cloest_ice_left',
+            'cloest_ice_right'
         ]
 
         self.global_info_names = [
@@ -344,8 +367,6 @@ class FeatureParser():
             # yapf: enable
 
 
-        # Entity features
-        entity_feature = {}
 
         # Unit positions
         units = obs.units[player]
@@ -377,13 +398,6 @@ class FeatureParser():
         # Resources on map
         ice = (np.array(obs.board.ice) > 0)
         ore = (np.array(obs.board.ore) > 0)
-        rubble = (np.array(obs.board.rubble) > 0)
-        lichen = (np.array(obs.board.lichen) > 0)
-
-        closest_ice_direction = self.get_closest_coords(entities_on_board, ice)
-        closest_ore_direction = self.get_closest_coords(entities_on_board, ore)
-        closest_unit_direction = self.get_closest_coords(entities_on_board, units_on_board, can_match=False)
-        closest_factory_direction = self.get_closest_coords(entities_on_board, factories_on_board, can_match=False)
 
         # Cargo
         cargo_ice = np.zeros((env_cfg.map_size, env_cfg.map_size), dtype=np.float32)
@@ -421,39 +435,82 @@ class FeatureParser():
             cargo_power[unit_pos[:, 0], unit_pos[:, 1]] = [unit.power for unit in units.values()]
         cargo_power /= env_cfg.ROBOTS['HEAVY'].CARGO_SPACE
 
-        lichen_strain = np.zeros((env_cfg.map_size, env_cfg.map_size), dtype=np.float32)  # TODO: do
-        
-        entity_feature['factory'] = (factories_on_board).astype(np.float32)
-        entity_feature['unit'] = (units_on_board & not_factory_tile).astype(np.float32)
-        entity_feature['light'] = (light_on_board & not_factory_tile).astype(np.float32)
-        # entity_feature['heavy'] = (heavy_on_board & not_factory_tile).astype(np.float32)
-        # entity_feature['ice'] = (ice & not_factory_tile).astype(np.float32)
-        # entity_feature['ore'] = (ore & not_factory_tile).astype(np.float32)
-        # entity_feature['rubble'] = (rubble & not_factory_tile).astype(np.float32)
-        # entity_feature['lichen'] = (lichen & not_factory_tile).astype(np.float32)
-        entity_feature['closest_ice_direction.x'] = (closest_ice_direction[:, :, 0]).astype(np.float32) / (env_cfg.map_size*2)
-        entity_feature['closest_ice_direction.y'] = (closest_ice_direction[:, :, 1]).astype(np.float32) / (env_cfg.map_size*2)
-        # entity_feature['closest_ore_direction.x'] = (closest_ore_direction[:, :, 0]).astype(np.float32) / (env_cfg.map_size*2)
-        # entity_feature['closest_ore_direction.y'] = (closest_ore_direction[:, :, 1]).astype(np.float32) / (env_cfg.map_size*2)
-        # entity_feature['closest_unit_direction.x'] = (closest_unit_direction[:, :, 0]).astype(np.float32) / (env_cfg.map_size*2)
-        # entity_feature['closest_unit_direction.y'] = (closest_unit_direction[:, :, 1]).astype(np.float32) / (env_cfg.map_size*2)
-        # entity_feature['closest_factory_direction.x'] = (closest_factory_direction[:, :, 0]).astype(np.float32) / (env_cfg.map_size*2)
-        # entity_feature['closest_factory_direction.y'] = (closest_factory_direction[:, :, 1]).astype(np.float32) / (env_cfg.map_size*2)
-        # entity_feature['cargo_ice'] = cargo_ice
-        # entity_feature['cargo_ore'] = cargo_ore
-        # entity_feature['cargo_water'] = cargo_water
-        # entity_feature['cargo_metal'] = cargo_metal
-        # entity_feature['cargo_power'] = cargo_power
-        # entity_feature['lichen_strain'] = lichen_strain
+        factory_feature = {}
+
+        factory_feature['factory_power'] = map_feature['factory_power']
+        factory_feature['factory_ice'] = map_feature['factory_ice']
+        factory_feature['factory_water'] = map_feature['factory_water']
+        factory_feature['factory_ore'] = map_feature['factory_ore']
+        factory_feature['factory_metal'] = map_feature['factory_metal']
+        factory_feature['factory_water_cost'] = map_feature['factory_water_cost']
+
+        unit_feature = {}
+
+        unit_feature['factory'] = factories_on_board.astype(np.float32)
+        unit_feature['light'] = light_on_board.astype(np.float32)
+        unit_feature['heavy'] = heavy_on_board.astype(np.float32)
+        unit_feature['ice'] = ice.astype(np.float32)
+        unit_feature['power'] = cargo_power.astype(np.float32)
+        unit_feature['cargo_ice'] = cargo_ice.astype(np.float32)
+
+        ice_distances_per_direction = self.get_best_directions(units_on_board, ice)
+        unit_feature['cloest_ice_up'] = ice_distances_per_direction[0] / (env_cfg.map_size * 2) * (~ice).astype(np.float32)
+        unit_feature['cloest_ice_down'] = ice_distances_per_direction[1] / (env_cfg.map_size * 2) * (~ice).astype(np.float32)
+        unit_feature['cloest_ice_left'] = ice_distances_per_direction[2] / (env_cfg.map_size * 2) * (~ice).astype(np.float32)
+        unit_feature['cloest_ice_right'] = ice_distances_per_direction[3] / (env_cfg.map_size * 2) * (~ice).astype(np.float32)
+
+        factory_feature = np.array(list(factory_feature.values()))
+        unit_feature = np.array(list(unit_feature.values()))
 
         global_feature = np.array(list(global_feature.values()))
         map_feature = np.array(list(map_feature.values()))
-        entity_feature = np.array(list(entity_feature.values()))
 
         if output_dict:
-            return {'global_feature': global_feature, 'entity_feature': entity_feature}
+            return {'global_feature': global_feature, 'factory_feature': factory_feature, 'unit_feature': unit_feature}
+        
+        return LuxFeature(global_feature, factory_feature, unit_feature)
 
-        return LuxFeature(global_feature, entity_feature)
+    @staticmethod
+    def get_best_directions(entities, targets, can_match=True):
+        base_up = np.zeros(entities.shape, dtype=np.float32)
+        base_down = np.zeros(entities.shape, dtype=np.float32)
+        base_left = np.zeros(entities.shape, dtype=np.float32)
+        base_right = np.zeros(entities.shape, dtype=np.float32)
+
+        max_distance = entities.shape[0] + entities.shape[1]
+
+        if not can_match:
+            targets = targets & ~entities
+
+        entity_coords = np.argwhere(entities)
+        target_coords = np.argwhere(targets)
+
+        if len(entity_coords) == 0 or len(target_coords) == 0:
+            return base_up, base_down, base_left, base_right
+
+        target_directions = entity_coords[:, None] - target_coords * 1.0
+
+        up_target_directions = target_directions.copy()
+        up_target_directions[~(target_directions[..., 0] < 0)] = max_distance / 2
+        up_target_min_distance = np.abs(up_target_directions).sum(axis=-1).min(axis=-1)
+        base_up[entity_coords[:, 0], entity_coords[:, 1]] = up_target_min_distance
+
+        down_target_directions = target_directions.copy()
+        down_target_directions[~(target_directions[..., 0] > 0)] = max_distance / 2
+        down_target_min_distance = np.abs(down_target_directions).sum(axis=-1).min(axis=-1)
+        base_down[entity_coords[:, 0], entity_coords[:, 1]] = down_target_min_distance
+
+        left_target_directions = target_directions.copy()
+        left_target_directions[~(target_directions[..., 1] < 0)] = max_distance / 2
+        left_target_min_distance = np.abs(left_target_directions).sum(axis=-1).min(axis=-1)
+        base_left[entity_coords[:, 0], entity_coords[:, 1]] = left_target_min_distance
+
+        right_target_directions = target_directions.copy()
+        right_target_directions[~(target_directions[..., 1] > 0)] = max_distance / 2
+        right_target_min_distance = np.abs(right_target_directions).sum(axis=-1).min(axis=-1)
+        base_right[entity_coords[:, 0], entity_coords[:, 1]] = right_target_min_distance
+
+        return base_up, base_down, base_left, base_right
 
     @staticmethod
     def get_closest_coords(entities, targets, can_match=True):

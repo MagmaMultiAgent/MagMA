@@ -90,7 +90,7 @@ def parse_args():
         help="total timesteps of the experiments")
     parser.add_argument("--learning-rate", type=float, default=3e-4,
         help="the learning rate of the optimizer")
-    parser.add_argument("--num-envs", type=int, default=4,
+    parser.add_argument("--num-envs", type=int, default=1,
         help="the number of parallel game environments")
     parser.add_argument("--num-steps", type=int, default=1024,
         help="the number of steps to run in each environment per policy rollout")
@@ -215,7 +215,8 @@ def sample_action_for_player(agent: Net, obs: TensorPerKey, valid_action: Tensor
     """
     logprob, value, action, entropy = agent(
         obs['global_feature'],
-        obs['entity_feature'],
+        obs['factory_feature'],
+        obs['unit_feature'],
         valid_action,
         forced_action
     )
