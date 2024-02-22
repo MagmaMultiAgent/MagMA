@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import numpy as np
 from impl_config import ActDims, UnitActChannel, UnitActType, EnvParam
 from .actor_head import sample_from_categorical
+import sys
 
 
 class SimpleNet(nn.Module):
@@ -15,7 +16,7 @@ class SimpleNet(nn.Module):
         self.critic_head = nn.Linear(self.global_feature_dims, 1, bias=True)
         
         self.factory_feature_dims = 6
-        self.unit_feature_dims = 10
+        self.unit_feature_dims = 14
 
         self.factory_head = nn.Linear(self.factory_feature_dims, ActDims.factory_act, bias=True)
         self.unit_act_type = nn.Linear(self.unit_feature_dims, len(UnitActType), bias=True)

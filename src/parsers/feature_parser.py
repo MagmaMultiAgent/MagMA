@@ -123,7 +123,11 @@ class FeatureParser():
             'cloest_ice_up',
             'cloest_ice_down',
             'cloest_ice_left',
-            'cloest_ice_right'
+            'cloest_ice_right',
+            'ice_up',
+            'ice_down',
+            'ice_left',
+            'ice_right'
         ]
 
         self.global_info_names = [
@@ -399,6 +403,15 @@ class FeatureParser():
         ice = (np.array(obs.board.ice) > 0)
         ore = (np.array(obs.board.ore) > 0)
 
+        ice_left = np.roll(ice, -1, axis=1)
+        ice_left[:, -1] = False
+        ice_right = np.roll(ice, 1, axis=1)
+        ice_right[:, 0] = False
+        ice_up = np.roll(ice, -1, axis=0)
+        ice_up[-1, :] = False
+        ice_down = np.roll(ice, 1, axis=0)
+        ice_down[0, :] = False
+
         # Cargo
         cargo_ice = np.zeros((env_cfg.map_size, env_cfg.map_size), dtype=np.float32)
         if len(factory_pos) > 0:
@@ -453,11 +466,24 @@ class FeatureParser():
         unit_feature['power'] = cargo_power.astype(np.float32)
         unit_feature['cargo_ice'] = cargo_ice.astype(np.float32)
 
-        ice_distances_per_direction = self.get_best_directions(units_on_board, ice)
-        unit_feature['cloest_ice_up'] = ice_distances_per_direction[0] / (env_cfg.map_size * 2) * (~ice).astype(np.float32)
-        unit_feature['cloest_ice_down'] = ice_distances_per_direction[1] / (env_cfg.map_size * 2) * (~ice).astype(np.float32)
-        unit_feature['cloest_ice_left'] = ice_distances_per_direction[2] / (env_cfg.map_size * 2) * (~ice).astype(np.float32)
-        unit_feature['cloest_ice_right'] = ice_distances_per_direction[3] / (env_cfg.map_size * 2) * (~ice).astype(np.float32)
+        ice_clusters = self.cluster_board(ice)
+        closest_ice_cluster = self.get_closest_coords(units_on_board, ice_clusters)
+        closest_ice_cluster_x = closest_ice_cluster[..., 0]
+        closest_ice_cluster_y = closest_ice_cluster[..., 1]
+        closest_ice_cluster_x_pos = closest_ice_cluster_x >= 0
+        closest_ice_cluster_y_pos = closest_ice_cluster_y >= 0
+        closest_ice_cluster_x_neg = closest_ice_cluster_x <= 0
+        closest_ice_cluster_y_neg = closest_ice_cluster_y <= 0
+
+        unit_feature['cloest_ice_up'] = (closest_ice_cluster_y_neg & ~ice).astype(np.float32)
+        unit_feature['cloest_ice_down'] = (closest_ice_cluster_y_pos & ~ice).astype(np.float32)
+        unit_feature['cloest_ice_left'] = (closest_ice_cluster_x_neg & ~ice).astype(np.float32)
+        unit_feature['cloest_ice_right'] = (closest_ice_cluster_x_pos & ~ice).astype(np.float32)
+
+        unit_feature['ice_up'] = ice_up.astype(np.float32)
+        unit_feature['ice_down'] = ice_down.astype(np.float32)
+        unit_feature['ice_left'] = ice_left.astype(np.float32)
+        unit_feature['ice_right'] = ice_right.astype(np.float32)
 
         factory_feature = np.array(list(factory_feature.values()))
         unit_feature = np.array(list(unit_feature.values()))
@@ -469,6 +495,34 @@ class FeatureParser():
             return {'global_feature': global_feature, 'factory_feature': factory_feature, 'unit_feature': unit_feature}
         
         return LuxFeature(global_feature, factory_feature, unit_feature)
+
+    @staticmethod
+    def cluster_board(board):
+        board_int = board.astype(np.int32)
+        board_up = np.roll(board_int, -1, axis=0)
+        board_up[-1, :] = 0
+        board_down = np.roll(board_int, 1, axis=0)
+        board_down[0, :] = 0
+        board_left = np.roll(board_int, -1, axis=1)
+        board_left[:, -1] = 0
+        board_right = np.roll(board_int, 1, axis=1)
+        board_right[:, 0] = 0
+
+        board_int_sum = board_int + board_up + board_down + board_left + board_right
+
+        board_int_sum_up = np.roll(board_int_sum, -1, axis=0)
+        board_int_sum_up[-1, :] = 0
+        board_int_sum_down = np.roll(board_int_sum, 1, axis=0)
+        board_int_sum_down[0, :] = 0
+        board_int_sum_left = np.roll(board_int_sum, -1, axis=1)
+        board_int_sum_left[:, -1] = 0
+        board_int_sum_right = np.roll(board_int_sum, 1, axis=1)
+        board_int_sum_right[:, 0] = 0
+
+        cluster_center = board & (board_int_sum >= board_int_sum_up) & (board_int_sum >= board_int_sum_down) & (board_int_sum >= board_int_sum_left) & (board_int_sum >= board_int_sum_right)
+
+        return cluster_center
+
 
     @staticmethod
     def get_best_directions(entities, targets, can_match=True):
@@ -483,6 +537,7 @@ class FeatureParser():
             targets = targets & ~entities
 
         entity_coords = np.argwhere(entities)
+
         target_coords = np.argwhere(targets)
 
         if len(entity_coords) == 0 or len(target_coords) == 0:
@@ -490,24 +545,31 @@ class FeatureParser():
 
         target_directions = entity_coords[:, None] - target_coords * 1.0
 
+        closest_target = np.abs(target_directions).sum(axis=-1).argmin(axis=-1)
+        closest_target_direction = target_directions[np.arange(len(entity_coords)), closest_target]
+
         up_target_directions = target_directions.copy()
-        up_target_directions[~(target_directions[..., 0] < 0)] = max_distance / 2
+        up_target_directions[~(target_directions[..., 1] < 0)] = max_distance
         up_target_min_distance = np.abs(up_target_directions).sum(axis=-1).min(axis=-1)
+        up_target_min_distance[up_target_min_distance == (max_distance * 2)] = 0
         base_up[entity_coords[:, 0], entity_coords[:, 1]] = up_target_min_distance
 
         down_target_directions = target_directions.copy()
-        down_target_directions[~(target_directions[..., 0] > 0)] = max_distance / 2
+        down_target_directions[~(target_directions[..., 1] > 0)] = max_distance
         down_target_min_distance = np.abs(down_target_directions).sum(axis=-1).min(axis=-1)
+        down_target_min_distance[down_target_min_distance == (max_distance * 2)] = 0
         base_down[entity_coords[:, 0], entity_coords[:, 1]] = down_target_min_distance
 
         left_target_directions = target_directions.copy()
-        left_target_directions[~(target_directions[..., 1] < 0)] = max_distance / 2
+        left_target_directions[~(target_directions[..., 0] < 0)] = max_distance
         left_target_min_distance = np.abs(left_target_directions).sum(axis=-1).min(axis=-1)
+        left_target_min_distance[left_target_min_distance == (max_distance * 2)] = 0
         base_left[entity_coords[:, 0], entity_coords[:, 1]] = left_target_min_distance
 
         right_target_directions = target_directions.copy()
-        right_target_directions[~(target_directions[..., 1] > 0)] = max_distance / 2
+        right_target_directions[~(target_directions[..., 0] > 0)] = max_distance
         right_target_min_distance = np.abs(right_target_directions).sum(axis=-1).min(axis=-1)
+        right_target_min_distance[right_target_min_distance == (max_distance * 2)] = 0
         base_right[entity_coords[:, 0], entity_coords[:, 1]] = right_target_min_distance
 
         return base_up, base_down, base_left, base_right

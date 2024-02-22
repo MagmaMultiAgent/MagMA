@@ -23,15 +23,17 @@ import torch
 import numpy as np
 from player import Player
 ### The model path
-PATH = 'model_360448.pth'
+PATH = 'focus_on_ice_m_dir_model_98304.pth'
 ### DO NOT REMOVE THE FOLLOWING CODE ###
 agent_dict = (
     dict()
 )  # store potentially multiple dictionaries as kaggle imports code directly
 agent_prev_obs = dict()
     
+np.set_printoptions(threshold=sys.maxsize)
 
-def agent_fn(observation, configurations):
+
+def agent_fn(observation, configurations, i):
     """
     agent definition for kaggle submission.
     """
@@ -53,12 +55,12 @@ def agent_fn(observation, configurations):
     agent_prev_obs[player] = obs
     agent.step = step
 
-
     def torch2np(x):
         if isinstance(x, torch.Tensor):
             return x[0].detach().cpu().numpy()
         else:
             return x
+    
     if obs["real_env_steps"] < 0:
         action = Player(player,env_cfg).early_setup(step, obs)
     else:
@@ -67,7 +69,8 @@ def agent_fn(observation, configurations):
             valid_action = ActionParser().get_valid_actions(game_state, player_id)
             np2torch = lambda x, dtype: torch.tensor(x).unsqueeze(0).type(dtype)
             _,_,actions,_ = agent(torch.tensor(obs['global_feature'],dtype=torch.float).unsqueeze(0),
-                                  torch.tensor(obs['entity_feature'],dtype=torch.float).unsqueeze(0),\
+                                  torch.tensor(obs['factory_feature'],dtype=torch.float).unsqueeze(0),\
+                                     torch.tensor(obs['unit_feature'],dtype=torch.float).unsqueeze(0),\
                                 tree.map_structure(lambda x: np2torch(x, torch.bool), valid_action)
                                             )
             actions = tree.map_structure(lambda x: torch2np(x), actions)
@@ -109,6 +112,6 @@ if __name__ == "__main__":
             configurations = obs["info"]["env_cfg"]
             print(configurations, file=sys.stderr)
         i += 1
-        actions = agent_fn(observation, dict(env_cfg=configurations))
+        actions = agent_fn(observation, dict(env_cfg=configurations), i)
         # send actions to engine
         print(json.dumps(actions))
