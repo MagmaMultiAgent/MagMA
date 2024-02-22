@@ -1,5 +1,4 @@
 FROM nvidia/cuda:12.3.1-devel-ubuntu22.04
-
 # Set working directory
 WORKDIR '/usr/src/magmacore'
 
