@@ -22,7 +22,7 @@ class SimpleNet(nn.Module):
         self.unit_net = nn.Sequential(
             nn.Linear(self.unit_feature_dims, self.unit_net_dim, bias=True),
             nn.ReLU(),
-        ))
+        )
 
         self.factory_head = nn.Linear(self.factory_feature_dims, ActDims.factory_act, bias=True)
         self.unit_act_type = nn.Linear(self.unit_net_dim, len(UnitActType), bias=True)
