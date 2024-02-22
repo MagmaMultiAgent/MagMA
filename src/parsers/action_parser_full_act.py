@@ -281,7 +281,7 @@ class ActionParser():
 
         # factory actions
         factory_va = valid_actions["factory_act"]
-        max_units_on_factory = 4  # arbitrary value
+        max_units_on_factory = 9
         for unit_id, factory in game_state.factories[player].items():
             x, y = factory.pos
 
@@ -321,12 +321,10 @@ class ActionParser():
         # unit actions
         for unit_id, unit in game_state.units[player].items():
             x, y = unit.pos
+            valid_actions["unit_act"]["act_type"][UnitActType.DO_NOTHING, x, y] = True
             action_queue_cost = unit.action_queue_cost(game_state)
             if unit.power >= action_queue_cost:
                 valid_actions["unit_act"]["act_type"][:, x, y] = True
-            else:
-                valid_actions["unit_act"]["act_type"][UnitActType.DO_NOTHING, x, y] = True
-                continue
 
             # valid unit move
             valid_actions["unit_act"]["move"]["repeat"][:, x, y] = True
