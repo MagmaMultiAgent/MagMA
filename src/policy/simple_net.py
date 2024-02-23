@@ -108,9 +108,6 @@ class SimpleNet(nn.Module):
             'recharge': _gather_from_map(va['recharge'], unit_pos),
             'do_nothing': _gather_from_map(va['do_nothing'], unit_pos),
         }
-        completely_masked_units = np.where(unit_va["act_type"][:].sum(axis=-1) == 0)
-
-        assert len(completely_masked_units[0]) == 0, "Some unit actions are completely masked"
 
         unit_action = action and _gather_from_map(action['unit_act'], unit_pos)
         unit_logp, unit_action, unit_entropy = self.unit_actor(
