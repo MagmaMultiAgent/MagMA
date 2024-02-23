@@ -18,9 +18,11 @@ class SimpleNet(nn.Module):
         self.factory_feature_dims = 6
         self.unit_feature_dims = 14
 
-        self.unit_net_dim = 16
+        self.unit_net_dim = 32
         self.unit_net = nn.Sequential(
             nn.Linear(self.unit_feature_dims, self.unit_net_dim, bias=True),
+            nn.ReLU(),
+            nn.Linear(self.unit_net_dim, self.unit_net_dim, bias=True),
             nn.ReLU(),
         )
 
@@ -145,6 +147,8 @@ class SimpleNet(nn.Module):
             logp[mask] += move_logp
             entropy[mask] += move_entropy
             output_action[mask] = move_action
+        # if len(output_action) > 0:
+        # print(len(output_action), (output_action[:, 0] == 4.0).sum(), file=sys.stderr)
 
         return logp, output_action, entropy
 
