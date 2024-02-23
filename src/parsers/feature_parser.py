@@ -543,7 +543,7 @@ class FeatureParser():
         if len(entity_coords) == 0 or len(target_coords) == 0:
             return base_up, base_down, base_left, base_right
 
-        target_directions = entity_coords[:, None] - target_coords * 1.0
+        target_directions = -(entity_coords[:, None] - target_coords * 1.0)
 
         closest_target = np.abs(target_directions).sum(axis=-1).argmin(axis=-1)
         closest_target_direction = target_directions[np.arange(len(entity_coords)), closest_target]
@@ -587,7 +587,7 @@ class FeatureParser():
         if len(entity_coords) == 0 or len(target_coords) == 0:
             return base
 
-        target_directions = entity_coords[:, None] - target_coords
+        target_directions = -(entity_coords[:, None] - target_coords)
         closest_target = np.abs(target_directions).sum(axis=-1).argmin(axis=-1)
         closest_target_direction = target_directions[np.arange(len(entity_coords)), closest_target]
 

@@ -5,6 +5,8 @@ import torch.nn.functional as F
 from impl_config import ActDims, EnvParam, ModelParam, UnitActType, UnitActChannel
 from torch.distributions import Beta, Categorical, Normal
 
+import sys
+
 BIG_NEG = -1e10
 
 def sample_from_categorical(logits, va, action=None):

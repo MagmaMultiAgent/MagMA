@@ -94,7 +94,8 @@ class SimpleNet(nn.Module):
         )
         unit_pos = torch.where(unit_act_type_va.any(1))
         unit_emb = _gather_from_map(unit_feature, unit_pos)
-        #print(unit_emb[:, -8:], file=sys.stderr)
+        _unit_emb = unit_emb
+        # print(unit_emb[:, -8:], file=sys.stderr)
         unit_emb = self.unit_net(unit_emb)
 
         unit_va = {
@@ -107,6 +108,10 @@ class SimpleNet(nn.Module):
             'recharge': _gather_from_map(va['recharge'], unit_pos),
             'do_nothing': _gather_from_map(va['do_nothing'], unit_pos),
         }
+        completely_masked_units = np.where(unit_va["act_type"][:].sum(axis=-1) == 0)
+
+        assert len(completely_masked_units[0]) == 0, "Some unit actions are completely masked"
+
         unit_action = action and _gather_from_map(action['unit_act'], unit_pos)
         unit_logp, unit_action, unit_entropy = self.unit_actor(
             unit_emb,
@@ -130,7 +135,7 @@ class SimpleNet(nn.Module):
         act_type_logp, act_type, act_type_entropy = sample_from_categorical(
             self.unit_act_type(x),
             va['act_type'],
-            action[:, UnitActChannel.TYPE] if action is not None else None,
+            action[:, UnitActChannel.TYPE] if action is not None else None
         )
         logp = act_type_logp
         entropy = act_type_entropy
@@ -147,8 +152,6 @@ class SimpleNet(nn.Module):
             logp[mask] += move_logp
             entropy[mask] += move_entropy
             output_action[mask] = move_action
-        # if len(output_action) > 0:
-        # print(len(output_action), (output_action[:, 0] == 4.0).sum(), file=sys.stderr)
 
         return logp, output_action, entropy
 
@@ -196,7 +199,8 @@ class SimpleNet(nn.Module):
             amount, amount_logp, amount_entropy = self.get_amount_param(x, action_type, action)
 
         # repeat
-        if action_type in [UnitActType.MOVE, UnitActType.TRANSFER, UnitActType.PICKUP, UnitActType.DIG, UnitActType.SELF_DESTRUCT, UnitActType.RECHARGE]:
+        # ICE OVERRIDE TODO: change back
+        if False and action_type in [UnitActType.MOVE, UnitActType.TRANSFER, UnitActType.PICKUP, UnitActType.DIG, UnitActType.SELF_DESTRUCT, UnitActType.RECHARGE]:
             repeat, repeat_logp, repeat_entropy = self.get_repeat_param(x, va, action_type, unit_idx, direction, resource, action)
 
         return {"direction": direction, "resource": resource, "amount": amount, "repeat": repeat}, \
