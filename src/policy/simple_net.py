@@ -18,9 +18,17 @@ class SimpleNet(nn.Module):
         self.factory_feature_dims = 6
         self.unit_feature_dims = 14
 
+        self.unit_act_dim = 6
+        self.unit_param_dim = 8
         self.unit_net_dim = 32
-        self.unit_net = nn.Sequential(
-            nn.Linear(self.unit_feature_dims, self.unit_net_dim, bias=True),
+        self.unit_act_net = nn.Sequential(
+            nn.Linear(self.unit_act_dim, self.unit_net_dim, bias=True),
+            nn.ReLU(),
+            nn.Linear(self.unit_net_dim, self.unit_net_dim, bias=True),
+            nn.ReLU(),
+        )
+        self.unit_param_net = nn.Sequential(
+            nn.Linear(self.unit_param_dim, self.unit_net_dim, bias=True),
             nn.ReLU(),
             nn.Linear(self.unit_net_dim, self.unit_net_dim, bias=True),
             nn.ReLU(),
@@ -94,9 +102,6 @@ class SimpleNet(nn.Module):
         )
         unit_pos = torch.where(unit_act_type_va.any(1))
         unit_emb = _gather_from_map(unit_feature, unit_pos)
-        _unit_emb = unit_emb
-        # print(unit_emb[:, -8:], file=sys.stderr)
-        unit_emb = self.unit_net(unit_emb)
 
         unit_va = {
             'act_type': _gather_from_map(unit_act_type_va, unit_pos),
@@ -129,8 +134,14 @@ class SimpleNet(nn.Module):
 
 
     def unit_actor(self, x, va, action=None):
+        x_act = x[..., :self.unit_act_dim]
+        x_param = x[..., self.unit_act_dim:]
+
+        x_act = self.unit_act_net(x_act)
+        x_param = self.unit_param_net(x_param)
+
         act_type_logp, act_type, act_type_entropy = sample_from_categorical(
-            self.unit_act_type(x),
+            self.unit_act_type(x_act),
             va['act_type'],
             action[:, UnitActChannel.TYPE] if action is not None else None
         )
@@ -141,7 +152,7 @@ class SimpleNet(nn.Module):
         for type in UnitActType:
             mask = (act_type == type)
             move_logp, move_action, move_entropy = self.get_unit_action(
-                x[mask],
+                x_param[mask],
                 va[type.name.lower()][mask],
                 type,
                 action[mask] if action is not None else None,
