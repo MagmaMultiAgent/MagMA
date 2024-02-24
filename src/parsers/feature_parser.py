@@ -618,10 +618,6 @@ class FeatureParser():
     def get_distance(entities, targets):
         base = np.zeros(entities.shape, dtype=np.float32)
 
-        common_tiles = entities & targets
-        targets = targets & ~common_tiles
-        entities = entities & ~common_tiles
-
         entity_coords = np.argwhere(entities)
         target_coords = np.argwhere(targets)
 
@@ -636,10 +632,6 @@ class FeatureParser():
     
     @staticmethod
     def get_avg_distance(entities, targets):
-        common_tiles = entities & targets
-        targets = targets & ~common_tiles
-        entities = entities & ~common_tiles
-
         entity_coords = np.argwhere(entities)
         target_coords = np.argwhere(targets)
 
