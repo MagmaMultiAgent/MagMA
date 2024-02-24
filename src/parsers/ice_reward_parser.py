@@ -15,7 +15,7 @@ class IceRewardParser(DenseRewardParser):
             avg_distance_from_ice = own_global_info["avg_distance_from_ice"]
             unit_count = own_global_info["unit_count"]
             if unit_count > 0:
-                reward[team] -= avg_distance_from_ice
+                reward[team] -= avg_distance_from_ice / 10
             else:
                 reward[team] -= 1
 
