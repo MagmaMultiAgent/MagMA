@@ -16,10 +16,11 @@ class SimpleNet(nn.Module):
         self.critic_head = nn.Linear(self.global_feature_dims, 1, bias=True)
         
         self.factory_feature_dims = 6
-        self.unit_feature_dims = 14
+        self.factory_head = nn.Linear(self.factory_feature_dims, ActDims.factory_act, bias=True)
 
-        self.unit_act_dim = 6
-        self.unit_param_dim = 8
+        self.unit_feature_dims = 15
+        self.unit_act_dim = 7
+        self.unit_param_dim = self.unit_feature_dims - self.unit_act_dim
         self.unit_net_dim = 32
         self.unit_act_net = nn.Sequential(
             nn.Linear(self.unit_act_dim, self.unit_net_dim, bias=True),
@@ -33,10 +34,8 @@ class SimpleNet(nn.Module):
             nn.Linear(self.unit_net_dim, self.unit_net_dim, bias=True),
             nn.ReLU(),
         )
-
-        self.factory_head = nn.Linear(self.factory_feature_dims, ActDims.factory_act, bias=True)
+        
         self.unit_act_type = nn.Linear(self.unit_net_dim, len(UnitActType), bias=True)
-
         self.param_heads = nn.ModuleDict({
             unit_act_type.name: nn.ModuleDict({
                 "direction": nn.Linear(self.unit_net_dim, ActDims.direction, bias=True),

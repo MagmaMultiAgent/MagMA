@@ -46,6 +46,9 @@ from luxai_s2.team import FactionTypes, Team
 from luxai_s2.unit import Unit, UnitType
 from luxai_s2.utils.utils import get_top_two_power_units, is_day
 
+import sys
+
+
 # some utility types
 ActionsByType = Dict[str, List[Tuple[Unit, Action]]]
 

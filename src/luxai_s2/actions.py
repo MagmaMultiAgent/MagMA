@@ -15,6 +15,8 @@ if TYPE_CHECKING:
 import luxai_s2.unit as luxai_unit
 from luxai_s2.map.position import Position
 
+import sys
+
 
 # (0 = move, 1 = transfer X amount of R, 2 = pickup X amount of R, 3 = dig, 4 = self destruct, 5 = recharge X)
 class Action:

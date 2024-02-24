@@ -120,6 +120,7 @@ class FeatureParser():
             'ice',
             'power',
             'cargo_ice',
+            'distance_from_ice',
             'cloest_ice_up',
             'cloest_ice_down',
             'cloest_ice_left',
@@ -151,6 +152,8 @@ class FeatureParser():
             'total_metal',
             'total_power',
             'lichen_count',
+            'units_on_ice',
+            'avg_distance_from_ice'
         ]
 
     def parse(self, obs, env_cfg):
@@ -206,10 +209,20 @@ class FeatureParser():
         global_info['total_power'] = global_info['unit_power'] + global_info['factory_power']
 
         units_positions = [u.pos for u in units]
+        unit_board = np.zeros_like(obs.board.ice, dtype=np.bool8)
+        for pos in units_positions:
+            unit_board[pos[0], pos[1]] = True
         ice_board = obs.board.ice
         units_standing_on_ice = [(ice_board[pos[0], pos[1]] > 0) for pos in units_positions]
         unit_count_on_ice = sum(units_standing_on_ice)
         global_info['units_on_ice'] = unit_count_on_ice
+
+        # get avg distance from ice
+        if len(units_positions) < 0:
+            avg_distance_from_ice = 1.0
+        else:
+            avg_distance_from_ice = self.get_avg_distance(unit_board, ice_board)
+        global_info['avg_distance_from_ice'] = avg_distance_from_ice
 
         lichen = obs.board.lichen
         lichen_strains = obs.board.lichen_strains
@@ -374,7 +387,8 @@ class FeatureParser():
 
         # Unit positions
         units = obs.units[player]
-        unit_pos = np.array([unit.pos for unit in units.values()])
+        unit_positions = [unit.pos for unit in units.values()]
+        unit_pos = np.array(unit_positions)
         units_on_board = np.zeros((env_cfg.map_size, env_cfg.map_size), dtype=np.bool8)
         if len(unit_pos) > 0:
             units_on_board[unit_pos[:, 0], unit_pos[:, 1]] = 1
@@ -465,6 +479,12 @@ class FeatureParser():
         unit_feature['ice'] = ice.astype(np.float32)
         unit_feature['power'] = cargo_power.astype(np.float32)
         unit_feature['cargo_ice'] = cargo_ice.astype(np.float32)
+
+        if len(units) < 0:
+            distance_from_ice = 1.0
+        else:
+            distance_from_ice = self.get_distance(units_on_board, ice)
+        unit_feature['distance_from_ice'] = distance_from_ice
 
         ice_clusters = self.cluster_board(ice)
         closest_ice_cluster = self.get_closest_coords(units_on_board, ice_clusters) / (env_cfg.map_size * 2)
@@ -593,6 +613,44 @@ class FeatureParser():
 
         base[entity_coords[:, 0], entity_coords[:, 1]] = closest_target_direction
         return base
+
+    @staticmethod
+    def get_distance(entities, targets):
+        base = np.zeros(entities.shape, dtype=np.float32)
+
+        common_tiles = entities & targets
+        targets = targets & ~common_tiles
+        entities = entities & ~common_tiles
+
+        entity_coords = np.argwhere(entities)
+        target_coords = np.argwhere(targets)
+
+        if len(entity_coords) == 0 or len(target_coords) == 0:
+            return base
+
+        target_directions = -(entity_coords[:, None] - target_coords)
+        closest_target_distance = np.abs(target_directions).sum(axis=-1).min(axis=-1) / (entities.shape[0] + entities.shape[1])
+
+        base[entity_coords[:, 0], entity_coords[:, 1]] = closest_target_distance
+        return base
+    
+    @staticmethod
+    def get_avg_distance(entities, targets):
+        common_tiles = entities & targets
+        targets = targets & ~common_tiles
+        entities = entities & ~common_tiles
+
+        entity_coords = np.argwhere(entities)
+        target_coords = np.argwhere(targets)
+
+        if len(entity_coords) == 0 or len(target_coords) == 0:
+            return 0
+
+        target_directions = -(entity_coords[:, None] - target_coords)
+        closest_target_distance = np.abs(target_directions).sum(axis=-1).min(axis=-1)
+        avg_distance = closest_target_distance.mean() / (entities.shape[0] + entities.shape[1])
+        
+        return avg_distance
 
     @staticmethod
     def log_env_stats(env_stats):

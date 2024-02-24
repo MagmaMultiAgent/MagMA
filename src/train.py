@@ -65,6 +65,8 @@ log_from_global_info = [
     'total_metal',
     'total_power',
     'lichen_count',
+    'units_on_ice',
+    'avg_distance_from_ice'
 ]
 
 def parse_args():
