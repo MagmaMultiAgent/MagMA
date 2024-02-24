@@ -470,15 +470,15 @@ class FeatureParser():
         closest_ice_cluster = self.get_closest_coords(units_on_board, ice_clusters) / (env_cfg.map_size * 2)
         closest_ice_cluster_x = closest_ice_cluster[..., 0]
         closest_ice_cluster_y = closest_ice_cluster[..., 1]
-        closest_ice_cluster_x_pos = (closest_ice_cluster_x > 0).astype(np.float32) * closest_ice_cluster_x
-        closest_ice_cluster_y_pos = (closest_ice_cluster_y > 0).astype(np.float32) * closest_ice_cluster_y
-        closest_ice_cluster_x_neg = (closest_ice_cluster_x < 0).astype(np.float32) * closest_ice_cluster_x
-        closest_ice_cluster_y_neg = (closest_ice_cluster_y < 0).astype(np.float32) * closest_ice_cluster_y
+        closest_ice_cluster_x_pos = (closest_ice_cluster_x > 0 & ~ice).astype(np.float32) * closest_ice_cluster_x
+        closest_ice_cluster_y_pos = (closest_ice_cluster_y > 0 & ~ice).astype(np.float32) * closest_ice_cluster_y
+        closest_ice_cluster_x_neg = (closest_ice_cluster_x < 0 & ~ice).astype(np.float32) * closest_ice_cluster_x
+        closest_ice_cluster_y_neg = (closest_ice_cluster_y < 0 & ~ice).astype(np.float32) * closest_ice_cluster_y
 
-        unit_feature['cloest_ice_up'] = (closest_ice_cluster_y_neg & ~ice).astype(np.float32)
-        unit_feature['cloest_ice_down'] = (closest_ice_cluster_y_pos & ~ice).astype(np.float32)
-        unit_feature['cloest_ice_left'] = (closest_ice_cluster_x_neg & ~ice).astype(np.float32)
-        unit_feature['cloest_ice_right'] = (closest_ice_cluster_x_pos & ~ice).astype(np.float32)
+        unit_feature['cloest_ice_up'] = closest_ice_cluster_y_neg
+        unit_feature['cloest_ice_down'] = closest_ice_cluster_y_pos
+        unit_feature['cloest_ice_left'] = closest_ice_cluster_x_neg
+        unit_feature['cloest_ice_right'] = closest_ice_cluster_x_pos
 
         unit_feature['ice_up'] = ice_up.astype(np.float32)
         unit_feature['ice_down'] = ice_down.astype(np.float32)
