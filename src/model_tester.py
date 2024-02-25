@@ -3,7 +3,7 @@ import torch
 import numpy as np
 
 
-PATH = 'src/focus_on_ice_m_dir_32_32_better_masking_separate_dir_obs_dis_pen_on_ice_model_557056.pth'
+PATH = 'src/focus_on_ice_m_dir__0_better_masking_separate_dir_obs_simple_model_131072.pth'
 
 agent = SimpleNet()
 agent.load_state_dict(torch.load(PATH,map_location=torch.device('cpu')))
@@ -15,16 +15,16 @@ obs = torch.tensor(
         1,  # light
         0,  # heavy
 
-        0,  # ice
+        1,  # ice
 
         0,  # power
         0,  # cargo ice
 
         0.5, # distance from ice
 
-        0,  # cloest ice up
+        1,  # cloest ice up
         0,  # cloest ice right
-        1,  # cloest ice down
+        0,  # cloest ice down
         0,  # cloest ice left
 
         1,  # ice up
