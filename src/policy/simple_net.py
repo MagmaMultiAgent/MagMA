@@ -21,23 +21,29 @@ class SimpleNet(nn.Module):
         self.unit_feature_dims = 15
         self.unit_act_dim = 7
         self.unit_param_dim = self.unit_feature_dims - self.unit_act_dim
-        self.unit_net_dim = 16
+        self.unit_net_dim = 32
         self.unit_act_net = nn.Sequential(
-            nn.Linear(self.unit_act_dim, self.unit_net_dim, bias=True),
-            nn.ReLU(),
+            # nn.Linear(self.unit_act_dim, self.unit_net_dim, bias=True),
+            # nn.ReLU(),
+            # nn.Linear(self.unit_net_dim, self.unit_net_dim, bias=True),
+            # nn.ReLU(),
+            nn.Identity(),
         )
         self.unit_param_net = nn.Sequential(
-            nn.Linear(self.unit_param_dim, self.unit_net_dim, bias=True),
-            nn.ReLU(),
+            # nn.Linear(self.unit_param_dim, self.unit_net_dim, bias=True),
+            # nn.ReLU(),
+            # nn.Linear(self.unit_net_dim, self.unit_net_dim, bias=True),
+            # nn.ReLU(),
+            nn.Identity(),
         )
 
-        self.unit_act_type = nn.Linear(self.unit_net_dim, len(UnitActType), bias=True)
+        self.unit_act_type = nn.Linear(self.unit_act_dim, len(UnitActType), bias=True)
         self.param_heads = nn.ModuleDict({
             unit_act_type.name: nn.ModuleDict({
-                "direction": nn.Linear(self.unit_net_dim, ActDims.direction, bias=True),
-                "resource": nn.Linear(self.unit_net_dim, ActDims.resource, bias=True),
-                "amount": nn.Linear(self.unit_net_dim, ActDims.amount, bias=True),
-                "repeat": nn.Linear(self.unit_net_dim, ActDims.repeat, bias=True),
+                "direction": nn.Linear(self.unit_param_dim, ActDims.direction, bias=True),
+                "resource": nn.Linear(self.unit_param_dim, ActDims.resource, bias=True),
+                "amount": nn.Linear(self.unit_param_dim, ActDims.amount, bias=True),
+                "repeat": nn.Linear(self.unit_param_dim, ActDims.repeat, bias=True),
             }) for unit_act_type in UnitActType
         })
 

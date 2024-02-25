@@ -3,7 +3,7 @@ import torch
 import numpy as np
 
 
-PATH = 'src/focus_on_ice_m_dir_32_32_better_masking_separate_dir_obs_model_393216.pth'
+PATH = 'src/focus_on_ice_m_dir_32_32_better_masking_separate_dir_obs_dis_pen_on_ice_model_557056.pth'
 
 agent = SimpleNet()
 agent.load_state_dict(torch.load(PATH,map_location=torch.device('cpu')))
@@ -12,28 +12,30 @@ obs = torch.tensor(
     [[
         0,  # factory
 
-        0,  # light
-        1,  # heavy
+        1,  # light
+        0,  # heavy
 
         0,  # ice
 
         0,  # power
         0,  # cargo ice
 
-        1,  # cloest ice up
-        1,  # cloest ice right
-        0,  # cloest ice down
+        0.5, # distance from ice
+
+        0,  # cloest ice up
+        0,  # cloest ice right
+        1,  # cloest ice down
         0,  # cloest ice left
 
-        0,  # ice up
+        1,  # ice up
         0,  # ice down
         0,  # ice left
         0   # ice right
     ]]
 ).float()
 
-obs_act = obs[:, :6]
-obs_param = obs[:, 6:]
+obs_act = obs[:, :7]
+obs_param = obs[:, 7:]
 
 softmax = torch.nn.Softmax(dim=1)
 
