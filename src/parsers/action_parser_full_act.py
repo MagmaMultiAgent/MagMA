@@ -329,6 +329,7 @@ class ActionParser():
             if unit.power >= action_queue_cost:
                 if (unit.power - action_queue_cost) >= dig_cost:
                     valid_actions["unit_act"]["act_type"][:, x, y] = True
+                    valid_actions["unit_act"]["act_type"][UnitActType.RECHARGE, x, y] = False
                 else:
                     valid_actions["unit_act"]["act_type"][UnitActType.RECHARGE, x, y] = True
 
