@@ -12,6 +12,7 @@ import sys
 
 class LuxFeature(NamedTuple):
     global_feature: np.ndarray
+    map_feature: np.ndarray
     factory_feature: np.ndarray
     unit_feature: np.ndarray
 
@@ -25,84 +26,51 @@ class FeatureParser():
             'cycle',
             'hour',
             'daytime_or_night',
-            'num_factory_own',
-            'num_factory_enm',
-            'total_lichen_own',
-            'total_lichen_enm',
+            # 'num_factory_own',
+            # 'num_factory_enm',
+            # 'total_lichen_own',
+            # 'total_lichen_enm',
         ]
-        for own_enm in ['own', 'enm']:
-            self.global_feature_names += [
-                f'factory_total_power_{own_enm}',
-                f'factory_total_ice_{own_enm}',
-                f'factory_total_water_{own_enm}',
-                f'factory_total_ore_{own_enm}',
-                f'factory_total_metal_{own_enm}',
-                f'num_light_{own_enm}',
-                f'num_heavy_{own_enm}',
-                f'robot_total_power_{own_enm}',
-                f'robot_total_ice_{own_enm}',
-                f'robot_total_water_{own_enm}',
-                f'robot_total_ore_{own_enm}',
-                f'robot_total_metal_{own_enm}',
-            ]
+        # for own_enm in ['own', 'enm']:
+        #     self.global_feature_names += [
+        #         f'factory_total_power_{own_enm}',
+        #         f'factory_total_ice_{own_enm}',
+        #         f'factory_total_water_{own_enm}',
+        #         f'factory_total_ore_{own_enm}',
+        #         f'factory_total_metal_{own_enm}',
+        #         f'num_light_{own_enm}',
+        #         f'num_heavy_{own_enm}',
+        #         f'robot_total_power_{own_enm}',
+        #         f'robot_total_ice_{own_enm}',
+        #         f'robot_total_water_{own_enm}',
+        #         f'robot_total_ore_{own_enm}',
+        #         f'robot_total_metal_{own_enm}',
+        #     ]
 
-        self.map_featrue_names = [
-            'ice',
-            'ore',
-            'rubble',
-            'lichen',
-            'lichen_strains',
-            'lichen_strains_own',
-            'lichen_strains_enm',
-            'valid_region_indicator',
-            'factory_id',
-            'factory_power',
-            'factory_ice',
-            'factory_water',
-            'factory_ore',
-            'factory_metal',
-            'factory_own',
-            'factory_enm',
-            'factory_can_build_light',
-            'factory_can_build_heavy',
-            'factory_can_grow_lichen',
-            'factory_water_cost',
-            'unit_id',
-            'unit_power',
-            'unit_ice',
-            'unit_water',
-            'unit_ore',
-            'unit_metal',
-            'unit_own',
-            'unit_enm',
-            'unit_light',
-            'unit_heavy',
-        ]
-
-        self.entity_feature_names = [
-            'factory',
-            'unit',
-            'light',
-            'heavy',
-            'ice',
-            'ore',
-            'rubble',
-            'lichen',
-            'closest_ice_direction.x',
-            'closest_ice_direction.y',
-            'closest_ore_direction.x',
-            'closest_ore_direction.y',
-            'closest_unit_direction.x',
-            'closest_unit_direction.y',
-            'closest_factory_direction.x',
-            'closest_factory_direction.y',
-            'cargo_ice',
-            'cargo_ore',
-            'cargo_water',
-            'cargo_metal',
-            'cargo_power',
-            'lichen_strain'
-        ]
+        # self.entity_feature_names = [
+        #     'factory',
+        #     'unit',
+        #     'light',
+        #     'heavy',
+        #     'ice',
+        #     'ore',
+        #     'rubble',
+        #     'lichen',
+        #     'closest_ice_direction.x',
+        #     'closest_ice_direction.y',
+        #     'closest_ore_direction.x',
+        #     'closest_ore_direction.y',
+        #     'closest_unit_direction.x',
+        #     'closest_unit_direction.y',
+        #     'closest_factory_direction.x',
+        #     'closest_factory_direction.y',
+        #     'cargo_ice',
+        #     'cargo_ore',
+        #     'cargo_water',
+        #     'cargo_metal',
+        #     'cargo_power',
+        #     'lichen_strain'
+        # ]
 
         self.factory_feature_names = [
             'factory_power',
@@ -113,22 +81,44 @@ class FeatureParser():
             'factory_water_cost'
         ]
 
-        self.unit_feature_names = [
-            'factory',
-            # 'light',
-            # 'heavy',
+        self.map_featrue_names = [
+            # 'factory',
             'ice',
-            # 'power',
-            # 'cargo_ice',
-            # 'distance_from_ice',
-            'cloest_ice_up',
-            'cloest_ice_down',
-            'cloest_ice_left',
-            'cloest_ice_right',
-            # 'ice_up',
-            # 'ice_down',
-            # 'ice_left',
-            # 'ice_right'
+            # 'ore',
+            # 'rubble',
+            # 'lichen',
+            # 'lichen_strains',
+            # 'lichen_strains_own',
+            # 'lichen_strains_enm',
+            # 'valid_region_indicator',
+            # 'factory_id',
+            # 'factory_power',
+            # 'factory_ice',
+            # 'factory_water',
+            # 'factory_ore',
+            # 'factory_metal',
+            # 'factory_own',
+            # 'factory_enm',
+            # 'factory_can_build_light',
+            # 'factory_can_build_heavy',
+            # 'factory_can_grow_lichen',
+            # 'factory_water_cost',
+            # 'unit_id',
+            # 'unit_power',
+            # 'unit_ice',
+            # 'unit_water',
+            # 'unit_ore',
+            # 'unit_metal',
+            # 'unit_own',
+            # 'unit_enm',
+            # 'unit_light',
+            # 'unit_heavy',
+        ]
+
+        self.unit_feature_names = [
+            "heavy",
+            "power",
+            "cargo_ice"
         ]
 
         self.global_info_names = [
@@ -235,286 +225,72 @@ class FeatureParser():
 
     def _get_feature(self, obs: kit.kit.GameState, player: str, output_dict=True):
         env_cfg: EnvConfig = obs.env_cfg
-        enemy = 'player_1' if player == 'player_0' else 'player_0'
 
-        map_feature = {name: np.zeros_like(obs.board.ice, dtype=np.float32) for name in self.map_featrue_names}
-        # map_feature['ice'] = obs.board.ice
-        # map_feature['ore'] = obs.board.ore
-        # map_feature['rubble'] = obs.board.rubble
-        # map_feature['lichen'] = obs.board.lichen
-        # map_feature['lichen_strains'] = obs.board.lichen_strains
-        # map_feature['lichen_strains_own'] = sum(
-        #     (obs.board.lichen_strains == f.strain_id for f in obs.factories[player].values()) if obs.factories else [],
-        #     np.zeros_like(obs.board.lichen_strains, dtype=np.bool8),
-        # )
-        # map_feature['lichen_strains_enm'] = sum(
-        #     (obs.board.lichen_strains == f.strain_id for f in obs.factories[enemy].values()) if obs.factories else [],
-        #     np.zeros_like(obs.board.lichen_strains, dtype=np.bool8),
-        # )
-        # map_feature['valid_region_indicator'] = np.ones_like(obs.board.rubble)
+        # normalize
+        light_cfg = env_cfg.ROBOTS['LIGHT']
+        heavy_cfg = env_cfg.ROBOTS['HEAVY']
+
+        # Global
 
         global_feature = {name: 0 for name in self.global_feature_names}
-        # global_feature['env_step'] = obs.real_env_steps
-        # global_feature['cycle'] = obs.real_env_steps // env_cfg.CYCLE_LENGTH
-        # global_feature['hour'] = obs.real_env_steps % env_cfg.CYCLE_LENGTH
-        # global_feature['daytime_or_night'] = global_feature['hour'] < 30
-        # global_feature['num_factory_own'] = len(obs.factories[player])
-        # global_feature['num_factory_enm'] = len(obs.factories[enemy])
-        # global_feature['total_lichen_own'] = np.sum(obs.board.lichen[map_feature['lichen_strains_own']])
-        # global_feature['total_lichen_enm'] = np.sum(obs.board.lichen[map_feature['lichen_strains_enm']])
+        global_feature['env_step'] = obs.real_env_steps
+        global_feature['cycle'] = obs.real_env_steps // env_cfg.CYCLE_LENGTH
+        global_feature['hour'] = obs.real_env_steps % env_cfg.CYCLE_LENGTH
+        global_feature['daytime_or_night'] = global_feature['hour'] < 30
 
-        # for own_enm, pid in zip(['own', 'enm'], [player, enemy]):
-        #     global_feature[f'factory_total_power_{own_enm}'] = sum(f.power for f in obs.factories[pid].values())
-        #     global_feature[f'factory_total_ice_{own_enm}'] = sum(f.cargo.ice for f in obs.factories[pid].values())
-        #     global_feature[f'factory_total_water_{own_enm}'] = sum(f.cargo.water for f in obs.factories[pid].values())
-        #     global_feature[f'factory_total_ore_{own_enm}'] = sum(f.cargo.ore for f in obs.factories[pid].values())
-        #     global_feature[f'factory_total_metal_{own_enm}'] = sum(f.cargo.metal for f in obs.factories[pid].values())
+        # Map
 
-        #     global_feature[f'num_light_{own_enm}'] = sum(u.unit_type == "LIGHT" for u in obs.units[pid].values())
-        #     global_feature[f'num_heavy_{own_enm}'] = sum(u.unit_type == "HEAVY" for u in obs.units[pid].values())
-        #     assert global_feature[f'num_light_{own_enm}'] + global_feature[f'num_heavy_{own_enm}'] == len(
-        #         obs.units[pid])
-        #     global_feature[f'robot_total_power_{own_enm}'] = sum(u.power for u in obs.units[pid].values())
-        #     global_feature[f'robot_total_ice_{own_enm}'] = sum(u.cargo.ice for u in obs.units[pid].values())
-        #     global_feature[f'robot_total_water_{own_enm}'] = sum(u.cargo.water for u in obs.units[pid].values())
-        #     global_feature[f'robot_total_ore_{own_enm}'] = sum(u.cargo.ore for u in obs.units[pid].values())
-        #     global_feature[f'robot_total_metal_{own_enm}'] = sum(u.cargo.metal for u in obs.units[pid].values())
+        map_feature = {name: np.zeros_like(obs.board.ice, dtype=np.float32) for name in self.map_featrue_names}
+        map_feature['ice'] = obs.board.ice
 
+        # Factory
+
+        factory_feature = {name: np.zeros_like(obs.board.ice, dtype=np.float32) for name in self.factory_feature_names}
         for owner, factories in obs.factories.items():
             for fid, factory in factories.items():
                 x, y = factory.pos
-                map_feature['factory_id'][x, y] = int(fid[len('factory_'):])
-                map_feature['factory_power'][x, y] = factory.power
-                map_feature['factory_ice'][x, y] = factory.cargo.ice
-                map_feature['factory_water'][x, y] = factory.cargo.water
-                map_feature['factory_ore'][x, y] = factory.cargo.ore
-                map_feature['factory_metal'][x, y] = factory.cargo.metal
-                # map_feature['factory_own'][x, y] = owner == player
-                # map_feature['factory_enm'][x, y] = owner == enemy
+                factory_feature['factory_power'][x, y] = factory.power
+                factory_feature['factory_ice'][x, y] = factory.cargo.ice
+                factory_feature['factory_water'][x, y] = factory.cargo.water
+                factory_feature['factory_ore'][x, y] = factory.cargo.ore
+                factory_feature['factory_metal'][x, y] = factory.cargo.metal
 
-                if (factory.cargo.metal >= env_cfg.ROBOTS['LIGHT'].METAL_COST) \
-                    and (factory.power >= env_cfg.ROBOTS['LIGHT'].POWER_COST):
-                    map_feature['factory_can_build_light'][x, y] = True
-                if (factory.cargo.metal >= env_cfg.ROBOTS['HEAVY'].METAL_COST) \
-                    and (factory.power >=env_cfg.ROBOTS['HEAVY'].POWER_COST):
-                    map_feature['factory_can_build_heavy'][x, y] = True
                 water_cost = np.sum(
                     obs.board.lichen_strains == factory.strain_id) // env_cfg.LICHEN_WATERING_COST_FACTOR + 1
-                if factory.cargo.water >= water_cost:
-                    map_feature['factory_can_grow_lichen'][x, y] = True
-                map_feature['factory_water_cost'][x, y] = water_cost
+                factory_feature['factory_water_cost'][x, y] = water_cost
 
-        # for owner, units in obs.units.items():
-        #     for uid, unit in units.items():
-        #         x, y = unit.pos
-        #         map_feature['unit_id'][x, y] = int(uid[len('unit_'):])
-        #         map_feature['unit_power'][x, y] = unit.power
-        #         map_feature['unit_ice'][x, y] = unit.cargo.ice
-        #         map_feature['unit_water'][x, y] = unit.cargo.water
-        #         map_feature['unit_ore'][x, y] = unit.cargo.ore
-        #         map_feature['unit_metal'][x, y] = unit.cargo.metal
+        factory_feature['factory_power'] = factory_feature['factory_power'] / heavy_cfg.BATTERY_CAPACITY
+        factory_feature['factory_ice'] = factory_feature['factory_ice'] / heavy_cfg.CARGO_SPACE
+        factory_feature['factory_water'] = factory_feature['factory_water'] / heavy_cfg.CARGO_SPACE
+        factory_feature['factory_ore'] = factory_feature['factory_ore'] / heavy_cfg.CARGO_SPACE
+        factory_feature['factory_metal'] = factory_feature['factory_metal'] / heavy_cfg.CARGO_SPACE
+        factory_feature['factory_water_cost'] = factory_feature['factory_water_cost'] / heavy_cfg.CARGO_SPACE
 
-        #         map_feature['unit_own'][x, y] = owner == player
-        #         map_feature['unit_enm'][x, y] = owner == enemy
+        # Unit
 
-        #         map_feature['unit_light'][x, y] = unit.unit_type == "LIGHT"
-        #         map_feature['unit_heavy'][x, y] = unit.unit_type == "HEAVY"
-        #         assert unit.unit_type in ["LIGHT", "HEAVY"]
-
-        # action queue
-        action_feature = dict(
-            unit_indicator=np.zeros((env_cfg.map_size, env_cfg.map_size), dtype=np.int16),
-            type=np.zeros((env_cfg.map_size, env_cfg.map_size, env_cfg.UNIT_ACTION_QUEUE_SIZE), dtype=np.int16),
-            direction=np.zeros((env_cfg.map_size, env_cfg.map_size, env_cfg.UNIT_ACTION_QUEUE_SIZE), dtype=np.int16),
-            resource=np.zeros((env_cfg.map_size, env_cfg.map_size, env_cfg.UNIT_ACTION_QUEUE_SIZE), dtype=np.int16),
-            amount=np.zeros((env_cfg.map_size, env_cfg.map_size, env_cfg.UNIT_ACTION_QUEUE_SIZE), dtype=np.int16),
-            repeat=np.zeros((env_cfg.map_size, env_cfg.map_size, env_cfg.UNIT_ACTION_QUEUE_SIZE), dtype=np.int16),
-            n=np.zeros((env_cfg.map_size, env_cfg.map_size, env_cfg.UNIT_ACTION_QUEUE_SIZE), dtype=np.int16),
-        )
-        # empty_action = [0] * 6
-        # for units in obs.units.values():
-        #     for unit in units.values():
-        #         padding = [empty_action] * (env_cfg.UNIT_ACTION_QUEUE_SIZE - len(unit.action_queue))
-        #         actions = np.array(list(unit.action_queue) + padding)
-
-        #         x, y = unit.pos
-        #         action_feature['unit_indicator'][x, y] = True
-        #         action_feature['type'][x, y, :] = actions[:, 0]
-        #         action_feature['direction'][x, y, :] = actions[:, 1]
-        #         action_feature['resource'][x, y, :] = actions[:, 2]
-        #         action_feature['amount'][x, y, :] = actions[:, 3]
-        #         action_feature['repeat'][x, y, :] = actions[:, 4]
-        #         action_feature['n'][x, y, :] = actions[:, 5]
-
-        # # normalize
-        light_cfg = env_cfg.ROBOTS['LIGHT']
-        # map_feature
-
-        # map_feature['rubble'] = map_feature['rubble'] / env_cfg.MAX_RUBBLE
-        # map_feature['lichen'] = map_feature['lichen'] / env_cfg.MAX_LICHEN_PER_TILE
-
-        map_feature['factory_power'] = map_feature['factory_power'] / light_cfg.BATTERY_CAPACITY
-        # map_feature['unit_power'] = map_feature['unit_power'] / light_cfg.BATTERY_CAPACITY
-
-        map_feature['factory_ice'] = map_feature['factory_ice'] / light_cfg.CARGO_SPACE
-        map_feature['factory_water'] = map_feature['factory_water'] / light_cfg.CARGO_SPACE
-        map_feature['factory_ore'] = map_feature['factory_ore'] / light_cfg.CARGO_SPACE
-        map_feature['factory_metal'] = map_feature['factory_metal'] / light_cfg.CARGO_SPACE
-        map_feature['factory_water_cost'] = map_feature['factory_water_cost'] / light_cfg.CARGO_SPACE
-        # map_feature['unit_ice'] = map_feature['unit_ice'] / light_cfg.CARGO_SPACE
-        # map_feature['unit_water'] = map_feature['unit_water'] / light_cfg.CARGO_SPACE
-        # map_feature['unit_ore'] = map_feature['unit_ore'] / light_cfg.CARGO_SPACE
-        # map_feature['unit_metal'] = map_feature['unit_metal'] / light_cfg.CARGO_SPACE
-
-        # global_feature['total_lichen_own'] = global_feature['total_lichen_own'] / env_cfg.MAX_LICHEN_PER_TILE
-        # global_feature['total_lichen_enm'] = global_feature['total_lichen_enm'] / env_cfg.MAX_LICHEN_PER_TILE
-
-        # for own_enm in ['own', 'enm']:
-        #     # yapf: disable
-        #     global_feature[f'factory_total_power_{own_enm}'] = global_feature[f'factory_total_power_{own_enm}'] / light_cfg.BATTERY_CAPACITY
-        #     global_feature[f'factory_total_ice_{own_enm}'] = global_feature[f'factory_total_ice_{own_enm}'] / light_cfg.CARGO_SPACE
-        #     global_feature[f'factory_total_water_{own_enm}'] = global_feature[f'factory_total_water_{own_enm}'] / light_cfg.CARGO_SPACE
-        #     global_feature[f'factory_total_ore_{own_enm}'] = global_feature[f'factory_total_ore_{own_enm}'] / light_cfg.CARGO_SPACE
-        #     global_feature[f'factory_total_metal_{own_enm}'] = global_feature[f'factory_total_metal_{own_enm}'] / light_cfg.CARGO_SPACE
-        #     global_feature[f'robot_total_power_{own_enm}'] = global_feature[f'robot_total_power_{own_enm}'] / light_cfg.BATTERY_CAPACITY
-        #     global_feature[f'robot_total_ice_{own_enm}'] = global_feature[f'robot_total_ice_{own_enm}'] / light_cfg.CARGO_SPACE
-        #     global_feature[f'robot_total_water_{own_enm}'] = global_feature[f'robot_total_water_{own_enm}'] / light_cfg.CARGO_SPACE
-        #     global_feature[f'robot_total_ore_{own_enm}'] = global_feature[f'robot_total_ore_{own_enm}'] / light_cfg.CARGO_SPACE
-        #     global_feature[f'robot_total_metal_{own_enm}'] = global_feature[f'robot_total_metal_{own_enm}'] / light_cfg.CARGO_SPACE
-        #     # yapf: enable
-
-
-
-        # Unit positions
+        unit_feature = {name: np.zeros_like(obs.board.ice, dtype=np.float32) for name in self.unit_feature_names}
         units = obs.units[player]
-        unit_positions = [unit.pos for unit in units.values()]
-        unit_pos = np.array(unit_positions)
-        units_on_board = np.zeros((env_cfg.map_size, env_cfg.map_size), dtype=np.bool8)
-        if len(unit_pos) > 0:
-            units_on_board[unit_pos[:, 0], unit_pos[:, 1]] = 1
-        light_units = [unit for unit in units.values() if unit.unit_type == 'LIGHT']
-        heavy_units = [unit for unit in units.values() if unit.unit_type == 'HEAVY']
-        light_pos = np.array([unit.pos for unit in light_units])
-        heavy_pos = np.array([unit.pos for unit in heavy_units])
-        light_on_board = np.zeros((env_cfg.map_size, env_cfg.map_size), dtype=np.bool8)
-        if len(light_pos) > 0:
-            light_on_board[light_pos[:, 0], light_pos[:, 1]] = 1
-        heavy_on_board = np.zeros((env_cfg.map_size, env_cfg.map_size), dtype=np.bool8)
-        if len(heavy_pos) > 0:
-            heavy_on_board[heavy_pos[:, 0], heavy_pos[:, 1]] = 1
+        
+        for unit in units.values():
+            x, y = unit.pos
+            unit_type = unit.unit_type
+            cargo_space = light_cfg.CARGO_SPACE if unit_type == 'LIGHT' else heavy_cfg.CARGO_SPACE
+            battery_capacity = light_cfg.BATTERY_CAPACITY if unit_type == 'LIGHT' else heavy_cfg.BATTERY_CAPACITY
+            unit_feature['heavy'][x, y] = unit_type == 'HEAVY'
+            unit_feature['power'][x, y] = unit.power / battery_capacity
+            unit_feature['cargo_ice'][x, y] = unit.cargo.ice / cargo_space
 
-        # Factory positions
-        factories = obs.factories[player]
-        factory_pos = np.array([factory.pos for factory in factories.values()])
-        factories_on_board = np.zeros((env_cfg.map_size, env_cfg.map_size), dtype=np.bool8)
-        if len(factory_pos) > 0:
-            factories_on_board[factory_pos[:, 0], factory_pos[:, 1]] = 1
-        not_factory_tile = ~factories_on_board
-
-        entities_on_board = np.clip(units_on_board + factories_on_board, None, 1)
-
-        # Resources on map
-        ice = (np.array(obs.board.ice) > 0)
-        ore = (np.array(obs.board.ore) > 0)
-
-        ice_left = np.roll(ice, -1, axis=1)
-        ice_left[:, -1] = False
-        ice_right = np.roll(ice, 1, axis=1)
-        ice_right[:, 0] = False
-        ice_up = np.roll(ice, -1, axis=0)
-        ice_up[-1, :] = False
-        ice_down = np.roll(ice, 1, axis=0)
-        ice_down[0, :] = False
-
-        # Cargo
-        cargo_ice = np.zeros((env_cfg.map_size, env_cfg.map_size), dtype=np.float32)
-        if len(factory_pos) > 0:
-            cargo_ice[factory_pos[:, 0], factory_pos[:, 1]] = [factory.cargo.ice for factory in factories.values()]
-        if len(unit_pos) > 0:
-            cargo_ice[unit_pos[:, 0], unit_pos[:, 1]] = [unit.cargo.ice for unit in units.values()]
-        cargo_ice /= env_cfg.ROBOTS['HEAVY'].CARGO_SPACE
-
-        cargo_ore = np.zeros((env_cfg.map_size, env_cfg.map_size), dtype=np.float32)
-        if len(factory_pos) > 0:
-            cargo_ore[factory_pos[:, 0], factory_pos[:, 1]] = [factory.cargo.ore for factory in factories.values()]
-        if len(unit_pos) > 0:
-            cargo_ore[unit_pos[:, 0], unit_pos[:, 1]] = [unit.cargo.ore for unit in units.values()]
-        cargo_ore /= env_cfg.ROBOTS['HEAVY'].CARGO_SPACE
-
-        cargo_water = np.zeros((env_cfg.map_size, env_cfg.map_size), dtype=np.float32)
-        if len(factory_pos) > 0:
-            cargo_water[factory_pos[:, 0], factory_pos[:, 1]] = [factory.cargo.water for factory in factories.values()]
-        if len(unit_pos) > 0:
-            cargo_water[unit_pos[:, 0], unit_pos[:, 1]] = [unit.cargo.water for unit in units.values()]
-        cargo_water /= env_cfg.ROBOTS['HEAVY'].CARGO_SPACE
-
-        cargo_metal = np.zeros((env_cfg.map_size, env_cfg.map_size), dtype=np.float32)
-        if len(factory_pos) > 0:
-            cargo_metal[factory_pos[:, 0], factory_pos[:, 1]] = [factory.cargo.metal for factory in factories.values()]
-        if len(unit_pos) > 0:
-            cargo_metal[unit_pos[:, 0], unit_pos[:, 1]] = [unit.cargo.metal for unit in units.values()]
-        cargo_metal /= env_cfg.ROBOTS['HEAVY'].CARGO_SPACE
-
-        cargo_power = np.zeros((env_cfg.map_size, env_cfg.map_size), dtype=np.float32)
-        if len(factory_pos) > 0:
-            cargo_power[factory_pos[:, 0], factory_pos[:, 1]] = [factory.power for factory in factories.values()]
-        if len(unit_pos) > 0:
-            cargo_power[unit_pos[:, 0], unit_pos[:, 1]] = [unit.power for unit in units.values()]
-        cargo_power /= env_cfg.ROBOTS['HEAVY'].CARGO_SPACE
-
-        factory_feature = {}
-
-        factory_feature['factory_power'] = map_feature['factory_power']
-        factory_feature['factory_ice'] = map_feature['factory_ice']
-        factory_feature['factory_water'] = map_feature['factory_water']
-        factory_feature['factory_ore'] = map_feature['factory_ore']
-        factory_feature['factory_metal'] = map_feature['factory_metal']
-        factory_feature['factory_water_cost'] = map_feature['factory_water_cost']
-
-        unit_feature = {}
-
-        unit_feature['factory'] = (factories_on_board & units_on_board).astype(np.float32)
-        # unit_feature['light'] = light_on_board.astype(np.float32)
-        # unit_feature['heavy'] = heavy_on_board.astype(np.float32)
-        unit_feature['ice'] = (ice & units_on_board).astype(np.float32)
-        # unit_feature['power'] = cargo_power.astype(np.float32)
-        # unit_feature['cargo_ice'] = cargo_ice.astype(np.float32)
-
-        if len(units) < 0:
-            distance_from_ice = 1.0
-        else:
-            distance_from_ice = self.get_distance(units_on_board, ice)
-        # unit_feature['distance_from_ice'] = distance_from_ice
-
-        ice_clusters = self.cluster_board(ice)
-        closest_ice_cluster = self.get_closest_coords(units_on_board, ice_clusters) / (env_cfg.map_size * 2)
-        closest_ice_cluster_x = closest_ice_cluster[..., 0]
-        closest_ice_cluster_y = closest_ice_cluster[..., 1]
-        closest_ice_cluster_x_pos = (closest_ice_cluster_x > 0 & ~ice).astype(np.float32) * closest_ice_cluster_x
-        closest_ice_cluster_y_pos = (closest_ice_cluster_y > 0 & ~ice).astype(np.float32) * closest_ice_cluster_y
-        closest_ice_cluster_x_neg = (closest_ice_cluster_x < 0 & ~ice).astype(np.float32) * closest_ice_cluster_x
-        closest_ice_cluster_y_neg = (closest_ice_cluster_y < 0 & ~ice).astype(np.float32) * closest_ice_cluster_y
-
-        unit_feature['cloest_ice_up'] = closest_ice_cluster_y_neg
-        unit_feature['cloest_ice_down'] = closest_ice_cluster_y_pos
-        unit_feature['cloest_ice_left'] = closest_ice_cluster_x_neg
-        unit_feature['cloest_ice_right'] = closest_ice_cluster_x_pos
-
-        # unit_feature['ice_up'] = ice_up.astype(np.float32)
-        # unit_feature['ice_down'] = ice_down.astype(np.float32)
-        # unit_feature['ice_left'] = ice_left.astype(np.float32)
-        # unit_feature['ice_right'] = ice_right.astype(np.float32)
-
-        factory_feature = np.array(list(factory_feature.values()))
-        unit_feature = np.array(list(unit_feature.values()))
+        # Assemble return
 
         global_feature = np.array(list(global_feature.values()))
         map_feature = np.array(list(map_feature.values()))
+        factory_feature = np.array(list(factory_feature.values()))
+        unit_feature = np.array(list(unit_feature.values()))
 
         if output_dict:
-            return {'global_feature': global_feature, 'factory_feature': factory_feature, 'unit_feature': unit_feature}
+            return {'global_feature': global_feature, 'map_feature': map_feature, 'factory_feature': factory_feature, 'unit_feature': unit_feature}
         
-        return LuxFeature(global_feature, factory_feature, unit_feature)
+        return LuxFeature(global_feature, map_feature, factory_feature, unit_feature)
 
     @staticmethod
     def cluster_board(board):

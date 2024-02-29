@@ -23,7 +23,7 @@ import torch
 import numpy as np
 from player import Player
 ### The model path
-PATH = 'focus_on_ice_m_dir__16_0_better_masking_separate_dir_obs_simple_prev_reward_4096_model_655360.pth'
+PATH = 'focus_on_ice_m_dir__0_0_better_masking_separate_dir_simple_obs_ice_rew_model_229376.pth'
 ### DO NOT REMOVE THE FOLLOWING CODE ###
 agent_dict = (
     dict()
@@ -69,6 +69,7 @@ def agent_fn(observation, configurations, i):
             valid_action = ActionParser().get_valid_actions(game_state, player_id)
             np2torch = lambda x, dtype: torch.tensor(x).unsqueeze(0).type(dtype)
             _,_,actions,_ = agent(torch.tensor(obs['global_feature'],dtype=torch.float).unsqueeze(0),
+                                  torch.tensor(obs['map_feature'],dtype=torch.float).unsqueeze(0),
                                   torch.tensor(obs['factory_feature'],dtype=torch.float).unsqueeze(0),\
                                      torch.tensor(obs['unit_feature'],dtype=torch.float).unsqueeze(0),\
                                 tree.map_structure(lambda x: np2torch(x, torch.bool), valid_action)

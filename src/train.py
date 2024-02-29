@@ -217,6 +217,7 @@ def sample_action_for_player(agent: Net, obs: TensorPerKey, valid_action: Tensor
     """
     logprob, value, action, entropy = agent(
         obs['global_feature'],
+        obs['map_feature'],
         obs['factory_feature'],
         obs['unit_feature'],
         valid_action,

@@ -12,62 +12,73 @@ class SimpleNet(nn.Module):
     def __init__(self):
         super(SimpleNet, self).__init__()
 
-        self.critic_head = nn.Sequential(
-            nn.Conv2d(2, 1, kernel_size=1, stride=1, padding=0, bias=True),
-        )
-        
+        # Factories
+        self.factory_feature_count = 6
         self.factory_feature_dims = 6
         self.factory_head = nn.Linear(self.factory_feature_dims, ActDims.factory_act, bias=True)
 
-        self.unit_feature_dims = 6
-        self.unit_act_dim = 2
-        self.unit_param_dim = self.unit_feature_dims - self.unit_act_dim
-        self.unit_net_dim = 16
-        self.unit_act_net = nn.Sequential(
-            # nn.Linear(self.unit_act_dim, self.unit_net_dim, bias=True),
-            # nn.ReLU(),
-            # nn.Linear(self.unit_net_dim, self.unit_net_dim, bias=True),
-            # nn.ReLU(),
-            nn.Identity(),
-        )
-        self.unit_param_net = nn.Sequential(
-            # nn.Linear(self.unit_param_dim, self.unit_net_dim, bias=True),
-            # nn.ReLU(),
-            # nn.Linear(self.unit_net_dim, self.unit_net_dim, bias=True),
-            # nn.ReLU(),
-            nn.Identity(),
+        # Units and critic
+        self.global_feature_count = 4
+        self.map_feature_count = 1
+        self.unit_feature_count = 3
+
+        self.large_embedding_dim = 8
+        self.large_distance_embedding = nn.Sequential(
+            nn.Conv2d(self.map_feature_count, self.large_embedding_dim, kernel_size=7, stride=1, padding="same", bias=True),
+            nn.LeakyReLU(),
         )
 
-        self.unit_act_type = nn.Linear(self.unit_act_dim, len(UnitActType), bias=True)
+        self.combined_feature_dim = self.global_feature_count + self.map_feature_count + self.large_embedding_dim + self.unit_feature_count  # 16
+        self.combined_feature_net = nn.Sequential(
+            nn.Conv2d(self.combined_feature_dim, self.combined_feature_dim, kernel_size=1, stride=1, padding=0, bias=True),
+            nn.LeakyReLU(),
+        )
+
+        self.critic_head = nn.Sequential(
+            nn.Conv2d(self.combined_feature_dim, 1, kernel_size=1, stride=1, padding=0, bias=True),
+        )
+
+        self.direction_dim = 4
+        self.direction_net = nn.Sequential(
+            nn.Conv2d(self.combined_feature_dim, 4, kernel_size=3, stride=1, padding="same", bias=True),
+            nn.LeakyReLU(),
+        )
+
+        self.unit_act_type = nn.Linear(self.combined_feature_dim, len(UnitActType), bias=True)
         self.param_heads = nn.ModuleDict({
             unit_act_type.name: nn.ModuleDict({
-                "direction": nn.Linear(self.unit_param_dim, ActDims.direction, bias=True),
-                "resource": nn.Linear(self.unit_param_dim, ActDims.resource, bias=True),
-                "amount": nn.Linear(self.unit_param_dim, ActDims.amount, bias=True),
-                "repeat": nn.Linear(self.unit_param_dim, ActDims.repeat, bias=True),
+                "direction": nn.Linear(self.direction_dim, ActDims.direction, bias=True),
+                "resource": nn.Linear(self.direction_dim, ActDims.resource, bias=True),
+                "amount": nn.Linear(self.direction_dim, ActDims.amount, bias=True),
+                "repeat": nn.Linear(self.direction_dim, ActDims.repeat, bias=True),
             }) for unit_act_type in UnitActType
         })
 
 
-    def forward(self, global_feature, factory_feature, unit_feature, va, action=None):
-        critic_value = self.critic(unit_feature)
+    def forward(self, global_feature, map_feature, factory_feature, unit_feature, va, action=None):
+        B, _, H, W = map_feature.shape
 
-        logp, action, entropy = self.actor(global_feature, factory_feature, unit_feature, va, action)
+        global_feature = global_feature[..., None, None].expand(-1, -1, H, W)
+        large_embedding = self.large_distance_embedding(map_feature)
+        combined_feature = torch.cat([global_feature, map_feature, large_embedding, unit_feature], dim=1)
+
+        critic_value = self.critic(combined_feature)
+
+        direction_feature = self.direction_net(combined_feature)
+        logp, action, entropy = self.actor(combined_feature, direction_feature, factory_feature, va, action)
 
         return logp, critic_value, action, entropy
 
-    def critic(self, unit_feature):
-        unit_feature = unit_feature[:, :self.unit_act_dim, :, :]
-
-        critic_value = self.critic_head(unit_feature)
+    def critic(self, combined_feature):
+        critic_value = self.critic_head(combined_feature)
         critic_value = torch.flatten(critic_value, start_dim=-3).mean(-1)
         return critic_value
 
-    def actor(self, global_feature, factory_feature, unit_feature, va, action=None):
-        B, _, H, W = unit_feature.shape
+    def actor(self, combined_feature, direction_feature, factory_feature, va, action=None):
+        B, _, H, W = combined_feature.shape
 
-        logp = torch.zeros(B, device=unit_feature.device)
-        entropy = torch.zeros(B, device=unit_feature.device)
+        logp = torch.zeros(B, device=combined_feature.device)
+        entropy = torch.zeros(B, device=combined_feature.device)
         output_action = {}
 
         def _gather_from_map(x, pos):
@@ -108,7 +119,8 @@ class SimpleNet(nn.Module):
             axis=1,
         )
         unit_pos = torch.where(unit_act_type_va.any(1))
-        unit_emb = _gather_from_map(unit_feature, unit_pos)
+        unit_emb = _gather_from_map(combined_feature, unit_pos)
+        unit_dir = _gather_from_map(direction_feature, unit_pos)
 
         unit_va = {
             'act_type': _gather_from_map(unit_act_type_va, unit_pos),
@@ -124,6 +136,7 @@ class SimpleNet(nn.Module):
         unit_action = action and _gather_from_map(action['unit_act'], unit_pos)
         unit_logp, unit_action, unit_entropy = self.unit_actor(
             unit_emb,
+            unit_dir,
             unit_va,
             unit_action,
         )
@@ -140,13 +153,7 @@ class SimpleNet(nn.Module):
         return logp, output_action, entropy
 
 
-    def unit_actor(self, x, va, action=None):
-        x_act = x[..., :self.unit_act_dim]
-        x_param = x[..., self.unit_act_dim:]
-
-        x_act = self.unit_act_net(x_act)
-        x_param = self.unit_param_net(x_param)
-
+    def unit_actor(self, x_act, x_param,  va, action=None):
         act_type_logp, act_type, act_type_entropy = sample_from_categorical(
             self.unit_act_type(x_act),
             va['act_type'],
@@ -154,7 +161,7 @@ class SimpleNet(nn.Module):
         )
         logp = act_type_logp
         entropy = act_type_entropy
-        output_action = torch.zeros((x.shape[0], len(UnitActChannel)), device=x.device)
+        output_action = torch.zeros((x_act.shape[0], len(UnitActChannel)), device=x_act.device)
 
         for type in UnitActType:
             mask = (act_type == type)
