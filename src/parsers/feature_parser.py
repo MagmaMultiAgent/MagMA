@@ -473,10 +473,10 @@ class FeatureParser():
 
         unit_feature = {}
 
-        unit_feature['factory'] = factories_on_board.astype(np.float32)
+        unit_feature['factory'] = (factories_on_board & units_on_board).astype(np.float32)
         # unit_feature['light'] = light_on_board.astype(np.float32)
         # unit_feature['heavy'] = heavy_on_board.astype(np.float32)
-        unit_feature['ice'] = ice.astype(np.float32)
+        unit_feature['ice'] = (ice & units_on_board).astype(np.float32)
         # unit_feature['power'] = cargo_power.astype(np.float32)
         # unit_feature['cargo_ice'] = cargo_ice.astype(np.float32)
 
