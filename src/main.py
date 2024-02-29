@@ -23,7 +23,7 @@ import torch
 import numpy as np
 from player import Player
 ### The model path
-PATH = 'focus_on_ice_m_dir__0_better_masking_separate_dir_obs_simple_model_131072.pth'
+PATH = 'focus_on_ice_m_dir__16_0_better_masking_separate_dir_obs_simple_prev_reward_4096_model_655360.pth'
 ### DO NOT REMOVE THE FOLLOWING CODE ###
 agent_dict = (
     dict()

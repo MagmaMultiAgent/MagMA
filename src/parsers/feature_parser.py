@@ -115,20 +115,20 @@ class FeatureParser():
 
         self.unit_feature_names = [
             'factory',
-            'light',
-            'heavy',
+            # 'light',
+            # 'heavy',
             'ice',
-            'power',
-            'cargo_ice',
-            'distance_from_ice',
+            # 'power',
+            # 'cargo_ice',
+            # 'distance_from_ice',
             'cloest_ice_up',
             'cloest_ice_down',
             'cloest_ice_left',
             'cloest_ice_right',
-            'ice_up',
-            'ice_down',
-            'ice_left',
-            'ice_right'
+            # 'ice_up',
+            # 'ice_down',
+            # 'ice_left',
+            # 'ice_right'
         ]
 
         self.global_info_names = [
@@ -474,17 +474,17 @@ class FeatureParser():
         unit_feature = {}
 
         unit_feature['factory'] = factories_on_board.astype(np.float32)
-        unit_feature['light'] = light_on_board.astype(np.float32)
-        unit_feature['heavy'] = heavy_on_board.astype(np.float32)
+        # unit_feature['light'] = light_on_board.astype(np.float32)
+        # unit_feature['heavy'] = heavy_on_board.astype(np.float32)
         unit_feature['ice'] = ice.astype(np.float32)
-        unit_feature['power'] = cargo_power.astype(np.float32)
-        unit_feature['cargo_ice'] = cargo_ice.astype(np.float32)
+        # unit_feature['power'] = cargo_power.astype(np.float32)
+        # unit_feature['cargo_ice'] = cargo_ice.astype(np.float32)
 
         if len(units) < 0:
             distance_from_ice = 1.0
         else:
             distance_from_ice = self.get_distance(units_on_board, ice)
-        unit_feature['distance_from_ice'] = distance_from_ice
+        # unit_feature['distance_from_ice'] = distance_from_ice
 
         ice_clusters = self.cluster_board(ice)
         closest_ice_cluster = self.get_closest_coords(units_on_board, ice_clusters) / (env_cfg.map_size * 2)
@@ -500,10 +500,10 @@ class FeatureParser():
         unit_feature['cloest_ice_left'] = closest_ice_cluster_x_neg
         unit_feature['cloest_ice_right'] = closest_ice_cluster_x_pos
 
-        unit_feature['ice_up'] = ice_up.astype(np.float32)
-        unit_feature['ice_down'] = ice_down.astype(np.float32)
-        unit_feature['ice_left'] = ice_left.astype(np.float32)
-        unit_feature['ice_right'] = ice_right.astype(np.float32)
+        # unit_feature['ice_up'] = ice_up.astype(np.float32)
+        # unit_feature['ice_down'] = ice_down.astype(np.float32)
+        # unit_feature['ice_left'] = ice_left.astype(np.float32)
+        # unit_feature['ice_right'] = ice_right.astype(np.float32)
 
         factory_feature = np.array(list(factory_feature.values()))
         unit_feature = np.array(list(unit_feature.values()))

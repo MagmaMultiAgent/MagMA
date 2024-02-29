@@ -12,22 +12,23 @@ class SimpleNet(nn.Module):
     def __init__(self):
         super(SimpleNet, self).__init__()
 
-        self.global_feature_dims = 32
-        self.critic_head = nn.Linear(self.global_feature_dims, 1, bias=True)
+        self.critic_head = nn.Sequential(
+            nn.Conv2d(2, 1, kernel_size=1, stride=1, padding=0, bias=True),
+        )
         
         self.factory_feature_dims = 6
         self.factory_head = nn.Linear(self.factory_feature_dims, ActDims.factory_act, bias=True)
 
-        self.unit_feature_dims = 15
-        self.unit_act_dim = 7
+        self.unit_feature_dims = 6
+        self.unit_act_dim = 2
         self.unit_param_dim = self.unit_feature_dims - self.unit_act_dim
         self.unit_net_dim = 16
         self.unit_act_net = nn.Sequential(
-            nn.Linear(self.unit_act_dim, self.unit_net_dim, bias=True),
-            nn.ReLU(),
+            # nn.Linear(self.unit_act_dim, self.unit_net_dim, bias=True),
+            # nn.ReLU(),
             # nn.Linear(self.unit_net_dim, self.unit_net_dim, bias=True),
             # nn.ReLU(),
-            # nn.Identity(),
+            nn.Identity(),
         )
         self.unit_param_net = nn.Sequential(
             # nn.Linear(self.unit_param_dim, self.unit_net_dim, bias=True),
@@ -37,7 +38,7 @@ class SimpleNet(nn.Module):
             nn.Identity(),
         )
 
-        self.unit_act_type = nn.Linear(self.unit_net_dim, len(UnitActType), bias=True)
+        self.unit_act_type = nn.Linear(self.unit_act_dim, len(UnitActType), bias=True)
         self.param_heads = nn.ModuleDict({
             unit_act_type.name: nn.ModuleDict({
                 "direction": nn.Linear(self.unit_param_dim, ActDims.direction, bias=True),
@@ -49,13 +50,18 @@ class SimpleNet(nn.Module):
 
 
     def forward(self, global_feature, factory_feature, unit_feature, va, action=None):
-        critic_value = self.critic_head(global_feature)
-        critic_value = torch.squeeze(critic_value)
+        critic_value = self.critic(unit_feature)
 
         logp, action, entropy = self.actor(global_feature, factory_feature, unit_feature, va, action)
 
         return logp, critic_value, action, entropy
 
+    def critic(self, unit_feature):
+        unit_feature = unit_feature[:, :self.unit_act_dim, :, :]
+
+        critic_value = self.critic_head(unit_feature)
+        critic_value = torch.flatten(critic_value, start_dim=-3).mean(-1)
+        return critic_value
 
     def actor(self, global_feature, factory_feature, unit_feature, va, action=None):
         B, _, H, W = unit_feature.shape
