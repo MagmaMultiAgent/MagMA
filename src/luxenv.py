@@ -219,22 +219,22 @@ def get_single_observation_space(map_size):
 
     unit_feature_names = {
         'factory': 2,
-        'light': 2,
-        'heavy': 2,
+        # 'light': 2,
+        # 'heavy': 2,
         'ice': 2,
-        'power': 9999,
-        'cargo_ice': 9999,
-        'distance_from_ice': 9999,
+        # 'power': 9999,
+        # 'cargo_ice': 9999,
+        # 'distance_from_ice': 9999,
         'cloest_ice_up': 9999,
         'cloest_ice_down': 9999,
         'cloest_ice_left': 9999,
         'cloest_ice_right': 9999,
-        'ice_up': 9999,
-        'ice_down': 9999,
-        'ice_left': 9999,
-        'ice_right': 9999
+        # 'ice_up': 9999,
+        # 'ice_down': 9999,
+        # 'ice_left': 9999,
+        # 'ice_right': 9999
     }
-    unit_feature_space = np.tile(np.array(list(unit_feature_names.values())).reshape(15, 1, 1), (1, map_size, map_size))
+    unit_feature_space = np.tile(np.array(list(unit_feature_names.values())).reshape(6, 1, 1), (1, map_size, map_size))
     unit_feature_space = spaces.MultiDiscrete(unit_feature_space, dtype=np.float64)
 
     action_feature_space = spaces.Dict(
