@@ -82,10 +82,10 @@ class FeatureParser():
         ]
 
         self.map_featrue_names = [
-            # 'factory',
+            'factory',
             'ice',
             # 'ore',
-            # 'rubble',
+            'rubble',
             # 'lichen',
             # 'lichen_strains',
             # 'lichen_strains_own',
@@ -143,7 +143,8 @@ class FeatureParser():
             'total_power',
             'lichen_count',
             'units_on_ice',
-            'avg_distance_from_ice'
+            'avg_distance_from_ice',
+            'rubble_on_ice'
         ]
 
     def parse(self, obs, env_cfg):
@@ -221,6 +222,13 @@ class FeatureParser():
             global_info['lichen_count'] = lichen_count
         else:
             global_info['lichen_count'] = 0
+
+        # rubble on ice
+        ice_board = obs.board.ice.astype(np.float32)
+        rubble_board =obs.board.rubble.astype(np.float32)
+        rubble_on_ice = ice_board * rubble_board
+        global_info['rubble_on_ice'] = np.sum(rubble_on_ice)
+
         return global_info
 
     def _get_feature(self, obs: kit.kit.GameState, player: str, output_dict=True):
@@ -242,6 +250,7 @@ class FeatureParser():
 
         map_feature = {name: np.zeros_like(obs.board.ice, dtype=np.float32) for name in self.map_featrue_names}
         map_feature['ice'] = obs.board.ice
+        map_feature['rubble'] = obs.board.rubble / 100
 
         # Factory
 
@@ -258,6 +267,12 @@ class FeatureParser():
                 water_cost = np.sum(
                     obs.board.lichen_strains == factory.strain_id) // env_cfg.LICHEN_WATERING_COST_FACTOR + 1
                 factory_feature['factory_water_cost'][x, y] = water_cost
+
+                if owner == player:
+                    for offset in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+                        dx, dy = offset
+                        if 0 <= x + dx < obs.board.ice.shape[0] and 0 <= y + dy < obs.board.ice.shape[1]:
+                            map_feature['factory'][x + dx, y + dy] = 1.0
 
         factory_feature['factory_power'] = factory_feature['factory_power'] / heavy_cfg.BATTERY_CAPACITY
         factory_feature['factory_ice'] = factory_feature['factory_ice'] / heavy_cfg.CARGO_SPACE

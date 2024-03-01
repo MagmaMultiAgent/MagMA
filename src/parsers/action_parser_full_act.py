@@ -315,6 +315,9 @@ class ActionParser():
                 no_ore = (board.ore[adj_x, adj_y] == 0)
                 if (no_ruble & no_ice & no_ore).any():
                     factory_va[FactoryActType.WATER, x, y] = True
+            
+            # ICE OVERRIDE, TODO: Remove!
+            factory_va[FactoryActType.WATER, x, y] = False
 
             # always can do nothing
             factory_va[FactoryActType.DO_NOTHING, x, y] = True
@@ -339,6 +342,10 @@ class ActionParser():
                 valid_actions["unit_act"]["act_type"][UnitActType.DO_NOTHING, x, y] = False
             else:
                 valid_actions["unit_act"]["act_type"][UnitActType.DO_NOTHING, x, y] = True
+                continue
+
+            # ICE OVERRIDE, TODO: Remove!
+            valid_actions["unit_act"]["act_type"][UnitActType.TRANSFER, x, y] = False
 
             # valid unit move
             valid_actions["unit_act"]["move"]["repeat"][:, x, y] = True
