@@ -333,10 +333,11 @@ class ActionParser():
             if unit.power >= action_queue_cost:
                 if (unit.power - action_queue_cost) >= battery_capacity * 0.25:
                     valid_actions["unit_act"]["act_type"][:, x, y] = True
+                    valid_actions["unit_act"]["act_type"][UnitActType.PICKUP, x, y] = False
                     valid_actions["unit_act"]["act_type"][UnitActType.RECHARGE, x, y] = False
                 else:
-                    valid_actions["unit_act"]["act_type"][UnitActType.MOVE, x, y] = True
-                    valid_actions["unit_act"]["act_type"][UnitActType.PICKUP, x, y] = True
+                    # valid_actions["unit_act"]["act_type"][UnitActType.MOVE, x, y] = True
+                    # valid_actions["unit_act"]["act_type"][UnitActType.PICKUP, x, y] = True
                     valid_actions["unit_act"]["act_type"][UnitActType.RECHARGE, x, y] = True
 
                 valid_actions["unit_act"]["act_type"][UnitActType.DO_NOTHING, x, y] = False
@@ -345,6 +346,7 @@ class ActionParser():
                 continue
 
             # ICE OVERRIDE, TODO: Remove!
+
             valid_actions["unit_act"]["act_type"][UnitActType.TRANSFER, x, y] = False
 
             # valid unit move

@@ -30,7 +30,7 @@ class IceRewardParser(DenseRewardParser):
             # reward[team] += power_increment
 
             rubble_on_ice_decrease = (last_count['rubble_on_ice'] - own_global_info["rubble_on_ice"]) / 100  # divide by 100 because max 100 rubble on tile
-            reward[team] += rubble_on_ice_decrease
+            reward[team] += max(rubble_on_ice_decrease, 0)
 
             ice_increment = own_global_info["total_ice"] - last_count['total_ice']
             reward[team] += max(ice_increment, 0)

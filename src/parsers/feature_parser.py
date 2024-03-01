@@ -225,7 +225,7 @@ class FeatureParser():
 
         # rubble on ice
         ice_board = obs.board.ice.astype(np.float32)
-        rubble_board =obs.board.rubble.astype(np.float32)
+        rubble_board = obs.board.rubble.astype(np.float32)
         rubble_on_ice = ice_board * rubble_board
         global_info['rubble_on_ice'] = np.sum(rubble_on_ice)
 
