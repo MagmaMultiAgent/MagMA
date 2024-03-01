@@ -348,7 +348,8 @@ class ActionParser():
             valid_actions["unit_act"]["act_type"][UnitActType.TRANSFER, x, y] = False
 
             # valid unit move
-            valid_actions["unit_act"]["move"]["repeat"][:, x, y] = True
+            valid_actions["unit_act"]["move"]["repeat"][0, x, y] = True
+            valid_actions["unit_act"]["move"]["repeat"][1, x, y] = False
             for direction in range(len(move_deltas)):
                 target_pos = unit.pos + move_deltas[direction]
 

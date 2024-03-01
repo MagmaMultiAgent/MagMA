@@ -221,8 +221,7 @@ class SimpleNet(nn.Module):
             amount, amount_logp, amount_entropy = self.get_amount_param(x, action_type, action)
 
         # repeat
-        # ICE OVERRIDE TODO: change back
-        if False and action_type in [UnitActType.MOVE, UnitActType.TRANSFER, UnitActType.PICKUP, UnitActType.DIG, UnitActType.SELF_DESTRUCT, UnitActType.RECHARGE]:
+        if action_type in [UnitActType.MOVE, UnitActType.TRANSFER, UnitActType.PICKUP, UnitActType.DIG, UnitActType.SELF_DESTRUCT, UnitActType.RECHARGE]:
             repeat, repeat_logp, repeat_entropy = self.get_repeat_param(x, va, action_type, unit_idx, direction, resource, action)
 
         return {"direction": direction, "resource": resource, "amount": amount, "repeat": repeat}, \
