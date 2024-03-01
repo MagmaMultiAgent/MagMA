@@ -23,7 +23,7 @@ import torch
 import numpy as np
 from player import Player
 ### The model path
-PATH = 'focus_on_ice_conv_combined_7_model_458752.pth'
+PATH = 'focus_on_ice_conv_combined_7_improved_masking_rubble_mining_model_98304.pth'
 ### DO NOT REMOVE THE FOLLOWING CODE ###
 agent_dict = (
     dict()

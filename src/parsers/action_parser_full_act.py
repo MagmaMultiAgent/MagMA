@@ -346,7 +346,7 @@ class ActionParser():
                 continue
 
             # ICE OVERRIDE, TODO: Remove!
-
+            valid_actions["unit_act"]["act_type"][UnitActType.PICKUP, x, y] = False
             valid_actions["unit_act"]["act_type"][UnitActType.TRANSFER, x, y] = False
 
             # valid unit move
@@ -408,8 +408,7 @@ class ActionParser():
             # valid pickup
             valid_actions["unit_act"]["pickup"]['repeat'][0, x, y] = True
             factory = factory_under_unit(unit.pos, game_state.factories[player])
-            if factory is not None:
-                valid_actions["unit_act"]["act_type"][UnitActType.PICKUP, x, y] = True
+            if factory is not None and valid_actions["unit_act"]["act_type"][UnitActType.PICKUP, x, y]:
                 amounts = [
                     factory.cargo.ice, factory.cargo.ore, factory.cargo.water, factory.cargo.metal, factory.power
                 ]
