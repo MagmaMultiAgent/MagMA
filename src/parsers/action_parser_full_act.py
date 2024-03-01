@@ -414,7 +414,7 @@ class ActionParser():
                 ]
                 for i, a in enumerate(amounts):
                     valid_actions["unit_act"]["pickup"]['resource'][i, x, y] = False
-                valid_actions["unit_act"]["pickup"]['resource'][4, x, y] = (a > 0)
+                valid_actions["unit_act"]["pickup"]['resource'][4, x, y] = True
 
             # valid dig
             if factory_under_unit(unit.pos, game_state.factories[player]) is None \

@@ -20,11 +20,11 @@ class IceRewardParser(DenseRewardParser):
             # else:
             #     reward[team] -= 0.01
 
-            # units_on_ice = own_global_info["units_on_ice"]
-            # if unit_count > 0:
-            #     reward[team] += units_on_ice / 10 / 200
-            # else:
-            #     pass  # 0 reward
+            units_on_ice = own_global_info["units_on_ice"]
+            if unit_count > 0:
+                reward[team] += units_on_ice / 1000
+            else:
+                pass  # 0 reward
 
             # power_increment = (own_global_info["unit_power"] - last_count['unit_power']) / 50 / 200
             # reward[team] += power_increment
