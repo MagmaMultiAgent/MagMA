@@ -331,7 +331,7 @@ class ActionParser():
             battery_capacity = unit.unit_cfg.BATTERY_CAPACITY
 
             if unit.power >= action_queue_cost:
-                if (unit.power - action_queue_cost) >= battery_capacity * 0.25:
+                if (unit.power - action_queue_cost) >= unit.unit_cfg.DIG_COST:
                     valid_actions["unit_act"]["act_type"][:, x, y] = True
                     valid_actions["unit_act"]["act_type"][UnitActType.PICKUP, x, y] = False
                     valid_actions["unit_act"]["act_type"][UnitActType.RECHARGE, x, y] = False
