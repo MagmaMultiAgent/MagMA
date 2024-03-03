@@ -292,6 +292,8 @@ class FeatureParser():
             cargo_space = light_cfg.CARGO_SPACE if unit_type == 'LIGHT' else heavy_cfg.CARGO_SPACE
             battery_capacity = light_cfg.BATTERY_CAPACITY if unit_type == 'LIGHT' else heavy_cfg.BATTERY_CAPACITY
             unit_feature['heavy'][x, y] = unit_type == 'HEAVY'
+            # TODO: remvoe
+            unit_feature['heavy'][x, y] = False
             unit_feature['power'][x, y] = unit.power / battery_capacity
             unit_feature['cargo_ice'][x, y] = unit.cargo.ice / cargo_space
 
