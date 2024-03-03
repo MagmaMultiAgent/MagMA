@@ -427,8 +427,7 @@ class ActionParser():
                 #     or (board.ice[x, y] > 0) or (board.ore[x, y] > 0):
                 if (board.rubble[x, y] > 0) or (board.ice[x, y] > 0):
                     if board.ice[x, y] > 0:
-                        valid_actions["unit_act"]["dig"]['repeat'][0, x, y] = False
-                        valid_actions["unit_act"]["dig"]['repeat'][1, x, y] = True
+                        valid_actions["unit_act"]["dig"]['repeat'][:, x, y] = True
                     else:
                         valid_actions["unit_act"]["dig"]['repeat'][0, x, y] = True
                         valid_actions["unit_act"]["dig"]['repeat'][1, x, y] = False
