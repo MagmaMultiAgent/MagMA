@@ -298,13 +298,11 @@ class ActionParser():
                 and factory.power >= env_cfg.ROBOTS['HEAVY'].POWER_COST\
                 and not unit_on_factory:
                 factory_va[FactoryActType.BUILD_HEAVY, x, y] = True
-                # TODO: remove
-                factory_va[FactoryActType.BUILD_HEAVY, x, y] = False
 
             # valid build light
             if factory.cargo.metal >= env_cfg.ROBOTS['LIGHT'].METAL_COST\
                 and factory.power >= env_cfg.ROBOTS['LIGHT'].POWER_COST\
-                and (factory.cargo.metal < 60 or True)\
+                and factory.cargo.metal < 60\
                 and not unit_on_factory:
                 factory_va[FactoryActType.BUILD_LIGHT, x, y] = ~factory_va[FactoryActType.BUILD_HEAVY, x, y]
 
