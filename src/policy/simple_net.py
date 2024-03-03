@@ -19,7 +19,7 @@ class SimpleNet(nn.Module):
 
         # Units and critic
         self.global_feature_count = 4
-        self.map_feature_count = 3
+        self.map_feature_count = 1
         self.unit_feature_count = 3
 
         self.large_embedding_dim = 8
@@ -28,7 +28,7 @@ class SimpleNet(nn.Module):
             nn.LeakyReLU(),
         )
 
-        self.combined_feature_dim = self.global_feature_count + self.map_feature_count + self.large_embedding_dim + self.unit_feature_count  # 18
+        self.combined_feature_dim = self.global_feature_count + self.map_feature_count + self.large_embedding_dim + self.unit_feature_count  # 16
         self.combined_feature_net = nn.Sequential(
             nn.Conv2d(self.combined_feature_dim, self.combined_feature_dim, kernel_size=1, stride=1, padding=0, bias=True),
             nn.LeakyReLU(),
