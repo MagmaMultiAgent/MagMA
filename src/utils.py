@@ -52,7 +52,11 @@ def _process_eval_resluts(results):
             "avg_return_own": np.mean(return_own), 
             "std_return_own": np.std(return_own), 
             "avg_return_enemy": np.mean(return_enemy), 
-            "std_return_enemy": np.std(return_enemy)
+            "std_return_enemy": np.std(return_enemy),
+            "min_return_own": np.min(return_own),
+            "max_return_own": np.max(return_own),
+            "min_return_enemy": np.min(return_enemy),
+            "max_return_enemy": np.max(return_enemy)
         }
     return results
 
@@ -86,8 +90,8 @@ class LuxRecordEpisodeStatistics(gym.Wrapper):
         observations, rewards, terminations, truncations, infos = super(LuxRecordEpisodeStatistics, self).step(
             action
         )
-        dones = list({key:terminations[key] or truncations[key] for key in terminations.keys()}.values())
-        self.episode_returns += rewards
+        dones = [(terminations[i] | truncations[i]).all() for i in range(2)]
+        self.episode_returns += [r.sum() for r in rewards]
         self.episode_lengths += 1
         # if not self.is_vector_env:
         #     infos = [infos]

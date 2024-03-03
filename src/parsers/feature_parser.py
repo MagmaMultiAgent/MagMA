@@ -146,6 +146,24 @@ class FeatureParser():
             'avg_distance_from_ice',
             'rubble_on_ice'
         ]
+        self.global_info_dicts = {
+            'units': [
+                'heavy',
+                'power',
+                'cargo_ice',
+                'cargo_ore',
+                'cargo_water',
+                'cargo_metal'
+            ],
+            'factories': [
+                'power',
+                'cargo_ice',
+                'cargo_ore',
+                'cargo_water',
+                'cargo_metal',
+                'water_cost'
+            ]
+        }
 
     def parse(self, obs, env_cfg):
         all_feature = {}
@@ -175,6 +193,28 @@ class FeatureParser():
         global_info = {k: 0 for k in self.global_info_names}
         factories = list(obs.factories[player].values())
         units = list(obs.units[player].values())
+
+        unit_info = {}
+        factory_info = {}
+
+        for unit in units:
+            unit_info[unit.unit_id] = {
+                'heavy': int(unit.unit_type == 'HEAVY'),
+                'power': unit.power,
+                'cargo_ice': unit.cargo.ice,
+                'cargo_ore': unit.cargo.ore,
+                'cargo_water': unit.cargo.water,
+                'cargo_metal': unit.cargo.metal,
+            }
+        for factory in factories:
+            factory_info[factory.unit_id] = {
+                'power': factory.power,
+                'cargo_ice': factory.cargo.ice,
+                'cargo_ore': factory.cargo.ore,
+                'cargo_water': factory.cargo.water,
+                'cargo_metal': factory.cargo.metal,
+                'water_cost': np.sum(obs.board.lichen_strains == factory.strain_id) // obs.env_cfg.LICHEN_WATERING_COST_FACTOR + 1
+            }
 
         global_info['light_count'] = sum(int(u.unit_type == 'LIGHT') for u in units)
         global_info['heavy_count'] = sum(int(u.unit_type == 'HEAVY') for u in units)
@@ -228,6 +268,11 @@ class FeatureParser():
         rubble_board = obs.board.rubble.astype(np.float32)
         rubble_on_ice = ice_board * rubble_board
         global_info['rubble_on_ice'] = np.sum(rubble_on_ice)
+
+        # Add unit and factory info
+
+        global_info['units'] = unit_info
+        global_info['factories'] = factory_info
 
         return global_info
 

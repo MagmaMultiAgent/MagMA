@@ -247,6 +247,12 @@ class LuxEnv(gym.Env):
         actions, action_stats = self.action_parser.parse(self.game_state, actions)
         obs, rewards, terminations, truncations, infos = self.proxy.step(actions)  # interact with env
         dones = {key: terminations[key] or truncations[key] for key in terminations.keys()}
+        terminations = list(terminations.values())
+        truncations = list(truncations.values())
+        terminations_final = np.ones((2, 1000), dtype=np.bool_)
+        truncations_final = np.ones((2, 1000), dtype=np.bool_)
+        terminations_final[:, 0] = terminations
+        truncations_final[:, 0] = truncations
         self.real_obs = obs
         for player_id, player in enumerate(self.proxy.agents):
             o = obs[player]
@@ -271,7 +277,7 @@ class LuxEnv(gym.Env):
             }
             info["agents"].append(agent_info)
         info = info | global_info
-        return obs_list, reward, terminations, truncations, info
+        return obs_list, reward, terminations_final, truncations_final, info
     
     def eval(self, own_policy, enemy_policy):
         np2torch = lambda x, dtype: torch.tensor(np.array(x)).type(dtype).cuda()
@@ -297,11 +303,9 @@ class LuxEnv(gym.Env):
                 actions[id] = raw_action
             actions = tree.map_structure(lambda x: torch2np(x), actions)                
             obs_list, reward, terminated, truncation, info = self.step(actions)
-            _terminated = list(terminated.values())
-            _truncation = list(truncation.values())
-            done = sum(_terminated + _truncation) > 0
-            return_own += reward[own_id]
-            return_enemy += reward[enemy_id]
+            done = (terminated | truncation).all(axis=-1).any()
+            return_own += reward[own_id].sum()
+            return_enemy += reward[enemy_id].sum()
             episode_length += 1
         return episode_length, return_own, return_enemy
 
@@ -374,8 +378,7 @@ def lux_worker(index, env_fn, pipe, parent_pipe, shared_memory, error_queue):
             pipe.send((observation, True))
         elif command == "step":
             observation, reward, termination, truncation, info = env.step(data)
-            done = {key: termination[key] or truncation[key] for key in termination.keys()}
-            done = done["player_0"] or done["player_1"]
+            done = (termination | truncation).all(axis=-1).any()
             if done:
                 observation, _ = env.reset()
             pipe.send(((observation, reward, termination, truncation, info), True))

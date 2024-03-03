@@ -1,5 +1,7 @@
 from .dense_reward_parser import DenseRewardParser
 
+import numpy as np
+
 from copy import deepcopy
 import sys
 
@@ -10,7 +12,12 @@ class IceRewardParser(DenseRewardParser):
         for team in [0, 1]:
             player = f"player_{team}"
             own_global_info = global_info[player]
+            own_unit_info = own_global_info["units"]
+            own_factory_info = own_global_info["factories"]
+
             last_count = self.last_count[player]
+            last_count_units = last_count["units"]
+            last_count_factories = last_count["factories"]
 
             unit_count = own_global_info["unit_count"]
 
@@ -39,7 +46,11 @@ class IceRewardParser(DenseRewardParser):
 
         self.update_last_count(global_info)
 
-        return reward, sub_rewards
+        final_reward = [np.zeros((1000,), dtype=np.float32) for _ in range(2)]
+        for i, r in enumerate(reward):
+            final_reward[i][0] = r
+
+        return final_reward, sub_rewards
     
     def reset(self, game_state, global_info, env_stats):
         self.update_last_count(global_info)

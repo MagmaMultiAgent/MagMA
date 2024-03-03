@@ -129,7 +129,7 @@ def parse_args():
         help="path for pretrained model loading")
     parser.add_argument("--evaluate-interval", type=int, default=4096,
         help="evaluation steps")
-    parser.add_argument("--evaluate-num", type=int, default=10,
+    parser.add_argument("--evaluate-num", type=int, default=1,
         help="evaluation numbers")
     parser.add_argument("--replay-dir", type=str, default=None,
         help="replay dirs to reset state")
@@ -139,8 +139,12 @@ def parse_args():
     args = parser.parse_args()
 
     # Test arguments
-    args.num_steps = 128
-    args.train_num_collect = args.num_envs*128
+    args.num_steps = 64
+    args.train_num_collect = args.num_envs*args.num_steps
+    args.evaluate_interval = args.train_num_collect
+
+    # Reward per entity
+    args.max_entity_number = 1000
 
     # size of a batch
     args.batch_size = int(args.num_envs * args.num_steps)
@@ -265,14 +269,15 @@ def calculate_returns(envs: LuxSyncVectorEnv,
                       device: torch.device,
                       max_train_step: int,
                       num_envs: int,
+                      max_entity_number: int,
                       gamma: float,
                       gae_lambda: float
                       ) -> tuple[dict[str, torch.Tensor], dict[str, torch.Tensor]]:
     """
     Calculate GAE returns
     """
-    returns = dict(player_0=torch.zeros((max_train_step, num_envs)).to(device),player_1=torch.zeros((max_train_step, num_envs)).to(device))
-    advantages = dict(player_0=torch.zeros((max_train_step, num_envs)).to(device),player_1=torch.zeros((max_train_step, num_envs)).to(device))
+    returns = dict(player_0=torch.zeros((max_train_step, num_envs, max_entity_number)).to(device),player_1=torch.zeros((max_train_step, num_envs, max_entity_number)).to(device))
+    advantages = dict(player_0=torch.zeros((max_train_step, num_envs, max_entity_number)).to(device),player_1=torch.zeros((max_train_step, num_envs, max_entity_number)).to(device))
     with torch.no_grad():
         _, _, _, value = sample_actions_for_players(envs, agent, next_obs)
 
@@ -285,7 +290,7 @@ def calculate_returns(envs: LuxSyncVectorEnv,
                     nextnonterminal = 1.0 - next_done
                     nextvalues = next_value
                 else:
-                    nextnonterminal = 1.0 - dones[t + 1]
+                    nextnonterminal = 1.0 - dones[player][t + 1]
                     nextvalues = values[player][t + 1]
                 delta = rewards[player][t] + gamma * nextvalues * nextnonterminal - values[player][t]
                 advantages[player][t] = lastgaelam = delta + gamma * gae_lambda * nextnonterminal * lastgaelam
@@ -300,6 +305,7 @@ def calculate_loss(advantages: torch.Tensor,
                    newvalue: torch.Tensor,
                    entropy: torch.Tensor,
                    ratio: torch.Tensor,
+                   max_entity_number: int,
                    clip_vloss: bool,
                    clip_coef: float,
                    ent_coef: float,
@@ -314,7 +320,7 @@ def calculate_loss(advantages: torch.Tensor,
     pg_loss = torch.max(pg_loss1, pg_loss2).mean()
 
     # Value loss
-    newvalue = newvalue.view(-1)
+    newvalue = newvalue.view(-1, max_entity_number)
     if clip_vloss:
         v_loss_unclipped = (newvalue - returns) ** 2
         v_clipped = values + torch.clamp(
@@ -348,6 +354,7 @@ def optimize_for_player(player: str,
                         b_advantages: dict[str, list[torch.Tensor]],
                         b_returns: dict[str, list[torch.Tensor]],
                         b_values: dict[str, list[torch.Tensor]],
+                        max_entity_number: int,
                         train_num_collect: int,
                         minibatch_size: int,
                         clip_vloss: bool,
@@ -388,7 +395,7 @@ def optimize_for_player(player: str,
         mb_returns = b_returns[player][mb_inds]
         mb_values = b_values[player][mb_inds]
 
-        loss, pg_loss, entropy_loss, v_loss = calculate_loss(mb_advantages, mb_returns, mb_values, newvalue, entropy, ratio, clip_vloss, clip_coef, ent_coef, vf_coef)
+        loss, pg_loss, entropy_loss, v_loss = calculate_loss(mb_advantages, mb_returns, mb_values, newvalue, entropy, ratio, max_entity_number, clip_vloss, clip_coef, ent_coef, vf_coef)
 
         optimizer.zero_grad()
         loss.backward()
@@ -444,10 +451,10 @@ def main(args, device):
     obs = {}
     actions = {}
     valid_actions = {}
-    logprobs = dict(player_0=torch.zeros((args.max_train_step, args.num_envs)).to(device), player_1=torch.zeros((args.max_train_step, args.num_envs)).to(device))
-    rewards = dict(player_0=torch.zeros((args.max_train_step, args.num_envs)).to(device),player_1=torch.zeros((args.max_train_step, args.num_envs)).to(device))
-    dones = torch.zeros((args.max_train_step, args.num_envs)).to(device)
-    values = dict(player_0=torch.zeros((args.max_train_step, args.num_envs)).to(device),player_1=torch.zeros((args.max_train_step, args.num_envs)).to(device))
+    logprobs = dict(player_0=torch.zeros((args.max_train_step, args.num_envs, args.max_entity_number)).to(device), player_1=torch.zeros((args.max_train_step, args.num_envs, args.max_entity_number)).to(device))
+    rewards = dict(player_0=torch.zeros((args.max_train_step, args.num_envs, args.max_entity_number)).to(device),player_1=torch.zeros((args.max_train_step, args.num_envs, args.max_entity_number)).to(device))
+    dones = dict(player_0=torch.zeros((args.max_train_step, args.num_envs, args.max_entity_number)).to(device),player_1=torch.zeros((args.max_train_step, args.num_envs, args.max_entity_number)).to(device))
+    values = dict(player_0=torch.zeros((args.max_train_step, args.num_envs, args.max_entity_number)).to(device),player_1=torch.zeros((args.max_train_step, args.num_envs, args.max_entity_number)).to(device))
     
     logger.info("Starting train")
     for update in range(1, num_updates + 1):
@@ -457,9 +464,7 @@ def main(args, device):
         # Reset envs, get obs
         next_obs, _ = envs.reset()
         next_obs = tree.map_structure(lambda x: np2torch(x, torch.float32), next_obs)
-        next_done = torch.zeros(args.num_envs).to(device)
-
-        total_done = 0
+        next_done = torch.zeros(args.num_envs, 2, args.max_entity_number).to(device)
         
         # Annealing the rate if instructed to do so.
         if args.anneal_lr:
@@ -484,8 +489,10 @@ def main(args, device):
             global_step += 1 * args.num_envs
 
             # Save obervations for PPO
-            for _ in ['player_0', 'player_1']:
-                dones[train_step] = next_done
+            for player_id, player in enumerate(['player_0', 'player_1']):
+                for env_id in range(0, args.num_envs):
+                    # insert tensor [env, player, entity] into [player, step, env, entity]
+                    dones[player][train_step, env_id] = next_done[env_id, player_id]
             put_into_store(next_obs, train_step, obs, args.max_train_step, args.num_envs, device)
 
             # Sample actions
@@ -507,28 +514,28 @@ def main(args, device):
             next_obs, reward, terminated, truncation, info = envs.step(action)
             next_obs = tree.map_structure(lambda x: np2torch(x, torch.float32), next_obs)
 
-            episode_return += np.mean(reward, axis=-1)
+            episode_return += np.mean(np.sum(reward, axis=-1), axis=-1)
 
             reward = np2torch(reward, torch.float32)
 
             done = terminated | truncation
+            # all entities done for a player, at least one player is done
+            _done = done.all(axis=-1).any(-1)
             next_done = np2torch(done, torch.bool)
 
             # Save rewards for PPO
             for player_id, player in enumerate(['player_0', 'player_1']):
-                rewards[player][train_step] = reward[:, player_id].view(-1)
+                rewards[player][train_step] = reward[:, player_id]
 
             # Save stats
-            if True in done:
-                episode_return_list.append((episode_return[np.where(done==True)]).mean())
-                episode_return[np.where(done==True)] = 0
+            if _done.any():
+                episode_return_list.append((episode_return[np.where(_done==True)]).mean())
+                episode_return[np.where(_done==True)] = 0
                 tmp_sub_return_dict = {}
                 for key in episode_sub_return:
-                    tmp_sub_return_dict.update({key: np.mean(episode_sub_return[key][np.where(done==True)])})
-                    episode_sub_return[key][np.where(done==True)] = 0
+                    tmp_sub_return_dict.update({key: np.mean(episode_sub_return[key][np.where(_done==True)])})
+                    episode_sub_return[key][np.where(_done==True)] = 0
                 episode_sub_return_list.append(tmp_sub_return_dict)
-                total_done_tmp = np.sum(done)
-                total_done += total_done_tmp
             total_return += cal_mean_return(info['agents'], player_id=0)
             total_return += cal_mean_return(info['agents'], player_id=1)
             if (step== args.num_steps-1):
@@ -560,16 +567,16 @@ def main(args, device):
             # Train with PPO
             if train_step >= args.max_train_step-1 or step == args.num_steps-1:  
                 logger.info("Training with PPO")
-                returns, advantages = calculate_returns(envs, agent, next_obs, next_done, dones, rewards, values, device, args.max_train_step, args.num_envs, args.gamma, args.gae_lambda)
+                returns, advantages = calculate_returns(envs, agent, next_obs, next_done, dones, rewards, values, device, args.max_train_step, args.num_envs, args.max_entity_number, args.gamma, args.gae_lambda)
 
                 # flatten the batch
                 b_obs = obs
                 b_actions = actions
                 b_va = valid_actions
-                b_logprobs = tree.map_structure(lambda x: x.view(-1), logprobs)
-                b_advantages = tree.map_structure(lambda x: x.view(-1), advantages)
-                b_returns = tree.map_structure(lambda x: x.view(-1), returns)
-                b_values = tree.map_structure(lambda x: x.view(-1), values)
+                b_logprobs = tree.map_structure(lambda x: x.view(-1, args.max_entity_number), logprobs)
+                b_advantages = tree.map_structure(lambda x: x.view(-1, args.max_entity_number), advantages)
+                b_returns = tree.map_structure(lambda x: x.view(-1, args.max_entity_number), returns)
+                b_values = tree.map_structure(lambda x: x.view(-1, args.max_entity_number), values)
 
                 # Optimizing the policy and value network
                 b_inds = np.arange(args.train_num_collect)
@@ -578,7 +585,7 @@ def main(args, device):
                     np.random.shuffle(b_inds)
                     _b_inds = np2torch(b_inds, torch.long)
                     for player_id, player in enumerate(['player_0', 'player_1']):
-                        v_loss, pg_loss, entropy_loss, approx_kl, old_approx_kl, clipfracs = optimize_for_player(player, agent, envs, optimizer, _b_inds, b_obs, b_va, b_actions, b_logprobs, b_advantages, b_returns, b_values, args.train_num_collect, args.minibatch_size, args.clip_vloss, args.clip_coef, args.norm_adv, args.ent_coef, args.vf_coef, args.max_grad_norm)
+                        v_loss, pg_loss, entropy_loss, approx_kl, old_approx_kl, clipfracs = optimize_for_player(player, agent, envs, optimizer, _b_inds, b_obs, b_va, b_actions, b_logprobs, b_advantages, b_returns, b_values, args.max_entity_number, args.train_num_collect, args.minibatch_size, args.clip_vloss, args.clip_coef, args.norm_adv, args.ent_coef, args.vf_coef, args.max_grad_norm)
                         clipfracs += clipfracs
 
                         if args.target_kl is not None:
@@ -606,8 +613,6 @@ def main(args, device):
                 logger.info(f"SPS: {round(global_step / (time.time() - start_time), 2)}")
                 logger.info(f"global step: {global_step}")
 
-                total_done += dones.sum().item()
-
                 reset_store(obs)
                 reset_store(actions)
                 reset_store(valid_actions)
@@ -615,7 +620,7 @@ def main(args, device):
                 for player_id, player in enumerate(['player_0', 'player_1']):
                     logprobs[player][:] = 0
                     rewards[player][:] = 0
-                    dones[:] = 0
+                    dones[player][:] = 0
                     values[player][:] = 0
 
                 train_step = -1

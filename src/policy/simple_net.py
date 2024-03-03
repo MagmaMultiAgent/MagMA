@@ -62,10 +62,19 @@ class SimpleNet(nn.Module):
         large_embedding = self.large_distance_embedding(map_feature)
         combined_feature = torch.cat([global_feature, map_feature, large_embedding, unit_feature], dim=1)
 
-        critic_value = self.critic(combined_feature)
+        _critic_value = self.critic(combined_feature)
 
         direction_feature = self.direction_net(combined_feature)
-        logp, action, entropy = self.actor(combined_feature, direction_feature, factory_feature, va, action)
+        _logp, action, _entropy = self.actor(combined_feature, direction_feature, factory_feature, va, action)
+
+        logp = torch.zeros((B, 1000), device=combined_feature.device)
+        logp[:, 0] = _logp
+
+        critic_value = torch.zeros((B, 1000), device=combined_feature.device)
+        critic_value[:, 0] = _critic_value
+        
+        entropy = torch.zeros((B, 1000), device=combined_feature.device)
+        entropy[:, 0] = _entropy
 
         return logp, critic_value, action, entropy
 
