@@ -109,11 +109,9 @@ class ActionParser():
         for unit_id, robot in robots.items():
             x, y = robot.pos
             action = raw_actions["unit_act"][:, x, y].copy()
-            # if action is completely 0, then do nothing
+            act_type = action[UnitActChannel.TYPE].astype(int)
             if np.sum(action) == 0:
-                action[UnitActChannel.TYPE] = UnitActType.DO_NOTHING
-            else:
-                act_type = action[UnitActChannel.TYPE].astype(int)
+                act_type = np.array(UnitActType.DO_NOTHING.value).astype(int)
             dir = action[UnitActChannel.DIRECTION].astype(int)
             resource = action[UnitActChannel.RESOURCE].astype(int)
             percentage = action[UnitActChannel.AMOUNT]
