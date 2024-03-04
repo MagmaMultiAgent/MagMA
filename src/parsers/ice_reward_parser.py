@@ -45,11 +45,11 @@ class IceRewardParser(DenseRewardParser):
             ice_increment = own_global_info["total_ice"] - last_count['total_ice']
             global_reward[team] += max(ice_increment, 0)
 
-            for factory_name, factory in own_factory_info.items():
-                factory_reward = global_reward[team]
+            # for factory_name, factory in own_factory_info.items():
+            #     factory_reward = global_reward[team]
 
-                factory_id = int(factory_name.split("_")[1])
-                final_reward[team][factory_id] += factory_reward
+            #     factory_id = int(factory_name.split("_")[1])
+            #     final_reward[team][factory_id] += factory_reward
 
             for unit_name, unit in own_unit_info.items():
                 unit_reward = 0

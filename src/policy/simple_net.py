@@ -90,7 +90,7 @@ class SimpleNet(nn.Module):
         _critic_value = self.critic(combined_feature)
         _critic_value_factory = _gather_from_map(_critic_value, factory_pos)
         _critic_value_unit = _gather_from_map(_critic_value, unit_pos)
-        critic_value[factory_pos[0], factory_ids] = _critic_value_factory
+        # critic_value[factory_pos[0], factory_ids] = _critic_value_factory
         critic_value[unit_pos[0], unit_ids] = _critic_value_unit
 
         # Actor
@@ -129,13 +129,13 @@ class SimpleNet(nn.Module):
             factory_va,
             factory_action,
         )
-        for i in range(factory_logp.shape[0]):
-            _logp = factory_logp[i]
-            _entropy = factory_entropy[i]
-            _batch = factory_pos[0][i]
-            _factory_id = factory_ids[i]
-            logp[_batch, _factory_id] += _logp
-            entropy[_batch, _factory_id] += _entropy
+        # for i in range(factory_logp.shape[0]):
+        #     _logp = factory_logp[i]
+        #     _entropy = factory_entropy[i]
+        #     _batch = factory_pos[0][i]
+        #     _factory_id = factory_ids[i]
+        #     logp[_batch, _factory_id] += _logp
+        #     entropy[_batch, _factory_id] += _entropy
         
         output_action['factory_act'] = _put_into_map(factory_action, factory_pos)
 

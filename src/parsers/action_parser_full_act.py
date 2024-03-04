@@ -322,7 +322,7 @@ class ActionParser():
             factory_va[FactoryActType.WATER, x, y] = False
 
             # always can do nothing
-            factory_va[FactoryActType.DO_NOTHING, x, y] = True
+            factory_va[FactoryActType.DO_NOTHING, x, y] = ~factory_va[FactoryActType.BUILD_HEAVY, x, y] & ~factory_va[FactoryActType.BUILD_LIGHT, x, y] & ~factory_va[FactoryActType.WATER, x, y]
 
         # unit actions
         for unit_id, unit in game_state.units[player].items():
