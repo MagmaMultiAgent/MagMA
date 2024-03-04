@@ -55,66 +55,15 @@ class SimpleNet(nn.Module):
         })
 
 
-    def forward(self, global_feature, map_feature, factory_feature, unit_feature, va, action=None):
+    def forward(self, global_feature, map_feature, factory_feature, unit_feature, location_feature, va, action=None):
         B, _, H, W = map_feature.shape
 
+        # Embeddings
         global_feature = global_feature[..., None, None].expand(-1, -1, H, W)
         large_embedding = self.large_distance_embedding(map_feature)
         combined_feature = torch.cat([global_feature, map_feature, large_embedding, unit_feature], dim=1)
 
-        _critic_value = self.critic(combined_feature)
-
-        direction_feature = self.direction_net(combined_feature)
-        _logp, action, _entropy = self.actor(combined_feature, direction_feature, factory_feature, va, action)
-
-        logp = torch.zeros((B, 1000), device=combined_feature.device)
-        logp[:, 0] = _logp
-
-        critic_value = torch.zeros((B, 1000), device=combined_feature.device)
-        critic_value[:, 0] = _critic_value
-        
-        entropy = torch.zeros((B, 1000), device=combined_feature.device)
-        entropy[:, 0] = _entropy
-
-        return logp, critic_value, action, entropy
-
-    def critic(self, combined_feature):
-        critic_value = self.critic_head(combined_feature)
-        critic_value = torch.flatten(critic_value, start_dim=-3).mean(-1)
-        return critic_value
-
-    def actor(self, combined_feature, direction_feature, factory_feature, va, action=None):
-        B, _, H, W = combined_feature.shape
-
-        logp = torch.zeros(B, device=combined_feature.device)
-        entropy = torch.zeros(B, device=combined_feature.device)
-        output_action = {}
-
-        def _gather_from_map(x, pos):
-            return x[pos[0], ..., pos[1], pos[2]]
-
-        def _put_into_map(emb, pos):
-            shape = (B, ) + emb.shape[1:] + (H, W)
-            map = torch.zeros(shape, dtype=emb.dtype, device=emb.device)
-            map[pos[0], ..., pos[1], pos[2]] = emb
-            return map
-
-        # factory actor
-        factory_pos = torch.where(va['factory_act'].any(1))
-        factory_emb = _gather_from_map(factory_feature, factory_pos)
-
-        factory_va = _gather_from_map(va['factory_act'], factory_pos)
-        factory_action = action and _gather_from_map(action['factory_act'], factory_pos)
-        factory_logp, factory_action, factory_entropy = self.factory_actor(
-            factory_emb,
-            factory_va,
-            factory_action,
-        )
-        logp.scatter_add_(0, factory_pos[0], factory_logp)
-        entropy.scatter_add_(0, factory_pos[0], factory_entropy)
-        output_action['factory_act'] = _put_into_map(factory_action, factory_pos)
-
-        # unit actor
+        # Valid actions
         unit_act_type_va = torch.stack(
             [
                 va['move'].flatten(1, 2).any(1),
@@ -127,7 +76,70 @@ class SimpleNet(nn.Module):
             ],
             axis=1,
         )
+
+        # Locations
+        factory_pos = torch.where(va['factory_act'].any(1))
         unit_pos = torch.where(unit_act_type_va.any(1))
+        def _gather_from_map(x, pos):
+            return x[pos[0], ..., pos[1], pos[2]]
+        factory_ids = _gather_from_map(location_feature[:, 0], factory_pos).int()
+        unit_ids = (_gather_from_map(location_feature[:, 1], unit_pos) + 10).int()
+
+        # Critic
+        critic_value = torch.zeros((B, 1000), device=combined_feature.device)
+        _critic_value = self.critic(combined_feature)
+        _critic_value_factory = _gather_from_map(_critic_value, factory_pos)
+        _critic_value_unit = _gather_from_map(_critic_value, unit_pos)
+        critic_value[factory_pos[0], factory_ids] = _critic_value_factory
+        critic_value[unit_pos[0], unit_ids] = _critic_value_unit
+
+        # Actor
+        direction_feature = self.direction_net(combined_feature)
+        logp, action, entropy = self.actor(combined_feature, direction_feature, factory_feature, va, factory_pos, unit_act_type_va, unit_pos, factory_ids, unit_ids, action)
+
+        return logp, critic_value, action, entropy
+
+    def critic(self, combined_feature):
+        critic_value = self.critic_head(combined_feature)[:, 0]
+        return critic_value
+
+    def actor(self, combined_feature, direction_feature, factory_feature, va, factory_pos, unit_act_type_va, unit_pos, factory_ids, unit_ids, action=None):
+        B, _, H, W = combined_feature.shape
+
+        logp = torch.zeros((B, 1000), device=combined_feature.device)
+        entropy = torch.zeros((B, 1000), device=combined_feature.device)
+        output_action = {}
+
+        def _gather_from_map(x, pos):
+            return x[pos[0], ..., pos[1], pos[2]]
+
+        def _put_into_map(emb, pos):
+            shape = (B, ) + emb.shape[1:] + (H, W)
+            map = torch.zeros(shape, dtype=emb.dtype, device=emb.device)
+            map[pos[0], ..., pos[1], pos[2]] = emb
+            return map
+
+        # factory actor
+        factory_emb = _gather_from_map(factory_feature, factory_pos)
+
+        factory_va = _gather_from_map(va['factory_act'], factory_pos)
+        factory_action = action and _gather_from_map(action['factory_act'], factory_pos)
+        factory_logp, factory_action, factory_entropy = self.factory_actor(
+            factory_emb,
+            factory_va,
+            factory_action,
+        )
+        for i in range(factory_logp.shape[0]):
+            _logp = factory_logp[i]
+            _entropy = factory_entropy[i]
+            _batch = factory_pos[0][i]
+            _factory_id = factory_ids[i]
+            logp[_batch, _factory_id] += _logp
+            entropy[_batch, _factory_id] += _entropy
+        
+        output_action['factory_act'] = _put_into_map(factory_action, factory_pos)
+
+        # unit actor
         unit_emb = _gather_from_map(combined_feature, unit_pos)
         unit_dir = _gather_from_map(direction_feature, unit_pos)
 
@@ -149,8 +161,14 @@ class SimpleNet(nn.Module):
             unit_va,
             unit_action,
         )
-        logp.scatter_add_(0, unit_pos[0], unit_logp)
-        entropy.scatter_add_(0, unit_pos[0], unit_entropy)
+        for i in range(unit_logp.shape[0]):
+            _logp = unit_logp[i]
+            _entropy = unit_entropy[i]
+            _batch = unit_pos[0][i]
+            _unit_id = unit_ids[i]
+            logp[_batch, _unit_id] += _logp
+            entropy[_batch, _unit_id] += _entropy
+
         output_action['unit_act'] = _put_into_map(unit_action, unit_pos)
 
         return logp, output_action, entropy

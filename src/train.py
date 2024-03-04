@@ -225,6 +225,7 @@ def sample_action_for_player(agent: Net, obs: TensorPerKey, valid_action: Tensor
         obs['map_feature'],
         obs['factory_feature'],
         obs['unit_feature'],
+        obs['location_feature'],
         valid_action,
         forced_action
     )

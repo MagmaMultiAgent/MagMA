@@ -15,6 +15,7 @@ class LuxFeature(NamedTuple):
     map_feature: np.ndarray
     factory_feature: np.ndarray
     unit_feature: np.ndarray
+    location_feature: np.ndarray
 
 
 class FeatureParser():
@@ -113,6 +114,11 @@ class FeatureParser():
             # 'unit_enm',
             # 'unit_light',
             # 'unit_heavy',
+        ]
+
+        self.location_feature_names = [
+            "factory",
+            "unit"
         ]
 
         self.unit_feature_names = [
@@ -283,6 +289,12 @@ class FeatureParser():
         light_cfg = env_cfg.ROBOTS['LIGHT']
         heavy_cfg = env_cfg.ROBOTS['HEAVY']
 
+        # Location
+
+        location_feature = {name: np.zeros_like(obs.board.ice, dtype=np.int32) for name in self.location_feature_names}
+        location_feature['factory'][:] = -1
+        location_feature['unit'][:] = -1
+
         # Global
 
         global_feature = {name: 0 for name in self.global_feature_names}
@@ -303,6 +315,8 @@ class FeatureParser():
         for owner, factories in obs.factories.items():
             for fid, factory in factories.items():
                 x, y = factory.pos
+                location_feature['factory'][x, y] = int(factory.unit_id.split('_')[1])
+
                 factory_feature['factory_power'][x, y] = factory.power
                 factory_feature['factory_ice'][x, y] = factory.cargo.ice
                 factory_feature['factory_water'][x, y] = factory.cargo.water
@@ -334,6 +348,7 @@ class FeatureParser():
         
         for unit in units.values():
             x, y = unit.pos
+            location_feature['unit'][x, y] = int(unit.unit_id.split('_')[1])
             unit_type = unit.unit_type
             cargo_space = light_cfg.CARGO_SPACE if unit_type == 'LIGHT' else heavy_cfg.CARGO_SPACE
             battery_capacity = light_cfg.BATTERY_CAPACITY if unit_type == 'LIGHT' else heavy_cfg.BATTERY_CAPACITY
@@ -349,11 +364,12 @@ class FeatureParser():
         map_feature = np.array(list(map_feature.values()))
         factory_feature = np.array(list(factory_feature.values()))
         unit_feature = np.array(list(unit_feature.values()))
+        location_feature = np.array(list(location_feature.values()))
 
         if output_dict:
-            return {'global_feature': global_feature, 'map_feature': map_feature, 'factory_feature': factory_feature, 'unit_feature': unit_feature}
+            return {'global_feature': global_feature, 'map_feature': map_feature, 'factory_feature': factory_feature, 'unit_feature': unit_feature, 'location_feature': location_feature}
         
-        return LuxFeature(global_feature, map_feature, factory_feature, unit_feature)
+        return LuxFeature(global_feature, map_feature, factory_feature, unit_feature, location_feature)
 
     @staticmethod
     def cluster_board(board):

@@ -8,7 +8,10 @@ import sys
 
 class IceRewardParser(DenseRewardParser):
     def parse(self, dones, game_state, env_stats, global_info):
-        reward = [0.0, 0.0]
+        global_reward = [0.0, 0.0]
+
+        final_reward = [np.zeros((1000,), dtype=np.float32) for _ in range(2)]
+
         for team in [0, 1]:
             player = f"player_{team}"
             own_global_info = global_info[player]
@@ -29,7 +32,7 @@ class IceRewardParser(DenseRewardParser):
 
             units_on_ice = own_global_info["units_on_ice"]
             if unit_count > 0:
-                reward[team] += units_on_ice / 1000
+                global_reward[team] += units_on_ice / 1000
             else:
                 pass  # 0 reward
 
@@ -37,17 +40,33 @@ class IceRewardParser(DenseRewardParser):
             # reward[team] += power_increment
 
             rubble_on_ice_decrease = (last_count['rubble_on_ice'] - own_global_info["rubble_on_ice"]) / 100  # divide by 100 because max 100 rubble on tile
-            reward[team] += max(rubble_on_ice_decrease, 0)
+            global_reward[team] += max(rubble_on_ice_decrease, 0)
 
             ice_increment = own_global_info["total_ice"] - last_count['total_ice']
-            reward[team] += max(ice_increment, 0)
+            global_reward[team] += max(ice_increment, 0)
+
+            for factory_name, factory in own_factory_info.items():
+                factory_reward = global_reward[team]
+
+                factory_id = int(factory_name.split("_")[1])
+                final_reward[team][factory_id] += factory_reward
+
+            for unit_name, unit in own_unit_info.items():
+                unit_reward = 0
+
+                cargo_ice = unit["cargo_ice"]
+                last_cargo_ice = last_count_units.get(unit_name, {}).get("cargo_ice", 0)
+                ice_increment = max(cargo_ice - last_cargo_ice, 0)
+                unit_reward += ice_increment
+
+                unit_id = int(unit_name.split("_")[1]) + 10
+                final_reward[team][unit_id] += unit_reward
 
         _, sub_rewards = super(IceRewardParser, self).parse(dones, game_state, env_stats, global_info)
 
         self.update_last_count(global_info)
 
-        final_reward = [np.zeros((1000,), dtype=np.float32) for _ in range(2)]
-        for i, r in enumerate(reward):
+        for i, r in enumerate(global_reward):
             final_reward[i][0] = r
 
         return final_reward, sub_rewards

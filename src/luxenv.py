@@ -118,12 +118,20 @@ def get_single_observation_space(map_size):
     unit_feature_space = np.tile(np.array(list(unit_feature_names.values())).reshape(len(unit_feature_names), 1, 1), (1, map_size, map_size))
     unit_feature_space = spaces.MultiDiscrete(unit_feature_space, dtype=np.float64)
 
+    location_feature_names = {
+        "factory": 1000,
+        "unit": 1000
+    }
+    location_feature_space = np.tile(np.array(list(location_feature_names.values())).reshape(len(location_feature_names), 1, 1), (1, map_size, map_size))
+    location_feature_space = spaces.MultiDiscrete(location_feature_space, dtype=np.float64)
+
     obs_space = spaces.Dict(
         {
             'global_feature': global_feature_space,
             'map_feature': map_featrue_space,
             'factory_feature': factory_feature_space,
-            'unit_feature': unit_feature_space
+            'unit_feature': unit_feature_space,
+            'location_feature': location_feature_space
         }
     )
     return obs_space
@@ -249,10 +257,22 @@ class LuxEnv(gym.Env):
         dones = {key: terminations[key] or truncations[key] for key in terminations.keys()}
         terminations = list(terminations.values())
         truncations = list(truncations.values())
+
         terminations_final = np.ones((2, 1000), dtype=np.bool_)
         truncations_final = np.ones((2, 1000), dtype=np.bool_)
-        terminations_final[:, 0] = terminations
-        truncations_final[:, 0] = truncations
+        for player in range(2):
+            unit_info = obs[f'player_{player}']['units']
+            factory_info = obs[f'player_{player}']['factories']
+            for factory_name, factory in unit_info.items():
+                factory_id = int(factory_name.split("_")[1])
+                terminations_final[player, factory_id] = terminations[player]
+                truncations_final[player, factory_id] = truncations[player]
+
+            for unit_name, unit in factory_info.items():
+                unit_id = int(unit_name.split("_")[1]) + 10
+                terminations_final[player, unit_id] = terminations[player]
+                truncations_final[player, unit_id] = truncations[player]
+
         self.real_obs = obs
         for player_id, player in enumerate(self.proxy.agents):
             o = obs[player]
@@ -298,6 +318,7 @@ class LuxEnv(gym.Env):
                     np2torch([obs_list[f'player_{id}']['map_feature']], torch.float32),
                     np2torch([obs_list[f'player_{id}']['factory_feature']], torch.float32),
                     np2torch([obs_list[f'player_{id}']['unit_feature']], torch.float32),
+                    np2torch([obs_list[f'player_{id}']['location_feature']], torch.int32),
                     tree.map_structure(lambda x: np2torch([x], torch.bool), valid_action)
                 )
                 actions[id] = raw_action
