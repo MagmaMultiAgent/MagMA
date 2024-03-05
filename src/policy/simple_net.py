@@ -90,8 +90,16 @@ class SimpleNet(nn.Module):
         _critic_value = self.critic(combined_feature)
         _critic_value_factory = _gather_from_map(_critic_value, factory_pos)
         _critic_value_unit = _gather_from_map(_critic_value, unit_pos)
+        # avg critic value unit
+        critic_value_avg = torch.zeros((B, len(_critic_value_unit)), device=combined_feature.device)
+        for i in range(len(_critic_value_unit)):
+            critic_value_avg[:, i] = _critic_value_unit[i]
+        critic_value_avg = critic_value_avg.mean(1)
+        critic_value_avg[torch.isnan(critic_value_avg)] = 0
+
         # critic_value[factory_pos[0], factory_ids] = _critic_value_factory
-        critic_value[unit_pos[0], unit_ids] = _critic_value_unit
+        for i in range(len(_critic_value_unit)):
+            critic_value[unit_pos[0][i], unit_ids] = critic_value_avg[unit_pos[0][i]]
 
         # Actor
         direction_feature = self.direction_net(combined_feature)
