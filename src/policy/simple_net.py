@@ -91,21 +91,28 @@ class SimpleNet(nn.Module):
         _critic_value_factory = _gather_from_map(_critic_value, factory_pos)
         _critic_value_unit = _gather_from_map(_critic_value, unit_pos)
         # avg critic value unit
-        critic_value_avg = torch.zeros((B, len(_critic_value_unit)), device=combined_feature.device)
+        critic_value_sum = torch.zeros((B, len(_critic_value_unit)), device=combined_feature.device)
         for i in range(len(_critic_value_unit)):
-            critic_value_avg[:, i] = _critic_value_unit[i]
-        critic_value_avg = critic_value_avg.mean(1)
-        critic_value_avg[torch.isnan(critic_value_avg)] = 0
+            critic_value_sum[:, i] = _critic_value_unit[i]
+        critic_value_sum = critic_value_sum.sum(1)
+        critic_value_sum[torch.isnan(critic_value_sum)] = 0
 
-        # critic_value[factory_pos[0], factory_ids] = _critic_value_factory
-        for i in range(len(_critic_value_unit)):
-            critic_value[unit_pos[0][i], unit_ids] = critic_value_avg[unit_pos[0][i]]
+        critic_value[:, 0] = critic_value_sum
 
         # Actor
         direction_feature = self.direction_net(combined_feature)
         logp, action, entropy = self.actor(combined_feature, direction_feature, factory_feature, va, factory_pos, unit_act_type_va, unit_pos, factory_ids, unit_ids, action)
 
-        return logp, critic_value, action, entropy
+        logp_final = torch.zeros((B, 1000), device=combined_feature.device)
+        entropy_final = torch.zeros((B, 1000), device=combined_feature.device)
+
+        logp_sum = logp.sum(1)
+        logp_final[:, 0] = logp_sum
+
+        entropy_sum = entropy.sum(1)
+        entropy_final[:, 0] = entropy_sum
+
+        return logp_final, critic_value, action, entropy
 
     def critic(self, combined_feature):
         critic_value = self.critic_head(combined_feature)[:, 0]
