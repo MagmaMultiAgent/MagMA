@@ -65,14 +65,12 @@ class IceRewardParser(DenseRewardParser):
                 unit_rewards += unit_reward
                 unit_count += 1
 
-            # if unit_count > 0:
-            #     avg_unit_reward = unit_rewards / unit_count
+            if unit_count > 0:
+                avg_unit_reward = unit_rewards / unit_count
 
-            #     for unit_name, unit in own_unit_info.items():
-            #         unit_id = int(unit_name.split("_")[1]) + 10
-            #         final_reward[team][unit_id] += avg_unit_reward
-                
-            final_reward[team][0] = unit_rewards
+                for unit_name, unit in own_unit_info.items():
+                    unit_id = int(unit_name.split("_")[1]) + 10
+                    final_reward[team][unit_id] += avg_unit_reward
 
         _, sub_rewards = super(IceRewardParser, self).parse(dones, game_state, env_stats, global_info)
 
