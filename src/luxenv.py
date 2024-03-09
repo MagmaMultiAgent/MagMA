@@ -264,18 +264,12 @@ class LuxEnv(gym.Env):
         terminations_final[:, 0] = terminations
         truncations_final[:, 0] = truncations
 
-        # for player in range(2):
-        #     unit_info = obs[f'player_{player}']['units']
-        #     factory_info = obs[f'player_{player}']['factories']
-        #     for factory_name, factory in unit_info.items():
-        #         factory_id = int(factory_name.split("_")[1])
-        #         terminations_final[player, factory_id] = terminations[player]
-        #         truncations_final[player, factory_id] = truncations[player]
-
-        #     for unit_name, unit in factory_info.items():
-        #         unit_id = int(unit_name.split("_")[1]) + 10
-        #         terminations_final[player, unit_id] = terminations[player]
-        #         truncations_final[player, unit_id] = truncations[player]
+        for player in range(2):
+            unit_info = obs[f'player_{player}']['units']
+            for unit_name, _ in unit_info.items():
+                unit_id = int(unit_name.split("_")[1])
+                terminations_final[player, unit_id] = terminations[player]
+                truncations_final[player, unit_id] = truncations[player]
 
         self.real_obs = obs
         for player_id, player in enumerate(self.proxy.agents):

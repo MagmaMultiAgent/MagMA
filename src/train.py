@@ -139,7 +139,7 @@ def parse_args():
     args = parser.parse_args()
 
     # Test arguments
-    args.num_steps = 64
+    args.num_steps = 200
     args.train_num_collect = args.num_envs*args.num_steps
     args.evaluate_interval = args.train_num_collect
 

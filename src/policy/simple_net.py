@@ -88,31 +88,14 @@ class SimpleNet(nn.Module):
         # Critic
         critic_value = torch.zeros((B, 1000), device=combined_feature.device)
         _critic_value = self.critic(combined_feature)
-        _critic_value_factory = _gather_from_map(_critic_value, factory_pos)
         _critic_value_unit = _gather_from_map(_critic_value, unit_pos)
-        # avg critic value unit
-        critic_value_sum = torch.zeros((B, len(_critic_value_unit)), device=combined_feature.device)
-        for i in range(len(_critic_value_unit)):
-            critic_value_sum[:, i] = _critic_value_unit[i]
-        critic_value_sum = critic_value_sum.sum(1)
-        critic_value_sum[torch.isnan(critic_value_sum)] = 0
-
-        critic_value[:, 0] = critic_value_sum
+        critic_value[unit_pos[0], unit_ids] = _critic_value_unit
 
         # Actor
         direction_feature = self.direction_net(combined_feature)
         logp, action, entropy = self.actor(combined_feature, direction_feature, factory_feature, va, factory_pos, unit_act_type_va, unit_pos, factory_ids, unit_ids, action)
 
-        logp_final = torch.zeros((B, 1000), device=combined_feature.device)
-        entropy_final = torch.zeros((B, 1000), device=combined_feature.device)
-
-        logp_sum = logp.sum(1)
-        logp_final[:, 0] = logp_sum
-
-        entropy_sum = entropy.sum(1)
-        entropy_final[:, 0] = entropy_sum
-
-        return logp_final, critic_value, action, entropy
+        return logp, critic_value, action, entropy
 
     def critic(self, combined_feature):
         critic_value = self.critic_head(combined_feature)[:, 0]
@@ -139,18 +122,11 @@ class SimpleNet(nn.Module):
 
         factory_va = _gather_from_map(va['factory_act'], factory_pos)
         factory_action = action and _gather_from_map(action['factory_act'], factory_pos)
-        factory_logp, factory_action, factory_entropy = self.factory_actor(
+        _, factory_action, _ = self.factory_actor(
             factory_emb,
             factory_va,
             factory_action,
         )
-        # for i in range(factory_logp.shape[0]):
-        #     _logp = factory_logp[i]
-        #     _entropy = factory_entropy[i]
-        #     _batch = factory_pos[0][i]
-        #     _factory_id = factory_ids[i]
-        #     logp[_batch, _factory_id] += _logp
-        #     entropy[_batch, _factory_id] += _entropy
         
         output_action['factory_act'] = _put_into_map(factory_action, factory_pos)
 
@@ -176,13 +152,9 @@ class SimpleNet(nn.Module):
             unit_va,
             unit_action,
         )
-        for i in range(unit_logp.shape[0]):
-            _logp = unit_logp[i]
-            _entropy = unit_entropy[i]
-            _batch = unit_pos[0][i]
-            _unit_id = unit_ids[i]
-            logp[_batch, _unit_id] += _logp
-            entropy[_batch, _unit_id] += _entropy
+
+        logp[unit_pos[0], unit_ids] = unit_logp
+        entropy[unit_pos[0], unit_ids] = unit_entropy
 
         output_action['unit_act'] = _put_into_map(unit_action, unit_pos)
 
@@ -321,4 +293,3 @@ class SimpleNet(nn.Module):
         )
 
         return repeat, repeat_logp, repeat_entropy
-
