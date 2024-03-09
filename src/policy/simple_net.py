@@ -22,31 +22,24 @@ class SimpleNet(nn.Module):
         self.map_feature_count = 1
         self.unit_feature_count = 3
 
-        self.large_embedding_dim = 8
         self.large_distance_embedding = nn.Sequential(
             nn.AvgPool2d(kernel_size=3, stride=1, padding=1),
-            nn.AvgPool2d(kernel_size=3, stride=1, padding=1),
-            nn.Conv2d(self.map_feature_count, self.large_embedding_dim, kernel_size=3, stride=1, padding="same", bias=True),
-            nn.LeakyReLU(),
         )
 
-        self.combined_feature_dim = self.global_feature_count + self.map_feature_count + self.large_embedding_dim + self.unit_feature_count  # 16
-        self.combined_feature_net = nn.Sequential(
-            nn.Conv2d(self.combined_feature_dim, self.combined_feature_dim, kernel_size=1, stride=1, padding=0, bias=True),
-            nn.LeakyReLU(),
-        )
+        self.value_feature_dim = self.global_feature_count + self.map_feature_count + self.unit_feature_count
+        self.act_type_feature_dim = self.map_feature_count + self.unit_feature_count
 
         self.critic_head = nn.Sequential(
-            nn.Conv2d(self.combined_feature_dim, 1, kernel_size=1, stride=1, padding=0, bias=True),
+            nn.Conv2d(self.value_feature_dim, 1, kernel_size=1, stride=1, padding=0, bias=True),
         )
 
         self.direction_dim = 4
         self.direction_net = nn.Sequential(
-            nn.Conv2d(self.combined_feature_dim, 4, kernel_size=3, stride=1, padding="same", bias=True),
+            nn.Conv2d(self.map_feature_count, 4, kernel_size=3, stride=1, padding="same", bias=True),
             nn.LeakyReLU(),
         )
 
-        self.unit_act_type = nn.Linear(self.combined_feature_dim, len(UnitActType), bias=True)
+        self.unit_act_type = nn.Linear(self.act_type_feature_dim, len(UnitActType), bias=True)
         self.param_heads = nn.ModuleDict({
             unit_act_type.name: nn.ModuleDict({
                 "direction": nn.Linear(self.direction_dim, ActDims.direction, bias=True),
@@ -62,10 +55,14 @@ class SimpleNet(nn.Module):
 
         # Embeddings
         global_feature = global_feature[..., None, None].expand(-1, -1, H, W)
+
         large_embedding = self.large_distance_embedding(map_feature)
+        large_embedding += map_feature
         assert large_embedding.shape[2] == H
         assert large_embedding.shape[3] == W
-        combined_feature = torch.cat([global_feature, map_feature, large_embedding, unit_feature], dim=1)
+
+        value_feature = torch.cat([global_feature, map_feature, unit_feature], dim=1)
+        act_type_feature = torch.cat([map_feature, unit_feature], dim=1)
 
         # Valid actions
         unit_act_type_va = torch.stack(
@@ -90,26 +87,26 @@ class SimpleNet(nn.Module):
         unit_ids = (_gather_from_map(location_feature[:, 1], unit_pos) + 10).int()
 
         # Critic
-        critic_value = torch.zeros((B, 1000), device=combined_feature.device)
-        _critic_value = self.critic(combined_feature)
+        critic_value = torch.zeros((B, 1000), device=value_feature.device)
+        _critic_value = self.critic(value_feature)
         _critic_value_unit = _gather_from_map(_critic_value, unit_pos)
         critic_value[unit_pos[0], unit_ids] = _critic_value_unit
 
         # Actor
-        direction_feature = self.direction_net(combined_feature)
-        logp, action, entropy = self.actor(combined_feature, direction_feature, factory_feature, va, factory_pos, unit_act_type_va, unit_pos, factory_ids, unit_ids, action)
+        direction_feature = self.direction_net(large_embedding)
+        logp, action, entropy = self.actor(act_type_feature, direction_feature, factory_feature, va, factory_pos, unit_act_type_va, unit_pos, factory_ids, unit_ids, action)
 
         return logp, critic_value, action, entropy
 
-    def critic(self, combined_feature):
-        critic_value = self.critic_head(combined_feature)[:, 0]
+    def critic(self, value_feature):
+        critic_value = self.critic_head(value_feature)[:, 0]
         return critic_value
 
-    def actor(self, combined_feature, direction_feature, factory_feature, va, factory_pos, unit_act_type_va, unit_pos, factory_ids, unit_ids, action=None):
-        B, _, H, W = combined_feature.shape
+    def actor(self, act_type_feature, direction_feature, factory_feature, va, factory_pos, unit_act_type_va, unit_pos, factory_ids, unit_ids, action=None):
+        B, _, H, W = act_type_feature.shape
 
-        logp = torch.zeros((B, 1000), device=combined_feature.device)
-        entropy = torch.zeros((B, 1000), device=combined_feature.device)
+        logp = torch.zeros((B, 1000), device=act_type_feature.device)
+        entropy = torch.zeros((B, 1000), device=act_type_feature.device)
         output_action = {}
 
         def _gather_from_map(x, pos):
@@ -135,7 +132,7 @@ class SimpleNet(nn.Module):
         output_action['factory_act'] = _put_into_map(factory_action, factory_pos)
 
         # unit actor
-        unit_emb = _gather_from_map(combined_feature, unit_pos)
+        unit_emb = _gather_from_map(act_type_feature, unit_pos)
         unit_dir = _gather_from_map(direction_feature, unit_pos)
 
         unit_va = {
