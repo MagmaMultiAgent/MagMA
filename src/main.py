@@ -23,7 +23,7 @@ import torch
 import numpy as np
 from player import Player
 ### The model path
-PATH = 'focus_on_ice_conv_combined_7_improved_masking_rubble_mining_done_fix_new_rev_model_196608.pth'
+PATH = 'distributed_ice_p3x5x3_model_327680.pth'
 ### DO NOT REMOVE THE FOLLOWING CODE ###
 agent_dict = (
     dict()
@@ -72,6 +72,7 @@ def agent_fn(observation, configurations, i):
                                   torch.tensor(obs['map_feature'],dtype=torch.float).unsqueeze(0),
                                   torch.tensor(obs['factory_feature'],dtype=torch.float).unsqueeze(0),\
                                      torch.tensor(obs['unit_feature'],dtype=torch.float).unsqueeze(0),\
+                                     torch.tensor(obs['location_feature'],dtype=torch.float).unsqueeze(0),\
                                 tree.map_structure(lambda x: np2torch(x, torch.bool), valid_action)
                                             )
             actions = tree.map_structure(lambda x: torch2np(x), actions)
