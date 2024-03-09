@@ -23,7 +23,7 @@ import torch
 import numpy as np
 from player import Player
 ### The model path
-PATH = 'distributed_ice_p3x5x3_model_327680.pth'
+PATH = 'distributed_ice_p3x3_model_524288.pth'
 ### DO NOT REMOVE THE FOLLOWING CODE ###
 agent_dict = (
     dict()
