@@ -60,6 +60,8 @@ class SimpleNet(nn.Module):
         global_feature = global_feature[..., None, None].expand(-1, -1, H, W)
 
         large_embedding = self.large_distance_embedding(map_feature)
+        # make rubble zero
+        large_embedding[:, 2] = 0
         large_embedding += map_feature
         # scale between -1 and 1 for each channel
         for i in range(large_embedding.shape[1]):
