@@ -92,7 +92,7 @@ def get_single_observation_space(map_size):
     global_feature_space = spaces.MultiDiscrete(np.array(global_feature_space), dtype=np.float64)
 
     map_feature_names = {
-        # 'factory': 2,
+        'factory': 2,
         'ice': 9999
         # 'rubble': 9999
     }

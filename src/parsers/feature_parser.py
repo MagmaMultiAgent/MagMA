@@ -83,7 +83,7 @@ class FeatureParser():
         ]
 
         self.map_featrue_names = [
-            # 'factory',
+            'factory',
             'ice',
             # 'ore',
             # 'rubble',
@@ -332,7 +332,7 @@ class FeatureParser():
                         dx, dy = offset
                         if 0 <= x + dx < obs.board.ice.shape[0] and 0 <= y + dy < obs.board.ice.shape[1]:
                             pass
-                            # map_feature['factory'][x + dx, y + dy] = 1.0
+                            map_feature['factory'][x + dx, y + dy] = 1.0
 
         factory_feature['factory_power'] = factory_feature['factory_power'] / heavy_cfg.BATTERY_CAPACITY
         factory_feature['factory_ice'] = factory_feature['factory_ice'] / heavy_cfg.CARGO_SPACE
