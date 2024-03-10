@@ -159,7 +159,11 @@ class FeatureParser():
                 'cargo_ice',
                 'cargo_ore',
                 'cargo_water',
-                'cargo_metal'
+                'cargo_metal',
+                'rubble_under',
+                'ice_under',
+                'x',
+                'y'
             ],
             'factories': [
                 'power',
@@ -211,6 +215,10 @@ class FeatureParser():
                 'cargo_ore': unit.cargo.ore,
                 'cargo_water': unit.cargo.water,
                 'cargo_metal': unit.cargo.metal,
+                'rubble_under': obs.board.rubble[unit.pos[0], unit.pos[1]],
+                'ice_under': obs.board.ice[unit.pos[0], unit.pos[1]],
+                'x': unit.pos[0],
+                'y': unit.pos[1]
             }
         for factory in factories:
             factory_info[factory.unit_id] = {
