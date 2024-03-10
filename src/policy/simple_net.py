@@ -36,16 +36,16 @@ class SimpleNet(nn.Module):
             nn.Conv2d(self.value_feature_dim, 1, kernel_size=1, stride=1, padding=0, bias=True),
         )
 
-        self.direction_dim = 4
+        self.direction_dim = ActDims.direction
         self.direction_net = nn.Sequential(
             nn.Conv2d(self.map_feature_count, self.direction_dim, kernel_size=3, stride=1, padding="same", bias=True),
-            nn.LeakyReLU(),
+            #nn.LeakyReLU(),
         )
 
         self.unit_act_type = nn.Linear(self.act_type_feature_dim, len(UnitActType), bias=True)
         self.param_heads = nn.ModuleDict({
             unit_act_type.name: nn.ModuleDict({
-                "direction": nn.Linear(self.direction_dim, ActDims.direction, bias=True),
+                "direction": nn.Identity(),  # nn.Linear(self.direction_dim, ActDims.direction, bias=True),
                 "resource": nn.Linear(self.direction_dim, ActDims.resource, bias=True),
                 "amount": nn.Linear(self.direction_dim, ActDims.amount, bias=True),
                 "repeat": nn.Linear(self.direction_dim, ActDims.repeat, bias=True),
