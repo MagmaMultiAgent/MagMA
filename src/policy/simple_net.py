@@ -27,6 +27,7 @@ class SimpleNet(nn.Module):
             nn.AvgPool2d(kernel_size=3, stride=1, padding=1),
             nn.AvgPool2d(kernel_size=3, stride=1, padding=1),
         )
+        self.large_distance_norm = nn.BatchNorm2d(self.map_feature_count)
 
         self.value_feature_dim = self.global_feature_count + self.map_feature_count + self.unit_feature_count
         self.act_type_feature_dim = self.map_feature_count + self.unit_feature_count
@@ -60,6 +61,9 @@ class SimpleNet(nn.Module):
 
         large_embedding = self.large_distance_embedding(map_feature)
         large_embedding += map_feature
+        # scale between -1 and 1
+        large_embedding = 2 * (large_embedding - large_embedding.min()) / (large_embedding.max() - large_embedding.min()) - 1
+        # large_embedding = self.large_distance_norm(large_embedding)
         assert large_embedding.shape[2] == H
         assert large_embedding.shape[3] == W
 
