@@ -86,7 +86,7 @@ class FeatureParser():
             'factory',
             'ice',
             # 'ore',
-            # 'rubble',
+            'rubble',
             # 'lichen',
             # 'lichen_strains',
             # 'lichen_strains_own',
@@ -307,7 +307,7 @@ class FeatureParser():
 
         map_feature = {name: np.zeros_like(obs.board.ice, dtype=np.float32) for name in self.map_featrue_names}
         map_feature['ice'] = obs.board.ice
-        # map_feature['rubble'] = obs.board.rubble / 100
+        map_feature['rubble'] = obs.board.rubble / 100
 
         # Factory
 
