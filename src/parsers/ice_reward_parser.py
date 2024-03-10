@@ -65,7 +65,7 @@ class IceRewardParser(DenseRewardParser):
 
                 # if on ice
                 if unit["ice_under"]:
-                    unit_reward += 0.01
+                    # unit_reward += 0.01
 
                     # if the pos as last time
                     if unit["x"] == last_count_units.get(unit_name, {}).get("x") and unit["y"] == last_count_units.get(unit_name, {}).get("y"):

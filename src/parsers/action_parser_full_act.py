@@ -423,13 +423,24 @@ class ActionParser():
                 and unit.power - action_queue_cost >= unit.unit_cfg.DIG_COST:
                 # if (board.lichen[x, y] > 0) or (board.rubble[x, y] > 0) \
                 #     or (board.ice[x, y] > 0) or (board.ore[x, y] > 0):
-                if (board.rubble[x, y] > 0) or (board.ice[x, y] > 0):
-                    if board.ice[x, y] > 0:
-                        valid_actions["unit_act"]["dig"]['repeat'][0, x, y] = False
-                        valid_actions["unit_act"]["dig"]['repeat'][1, x, y] = True
-                    else:
-                        valid_actions["unit_act"]["dig"]['repeat'][0, x, y] = True
-                        valid_actions["unit_act"]["dig"]['repeat'][1, x, y] = False
+                if board.rubble[x, y] > 0:
+                    # if not enough power to clear away all rubble, move
+                    rubble_removed_on_dig = unit.unit_cfg.DIG_RUBBLE_REMOVED
+                    dig_cost = unit.unit_cfg.DIG_COST
+                    rubble_on_tile = board.rubble[x, y]
+                    power_required = dig_cost * (rubble_on_tile / rubble_removed_on_dig) + action_queue_cost
+                    # print(f"power_required: {power_required}", "rubble_on_tile: ", rubble_on_tile, "rubble_removed_on_dig: ", rubble_removed_on_dig, "dig_cost: ", dig_cost, "action_queue_cost: ", action_queue_cost, file=sys.stderr)
+                    if unit.power - power_required >= 0:
+                        if board.ice[x, y] > 0:
+                            valid_actions["unit_act"]["dig"]['repeat'][0, x, y] = False
+                            valid_actions["unit_act"]["dig"]['repeat'][1, x, y] = True
+                        else:
+                            valid_actions["unit_act"]["dig"]['repeat'][0, x, y] = True
+                            valid_actions["unit_act"]["dig"]['repeat'][1, x, y] = False
+
+                elif board.ice[x, y] > 0:
+                    valid_actions["unit_act"]["dig"]['repeat'][0, x, y] = False
+                    valid_actions["unit_act"]["dig"]['repeat'][1, x, y] = True
 
             # valid selfdestruct
             if unit.power - action_queue_cost >= unit.unit_cfg.SELF_DESTRUCT_COST:

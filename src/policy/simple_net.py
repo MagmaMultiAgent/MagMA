@@ -19,7 +19,7 @@ class SimpleNet(nn.Module):
 
         # Units and critic
         self.global_feature_count = 4
-        self.map_feature_count = 2
+        self.map_feature_count = 3
         self.unit_feature_count = 3
 
         self.large_distance_embedding = nn.Sequential(
@@ -29,7 +29,7 @@ class SimpleNet(nn.Module):
         )
         self.large_distance_norm = nn.BatchNorm2d(self.map_feature_count)
 
-        self.value_feature_dim = self.global_feature_count + self.map_feature_count + self.unit_feature_count
+        self.value_feature_dim = self.map_feature_count + self.unit_feature_count
         self.act_type_feature_dim = self.map_feature_count + self.unit_feature_count
 
         self.critic_head = nn.Sequential(
@@ -61,13 +61,14 @@ class SimpleNet(nn.Module):
 
         large_embedding = self.large_distance_embedding(map_feature)
         large_embedding += map_feature
-        # scale between -1 and 1
-        large_embedding = 2 * (large_embedding - large_embedding.min()) / (large_embedding.max() - large_embedding.min()) - 1
+        # scale between -1 and 1 for each channel
+        for i in range(large_embedding.shape[1]):
+            large_embedding[:, i] = 2 * (large_embedding[:, i] - large_embedding[:, i].min()) / (large_embedding[:, i].max() - large_embedding[:, i].min()) - 1
         # large_embedding = self.large_distance_norm(large_embedding)
         assert large_embedding.shape[2] == H
         assert large_embedding.shape[3] == W
 
-        value_feature = torch.cat([global_feature, map_feature, unit_feature], dim=1)
+        value_feature = torch.cat([map_feature, unit_feature], dim=1)
         act_type_feature = torch.cat([map_feature, unit_feature], dim=1)
 
         # Valid actions
