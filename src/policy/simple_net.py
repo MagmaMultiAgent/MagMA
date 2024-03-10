@@ -38,7 +38,7 @@ class SimpleNet(nn.Module):
 
         self.direction_dim = 4
         self.direction_net = nn.Sequential(
-            nn.Conv2d(self.map_feature_count, 4, kernel_size=3, stride=1, padding="same", bias=True),
+            nn.Conv2d(self.map_feature_count + self.unit_feature_count, self.direction_dim, kernel_size=3, stride=1, padding="same", bias=True),
             nn.LeakyReLU(),
         )
 
@@ -99,7 +99,7 @@ class SimpleNet(nn.Module):
         critic_value[unit_pos[0], unit_ids] = _critic_value_unit
 
         # Actor
-        direction_feature = self.direction_net(large_embedding)
+        direction_feature = self.direction_net(torch.cat([large_embedding, unit_feature], dim=1))
         logp, action, entropy = self.actor(act_type_feature, direction_feature, factory_feature, va, factory_pos, unit_act_type_va, unit_pos, factory_ids, unit_ids, action)
 
         return logp, critic_value, action, entropy
