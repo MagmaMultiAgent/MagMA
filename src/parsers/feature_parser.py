@@ -314,7 +314,7 @@ class FeatureParser():
         # Map
 
         map_feature = {name: np.zeros_like(obs.board.ice, dtype=np.float32) for name in self.map_featrue_names}
-        map_feature['ice'] = obs.board.ice - (obs.board.rubble / 100) * obs.board.ice
+        map_feature['ice'] = obs.board.ice
 
         # Factory
 
