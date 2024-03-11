@@ -19,7 +19,7 @@ class SimpleNet(nn.Module):
 
         # Units and critic
         self.global_feature_count = 4
-        self.map_feature_count = 3
+        self.map_feature_count = 2
         self.unit_feature_count = 3
 
         self.large_distance_embedding = nn.Sequential(
