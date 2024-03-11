@@ -34,7 +34,7 @@ class SimpleNet(nn.Module):
             nn.Conv2d(self.value_feature_dim, 1, kernel_size=1, stride=1, padding=0, bias=True),
         )
 
-        self.direction_dim = 8
+        self.direction_dim = 4
         self.direction_net = nn.Sequential(
             nn.Conv2d(self.map_feature_count + self.unit_feature_count, self.direction_dim, kernel_size=3, stride=1, padding="same", bias=True),
             nn.LeakyReLU(),
