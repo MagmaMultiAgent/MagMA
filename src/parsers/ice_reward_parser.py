@@ -63,16 +63,6 @@ class IceRewardParser(DenseRewardParser):
                 unit_id = int(unit_name.split("_")[1]) + 10
                 unit_rewards += unit_reward
 
-                # if on ice
-                if unit["ice_under"]:
-                    # unit_reward += 0.01
-
-                    # if the pos as last time
-                    if unit["x"] == last_count_units.get(unit_name, {}).get("x") and unit["y"] == last_count_units.get(unit_name, {}).get("y"):
-                        # get rubble under
-                        rubble_under_decrease = max(last_count_units.get(unit_name, {}).get("rubble_under", 0) - unit["rubble_under"], 0)
-                        unit_reward += rubble_under_decrease / 10
-
                 final_reward[team][unit_id] += unit_reward
 
         _, sub_rewards = super(IceRewardParser, self).parse(dones, game_state, env_stats, global_info)

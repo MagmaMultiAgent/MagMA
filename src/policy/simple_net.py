@@ -23,9 +23,7 @@ class SimpleNet(nn.Module):
         self.unit_feature_count = 3
 
         self.large_distance_embedding = nn.Sequential(
-            nn.AvgPool2d(kernel_size=3, stride=1, padding=1),
-            nn.AvgPool2d(kernel_size=3, stride=1, padding=1),
-            nn.AvgPool2d(kernel_size=3, stride=1, padding=1),
+            nn.Identity(),
         )
         self.large_distance_norm = nn.BatchNorm2d(self.map_feature_count)
 
@@ -38,7 +36,7 @@ class SimpleNet(nn.Module):
 
         self.direction_dim = 8
         self.direction_net = nn.Sequential(
-            nn.Conv2d(self.map_feature_count + self.unit_feature_count, self.direction_dim, kernel_size=3, stride=1, padding="same", bias=True),
+            nn.Conv2d(self.map_feature_count + self.unit_feature_count, self.direction_dim, kernel_size=5, stride=1, padding="same", bias=True),
             nn.LeakyReLU(),
         )
 
@@ -61,8 +59,8 @@ class SimpleNet(nn.Module):
 
         large_embedding = self.large_distance_embedding(map_feature)
         # make rubble zero
-        large_embedding[:, 2] = 0
-        large_embedding += map_feature
+        # large_embedding[:, 2] = 0
+        # large_embedding += map_feature
         # scale between -1 and 1 for each channel
         for i in range(large_embedding.shape[1]):
             large_embedding[:, i] = 2 * (large_embedding[:, i] - large_embedding[:, i].min()) / (large_embedding[:, i].max() - large_embedding[:, i].min()) - 1
