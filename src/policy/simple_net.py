@@ -24,6 +24,8 @@ class SimpleNet(nn.Module):
 
         self.large_distance_embedding = nn.Sequential(
             nn.AvgPool2d(kernel_size=3, stride=1, padding=1),
+            nn.AvgPool2d(kernel_size=3, stride=1, padding=1),
+            nn.AvgPool2d(kernel_size=3, stride=1, padding=1),
         )
         self.large_distance_norm = nn.BatchNorm2d(self.map_feature_count)
 
