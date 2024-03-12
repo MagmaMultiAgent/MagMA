@@ -62,8 +62,8 @@ class SimpleNet(nn.Module):
         # large_embedding[:, 2] = 0
         # large_embedding += map_feature
         # scale between -1 and 1 for each channel
-        # for i in range(large_embedding.shape[1]):
-        #     large_embedding[:, i] = 2 * (large_embedding[:, i] - large_embedding[:, i].min()) / (large_embedding[:, i].max() - large_embedding[:, i].min()) - 1
+        for i in range(large_embedding.shape[1]):
+            large_embedding[:, i] = 2 * (large_embedding[:, i] - large_embedding[:, i].min()) / (large_embedding[:, i].max() - large_embedding[:, i].min()) - 1
         # large_embedding = self.large_distance_norm(large_embedding)
         assert large_embedding.shape[2] == H
         assert large_embedding.shape[3] == W
@@ -100,7 +100,7 @@ class SimpleNet(nn.Module):
         critic_value[unit_pos[0], unit_ids] = _critic_value_unit
 
         # Actor
-        direction_feature = self.direction_net(torch.cat([map_feature, unit_feature], dim=1))
+        direction_feature = self.direction_net(torch.cat([large_embedding, unit_feature], dim=1))
         logp, action, entropy = self.actor(act_type_feature, direction_feature, factory_feature, va, factory_pos, unit_act_type_va, unit_pos, factory_ids, unit_ids, action)
 
         return logp, critic_value, action, entropy
