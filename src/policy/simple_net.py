@@ -38,7 +38,7 @@ class SimpleNet(nn.Module):
 
         self.direction_dim = 4
         self.direction_net = nn.Sequential(
-            nn.Conv2d(self.map_feature_count + self.unit_feature_count, self.direction_dim, kernel_size=3, stride=1, padding="same", bias=True),
+            nn.Conv2d(self.map_feature_count*2 + self.unit_feature_count, self.direction_dim, kernel_size=3, stride=1, padding="same", bias=True),
             nn.LeakyReLU(),
         )
 
@@ -62,7 +62,6 @@ class SimpleNet(nn.Module):
         large_embedding = self.large_distance_embedding(map_feature)
         # make rubble zero
         # large_embedding[:, 2] = 0
-        large_embedding += map_feature
         # scale between -1 and 1 for each channel
         for i in range(large_embedding.shape[1]):
             large_embedding[:, i] = 2 * (large_embedding[:, i] - large_embedding[:, i].min()) / (large_embedding[:, i].max() - large_embedding[:, i].min()) - 1
@@ -101,7 +100,7 @@ class SimpleNet(nn.Module):
         critic_value[unit_pos[0], unit_ids] = _critic_value_unit
 
         # Actor
-        direction_feature = self.direction_net(torch.cat([large_embedding, unit_feature], dim=1))
+        direction_feature = self.direction_net(torch.cat([map_feature, large_embedding, unit_feature], dim=1))
         logp, action, entropy = self.actor(act_type_feature, direction_feature, factory_feature, va, factory_pos, unit_act_type_va, unit_pos, factory_ids, unit_ids, action)
 
         return logp, critic_value, action, entropy
