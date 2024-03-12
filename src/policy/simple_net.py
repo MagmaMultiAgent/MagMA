@@ -62,8 +62,8 @@ class SimpleNet(nn.Module):
         # large_embedding[:, 2] = 0
         # large_embedding += map_feature
         # scale between -1 and 1 for each channel
-        for i in range(large_embedding.shape[1]):
-            large_embedding[:, i] = 2 * (large_embedding[:, i] - large_embedding[:, i].min()) / (large_embedding[:, i].max() - large_embedding[:, i].min()) - 1
+        # for i in range(large_embedding.shape[1]):
+        #     large_embedding[:, i] = 2 * (large_embedding[:, i] - large_embedding[:, i].min()) / (large_embedding[:, i].max() - large_embedding[:, i].min()) - 1
         # large_embedding = self.large_distance_norm(large_embedding)
         assert large_embedding.shape[2] == H
         assert large_embedding.shape[3] == W
