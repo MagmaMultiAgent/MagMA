@@ -288,6 +288,13 @@ class ActionParser():
         max_units_on_factory = 9
         factories = game_state.factories[player]
         factory_positions = [tuple(f.pos) for f in factories.values()]
+        factory_corner_positions = []
+        for f in factory_positions:
+            factory_corner_positions.append((f[0] - 1, f[1] - 1))
+            factory_corner_positions.append((f[0] - 1, f[1] + 1))
+            factory_corner_positions.append((f[0] + 1, f[1] - 1))
+            factory_corner_positions.append((f[0] + 1, f[1] + 1))
+
         for unit_id, factory in game_state.factories[player].items():
             x, y = factory.pos
 
@@ -325,6 +332,7 @@ class ActionParser():
             factory_va[FactoryActType.DO_NOTHING, x, y] = ~factory_va[FactoryActType.BUILD_HEAVY, x, y] & ~factory_va[FactoryActType.BUILD_LIGHT, x, y] & ~factory_va[FactoryActType.WATER, x, y]
 
         # unit actions
+        target_pos_set = set()
         for unit_id, unit in game_state.units[player].items():
             x, y = unit.pos
 
@@ -352,10 +360,25 @@ class ActionParser():
             valid_actions["unit_act"]["act_type"][UnitActType.TRANSFER, x, y] = False
 
             # valid unit move
-            valid_actions["unit_act"]["move"]["repeat"][0, x, y] = True
-            valid_actions["unit_act"]["move"]["repeat"][1, x, y] = False
+            valid_actions["unit_act"]["move"]["repeat"][1, x, y] = True
+            valid_actions["unit_act"]["move"]["repeat"][0, x, y] = False
+            
             for direction in range(len(move_deltas)):
                 target_pos = unit.pos + move_deltas[direction]
+
+                # don't move backwards compared to last step
+                if len(unit.action_queue) > 0 and unit.action_queue[0][0] == UnitActType.MOVE:
+                    last_direction = unit.action_queue[0][1]
+                    # a[1] = direction (0 = center, 1 = up, 2 = right, 3 = down, 4 = left)
+                    # move_deltas = np.array([[0, 0], [0, -1], [1, 0], [0, 1], [-1, 0]])
+                    if direction == 1 and last_direction == 3:
+                        continue
+                    if direction == 2 and last_direction == 4:
+                        continue
+                    if direction == 3 and last_direction == 1:
+                        continue
+                    if direction == 4 and last_direction == 2:
+                        continue
 
                 # always forbid to move to the same position
                 if direction == 0:
@@ -369,6 +392,11 @@ class ActionParser():
                 if factory_under_unit(target_pos, game_state.factories[enemy]) is not None:
                     continue
 
+                # if not on factory, don't step on factory
+                if factory_under_unit(unit.pos, game_state.factories[player]) is None:
+                    if factory_under_unit(target_pos, game_state.factories[player]) is not None:
+                        continue
+
                 # don't step on other units
                 unit_at_target = unit_map[target_pos[0], target_pos[1]]
                 if unit_at_target != -1:
@@ -378,12 +406,21 @@ class ActionParser():
                 if tuple(target_pos) in factory_positions:
                     continue
 
+                # don't step on corner of factory (unless on edge of the map)
+                if tuple(target_pos) in factory_corner_positions and (target_pos[0] > 0 and target_pos[1] > 0 and target_pos[0] < EnvParam.map_size - 1 and target_pos[1] < EnvParam.map_size - 1):
+                    continue
+
                 # only step on enemy if unit is heavy
                 if unit.unit_type != "HEAVY" and tuple(target_pos) in enemy_unit_positions:
                     continue
 
                 power_required = unit.move_cost(game_state, direction)
                 if unit.power - action_queue_cost >= power_required:
+
+                    if tuple(target_pos) in target_pos_set:
+                        continue
+                    
+                    target_pos_set.add(tuple(target_pos))
                     valid_actions["unit_act"]["move"]["direction"][direction, x, y] = True
 
             # valid transfer
@@ -428,7 +465,7 @@ class ActionParser():
                     rubble_removed_on_dig = unit.unit_cfg.DIG_RUBBLE_REMOVED
                     dig_cost = unit.unit_cfg.DIG_COST
                     rubble_on_tile = board.rubble[x, y]
-                    power_required = dig_cost * (rubble_on_tile / rubble_removed_on_dig) + action_queue_cost
+                    power_required = dig_cost * ((rubble_on_tile / rubble_removed_on_dig)) + action_queue_cost
                     # print(f"power_required: {power_required}", "rubble_on_tile: ", rubble_on_tile, "rubble_removed_on_dig: ", rubble_removed_on_dig, "dig_cost: ", dig_cost, "action_queue_cost: ", action_queue_cost, file=sys.stderr)
                     if unit.power - power_required >= 0:
                         if board.ice[x, y] > 0:
