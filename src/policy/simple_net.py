@@ -29,16 +29,16 @@ class SimpleNet(nn.Module):
         )
         self.large_distance_norm = nn.BatchNorm2d(self.map_feature_count)
 
-        self.value_feature_dim = self.map_feature_count + self.unit_feature_count
+        self.direction_dim = 4
+        self.value_feature_dim = self.map_feature_count + self.unit_feature_count + self.direction_dim
         self.act_type_feature_dim = self.map_feature_count + self.unit_feature_count
 
         self.critic_head = nn.Sequential(
             nn.Conv2d(self.value_feature_dim, 1, kernel_size=1, stride=1, padding=0, bias=True),
         )
 
-        self.direction_dim = 4
         self.direction_net = nn.Sequential(
-            nn.Conv2d(self.map_feature_count*2 + self.unit_feature_count, self.direction_dim, kernel_size=3, stride=1, padding="same", bias=True),
+            nn.Conv2d(self.map_feature_count + self.unit_feature_count, self.direction_dim, kernel_size=3, stride=1, padding="same", bias=True),
             nn.LeakyReLU(),
         )
 
@@ -60,6 +60,7 @@ class SimpleNet(nn.Module):
         global_feature = global_feature[..., None, None].expand(-1, -1, H, W)
 
         large_embedding = self.large_distance_embedding(map_feature)
+        large_embedding += map_feature
         # make rubble zero
         # large_embedding[:, 2] = 0
         # scale between -1 and 1 for each channel
@@ -68,7 +69,9 @@ class SimpleNet(nn.Module):
         assert large_embedding.shape[2] == H
         assert large_embedding.shape[3] == W
 
-        value_feature = torch.cat([map_feature, unit_feature], dim=1)
+        direction_feature = self.direction_net(torch.cat([large_embedding, unit_feature], dim=1))
+
+        value_feature = torch.cat([map_feature, unit_feature, direction_feature], dim=1)
         act_type_feature = torch.cat([map_feature, unit_feature], dim=1)
 
         # Valid actions
@@ -100,7 +103,6 @@ class SimpleNet(nn.Module):
         critic_value[unit_pos[0], unit_ids] = _critic_value_unit
 
         # Actor
-        direction_feature = self.direction_net(torch.cat([map_feature, large_embedding, unit_feature], dim=1))
         logp, action, entropy = self.actor(act_type_feature, direction_feature, factory_feature, va, factory_pos, unit_act_type_va, unit_pos, factory_ids, unit_ids, action)
 
         return logp, critic_value, action, entropy
