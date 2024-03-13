@@ -30,7 +30,7 @@ class SimpleNet(nn.Module):
         self.large_distance_norm = nn.BatchNorm2d(self.map_feature_count)
 
         self.direction_dim = 4
-        self.value_feature_dim = self.map_feature_count + self.unit_feature_count + self.direction_dim
+        self.value_feature_dim = self.map_feature_count + self.unit_feature_count
         self.act_type_feature_dim = self.map_feature_count + self.unit_feature_count
 
         self.critic_head = nn.Sequential(
@@ -71,7 +71,7 @@ class SimpleNet(nn.Module):
 
         direction_feature = self.direction_net(torch.cat([large_embedding, unit_feature], dim=1))
 
-        value_feature = torch.cat([map_feature, unit_feature, direction_feature], dim=1)
+        value_feature = torch.cat([map_feature, unit_feature], dim=1)
         act_type_feature = torch.cat([map_feature, unit_feature], dim=1)
 
         # Valid actions
