@@ -83,10 +83,10 @@ class FeatureParser():
         ]
 
         self.map_featrue_names = [
-            # 'factory',
+            'factory',
             'ice',
             # 'ore',
-            # 'rubble',
+            'rubble',
             # 'lichen',
             # 'lichen_strains',
             # 'lichen_strains_own',
@@ -315,6 +315,7 @@ class FeatureParser():
 
         map_feature = {name: np.zeros_like(obs.board.ice, dtype=np.float32) for name in self.map_featrue_names}
         map_feature['ice'] = obs.board.ice
+        map_feature['rubble'] = obs.board.rubble / 100
 
         # Factory
 
@@ -338,7 +339,7 @@ class FeatureParser():
                     for offset in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
                         dx, dy = offset
                         if 0 <= x + dx < obs.board.ice.shape[0] and 0 <= y + dy < obs.board.ice.shape[1]:
-                            # map_feature['factory'][x + dx, y + dy] = 1.0
+                            map_feature['factory'][x + dx, y + dy] = 1.0
                             pass
 
         factory_feature['factory_power'] = factory_feature['factory_power'] / heavy_cfg.BATTERY_CAPACITY
