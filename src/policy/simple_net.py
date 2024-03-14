@@ -19,8 +19,12 @@ class SimpleNet(nn.Module):
 
         # Units and critic
         self.global_feature_count = 4
-        self.map_feature_count = 2
+        self.map_feature_count = 1
         self.unit_feature_count = 3
+        self.unit_feature_net = nn.Sequential(
+            nn.Conv2d(self.unit_feature_count, self.unit_feature_count, kernel_size=1, stride=1, padding=0, bias=True),
+            nn.LeakyReLU(),
+        )
 
         self.large_embedding_dim = 8
         self.large_distance_embedding = nn.Sequential(
@@ -30,28 +34,26 @@ class SimpleNet(nn.Module):
         )
 
         self.combined_feature_dim = self.global_feature_count + self.map_feature_count + self.large_embedding_dim + self.unit_feature_count  # 16
-        self.combined_feature_net = nn.Sequential(
-            nn.Conv2d(self.combined_feature_dim, self.combined_feature_dim, kernel_size=1, stride=1, padding=0, bias=True),
-            nn.LeakyReLU(),
-        )
 
         self.critic_head = nn.Sequential(
             nn.Conv2d(self.combined_feature_dim, 1, kernel_size=1, stride=1, padding=0, bias=True),
         )
 
+        self.direction_feature_dim = self.map_feature_count + self.large_embedding_dim
         self.direction_dim = 4
         self.direction_net = nn.Sequential(
-            nn.Conv2d(self.combined_feature_dim, 4, kernel_size=3, stride=1, padding="same", bias=True),
+            nn.Conv2d(self.direction_feature_dim, self.direction_dim, kernel_size=3, stride=1, padding="same", bias=True),
             nn.LeakyReLU(),
         )
+        self.direction_dim_final = self.direction_dim + self.unit_feature_count
 
         self.unit_act_type = nn.Linear(self.combined_feature_dim, len(UnitActType), bias=True)
         self.param_heads = nn.ModuleDict({
             unit_act_type.name: nn.ModuleDict({
-                "direction": nn.Linear(self.direction_dim, ActDims.direction, bias=True),
-                "resource": nn.Linear(self.direction_dim, ActDims.resource, bias=True),
-                "amount": nn.Linear(self.direction_dim, ActDims.amount, bias=True),
-                "repeat": nn.Linear(self.direction_dim, ActDims.repeat, bias=True),
+                "direction": nn.Linear(self.direction_dim_final, ActDims.direction, bias=True),
+                "resource": nn.Linear(self.direction_dim_final, ActDims.resource, bias=True),
+                "amount": nn.Linear(self.direction_dim_final, ActDims.amount, bias=True),
+                "repeat": nn.Linear(self.direction_dim_final, ActDims.repeat, bias=True),
             }) for unit_act_type in UnitActType
         })
 
@@ -61,10 +63,17 @@ class SimpleNet(nn.Module):
 
         # Embeddings
         global_feature = global_feature[..., None, None].expand(-1, -1, H, W)
+
+        unit_feature = self.unit_feature_net(unit_feature)
+
         large_embedding = self.large_distance_embedding(map_feature)
         assert large_embedding.shape[2] == H
         assert large_embedding.shape[3] == W
         combined_feature = torch.cat([global_feature, map_feature, large_embedding, unit_feature], dim=1)
+
+        direction_feature = torch.cat([map_feature, large_embedding], dim=1)
+        direction_feature = self.direction_net(direction_feature)
+        direction_feature = torch.cat([direction_feature, unit_feature], dim=1)
 
         # Valid actions
         unit_act_type_va = torch.stack(
@@ -95,7 +104,6 @@ class SimpleNet(nn.Module):
         critic_value[unit_pos[0], unit_ids] = _critic_value_unit
 
         # Actor
-        direction_feature = self.direction_net(combined_feature)
         logp, action, entropy = self.actor(combined_feature, direction_feature, factory_feature, va, factory_pos, unit_act_type_va, unit_pos, factory_ids, unit_ids, action)
 
         return logp, critic_value, action, entropy

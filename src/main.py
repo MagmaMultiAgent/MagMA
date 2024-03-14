@@ -23,7 +23,7 @@ import torch
 import numpy as np
 from player import Player
 ### The model path
-PATH = 'distributed_ice__5_4_fact_rubb_scaled_rubmask_model_425984.pth'
+PATH = 'distributed_ice_reset_combined_p3x5_1_3_fact_glob_model_458752.pth'
 ### DO NOT REMOVE THE FOLLOWING CODE ###
 agent_dict = (
     dict()
