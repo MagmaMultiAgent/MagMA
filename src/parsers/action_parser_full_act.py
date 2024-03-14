@@ -471,9 +471,6 @@ class ActionParser():
                         if board.ice[x, y] > 0:
                             valid_actions["unit_act"]["dig"]['repeat'][0, x, y] = False
                             valid_actions["unit_act"]["dig"]['repeat'][1, x, y] = True
-                        else:
-                            valid_actions["unit_act"]["dig"]['repeat'][0, x, y] = True
-                            valid_actions["unit_act"]["dig"]['repeat'][1, x, y] = False
 
                 elif board.ice[x, y] > 0:
                     valid_actions["unit_act"]["dig"]['repeat'][0, x, y] = False
