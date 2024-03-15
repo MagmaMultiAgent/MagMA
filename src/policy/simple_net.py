@@ -24,7 +24,6 @@ class SimpleNet(nn.Module):
         self.map_embedding_dim = 2
         self.map_embedding = nn.Sequential(
             nn.Conv2d(self.map_feature_count, self.map_embedding_dim, kernel_size=1, stride=1, padding=0, bias=True),
-            nn.LeakyReLU(),
         )
         
         self.unit_feature_count = 3
@@ -33,26 +32,21 @@ class SimpleNet(nn.Module):
             nn.LeakyReLU(),
         )
 
-        self.large_embedding_dim = self.map_embedding_dim
+        self.large_embedding_dim = 8
         self.large_distance_embedding = nn.Sequential(
             nn.AvgPool2d(kernel_size=3, stride=1, padding=1),
             nn.Conv2d(self.map_embedding_dim, self.large_embedding_dim, kernel_size=3, stride=1, padding="same", bias=True),
             nn.LeakyReLU(),
+            nn.AvgPool2d(kernel_size=3, stride=1, padding=1),
         )
-        self.large_distance_embedding_times = 3
 
-        self.combined_feature_dim = self.global_feature_count + self.map_embedding_dim + self.unit_feature_count
-
-        self.map_large_combiner = nn.Sequential(
-            nn.Conv2d(2, 1, kernel_size=1, stride=1, padding=0, bias=True),
-            nn.LeakyReLU(),
-        )
+        self.combined_feature_dim = self.global_feature_count + self.map_embedding_dim + self.large_embedding_dim + self.unit_feature_count  # 16
 
         self.critic_head = nn.Sequential(
             nn.Conv2d(self.combined_feature_dim, 1, kernel_size=1, stride=1, padding=0, bias=True),
         )
 
-        self.direction_feature_dim = self.map_embedding_dim
+        self.direction_feature_dim = self.map_embedding_dim + self.large_embedding_dim
         self.direction_dim = 4
         self.direction_net = nn.Sequential(
             nn.Conv2d(self.direction_feature_dim, self.direction_dim, kernel_size=3, stride=1, padding="same", bias=True),
@@ -80,24 +74,12 @@ class SimpleNet(nn.Module):
         unit_feature = self.unit_feature_net(unit_feature)
         map_feature = self.map_embedding(map_feature)
 
-        large_embedding = map_feature
-        for i in range(self.large_distance_embedding_times):
-            large_embedding = self.large_distance_embedding(large_embedding)
+        large_embedding = self.large_distance_embedding(map_feature)
         assert large_embedding.shape[2] == H
         assert large_embedding.shape[3] == W
+        combined_feature = torch.cat([global_feature, map_feature, large_embedding, unit_feature], dim=1)
 
-        # combine map and large embedding
-        combined_map_feature = torch.zeros((B, self.map_embedding_dim, H, W), dtype=map_feature.dtype, device=map_feature.device)
-        for i in range(map_feature.shape[1]):
-            _map_feature = map_feature[:, i:i+1]
-            _large_embedding = large_embedding[:, i:i+1]
-            combined = torch.cat([_map_feature, _large_embedding], dim=1)
-            combined = self.map_large_combiner(combined)
-            combined_map_feature[:, i:i+1] = combined
-
-        combined_feature = torch.cat([global_feature, combined_map_feature, unit_feature], dim=1)
-
-        direction_feature = combined_map_feature
+        direction_feature = torch.cat([map_feature, large_embedding], dim=1)
         direction_feature = self.direction_net(direction_feature)
         direction_feature = torch.cat([direction_feature, unit_feature], dim=1)
 
