@@ -321,7 +321,7 @@ def calculate_loss(advantages: torch.Tensor,
     pg_loss = torch.max(pg_loss1, pg_loss2).mean()
 
     # Value loss
-    newvalue = newvalue.view(-1, max_entity_number)
+    newvalue = newvalue.view(-1, 10)
     if clip_vloss:
         v_loss_unclipped = (newvalue - returns) ** 2
         v_clipped = values + torch.clamp(
@@ -395,6 +395,16 @@ def optimize_for_player(player: str,
                 mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
         mb_returns = b_returns[player][mb_inds]
         mb_values = b_values[player][mb_inds]
+
+        # get top 10 lrgest logprob and use it to index every other tensor
+        logratio_abs = torch.abs(logratio)
+        _, indices = torch.topk(logratio_abs, 10, dim=1)
+        mb_advantages = torch.gather(mb_advantages, 1, indices)
+        mb_returns = torch.gather(mb_returns, 1, indices)
+        mb_values = torch.gather(mb_values, 1, indices)
+        newvalue = torch.gather(newvalue, 1, indices)
+        entropy = torch.gather(entropy, 1, indices)
+        ratio = torch.gather(ratio, 1, indices)
 
         loss, pg_loss, entropy_loss, v_loss = calculate_loss(mb_advantages, mb_returns, mb_values, newvalue, entropy, ratio, max_entity_number, clip_vloss, clip_coef, ent_coef, vf_coef)
 
@@ -574,6 +584,7 @@ def main(args, device):
                 b_obs = obs
                 b_actions = actions
                 b_va = valid_actions
+                
                 b_logprobs = tree.map_structure(lambda x: x.view(-1, args.max_entity_number), logprobs)
                 b_advantages = tree.map_structure(lambda x: x.view(-1, args.max_entity_number), advantages)
                 b_returns = tree.map_structure(lambda x: x.view(-1, args.max_entity_number), returns)
