@@ -21,7 +21,7 @@ class SimpleNet(nn.Module):
         self.global_feature_count = 4
 
         self.map_feature_count = 3
-        self.map_embedding_dim = 2
+        self.map_embedding_dim = 4
         self.map_embedding = nn.Sequential(
             nn.Conv2d(self.map_feature_count, self.map_embedding_dim, kernel_size=1, stride=1, padding=0, bias=True),
             nn.LeakyReLU(),
@@ -33,13 +33,13 @@ class SimpleNet(nn.Module):
             nn.LeakyReLU(),
         )
 
-        self.large_embedding_dim = 8
+        self.large_embedding_dim = self.map_embedding_dim
         self.large_distance_embedding = nn.Sequential(
-            nn.AvgPool2d(kernel_size=3, stride=1, padding=1),
-            nn.Conv2d(self.map_embedding_dim, self.large_embedding_dim, kernel_size=3, stride=1, padding="same", bias=True),
+            nn.Conv2d(self.large_embedding_dim, self.large_embedding_dim, kernel_size=3, stride=1, padding="same", bias=True),
             nn.LeakyReLU(),
             nn.AvgPool2d(kernel_size=3, stride=1, padding=1),
         )
+        self.large_embedding_times = 3
 
         self.combined_feature_dim = self.map_embedding_dim + self.large_embedding_dim + self.unit_feature_count
 
@@ -75,7 +75,9 @@ class SimpleNet(nn.Module):
         unit_feature = self.unit_feature_net(unit_feature)
         map_feature = self.map_embedding(map_feature)
 
-        large_embedding = self.large_distance_embedding(map_feature)
+        large_embedding = map_feature
+        for _ in range(self.large_embedding_times):
+            large_embedding = self.large_distance_embedding(large_embedding)
         assert large_embedding.shape[2] == H
         assert large_embedding.shape[3] == W
         combined_feature = torch.cat([map_feature, large_embedding, unit_feature], dim=1)
