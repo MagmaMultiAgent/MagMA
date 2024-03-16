@@ -45,7 +45,9 @@ class IceRewardParser(DenseRewardParser):
             ice_increment = own_global_info["total_ice"] - last_count['total_ice']
             global_reward[team] += max(ice_increment, 0)
 
+            own_reward_weight = 0
             unit_rewards = 0
+            unit_count = 0
             for unit_name, unit in own_unit_info.items():
                 unit_reward = 0
 
@@ -63,9 +65,16 @@ class IceRewardParser(DenseRewardParser):
 
                 unit_id = int(unit_name.split("_")[1]) + 10
                 unit_rewards += unit_reward
+                unit_count += 1
 
-                final_reward[team][unit_id] += unit_reward
+                final_reward[team][unit_id] += unit_reward * own_reward_weight
 
+            if unit_count > 0:
+                for unit_name in own_unit_info.keys():
+                    unit_id = int(unit_name.split("_")[1]) + 10
+                    final_reward[team][unit_id] += (unit_rewards / unit_count) * (1 - own_reward_weight)
+
+            
         _, sub_rewards = super(IceRewardParser, self).parse(dones, game_state, env_stats, global_info)
 
         self.update_last_count(global_info)
