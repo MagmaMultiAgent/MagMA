@@ -321,7 +321,7 @@ def calculate_loss(advantages: torch.Tensor,
     pg_loss = torch.max(pg_loss1, pg_loss2).mean()
 
     # Value loss
-    newvalue = newvalue.view(-1, 10)
+    newvalue = newvalue.view(-1, 1000)
     if clip_vloss:
         v_loss_unclipped = (newvalue - returns) ** 2
         v_clipped = values + torch.clamp(
@@ -397,8 +397,8 @@ def optimize_for_player(player: str,
         mb_values = b_values[player][mb_inds]
 
         # get top 10 lrgest logprob and use it to index every other tensor
-        logratio_abs = torch.abs(logratio)
-        _, indices = torch.topk(logratio_abs, 10, dim=1)
+        mb_advantages_abs = torch.abs(mb_advantages)
+        _, indices = torch.topk(mb_advantages_abs, 1000, dim=1)
         mb_advantages = torch.gather(mb_advantages, 1, indices)
         mb_returns = torch.gather(mb_returns, 1, indices)
         mb_values = torch.gather(mb_values, 1, indices)

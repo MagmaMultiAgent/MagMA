@@ -24,6 +24,7 @@ class SimpleNet(nn.Module):
         self.map_embedding_dim = 2
         self.map_embedding = nn.Sequential(
             nn.Conv2d(self.map_feature_count, self.map_embedding_dim, kernel_size=1, stride=1, padding=0, bias=True),
+            nn.LeakyReLU(),
         )
         
         self.unit_feature_count = 3
@@ -40,7 +41,7 @@ class SimpleNet(nn.Module):
             nn.AvgPool2d(kernel_size=3, stride=1, padding=1),
         )
 
-        self.combined_feature_dim = self.global_feature_count + self.map_embedding_dim + self.large_embedding_dim + self.unit_feature_count  # 16
+        self.combined_feature_dim = self.map_embedding_dim + self.large_embedding_dim + self.unit_feature_count
 
         self.critic_head = nn.Sequential(
             nn.Conv2d(self.combined_feature_dim, 1, kernel_size=1, stride=1, padding=0, bias=True),
@@ -77,7 +78,7 @@ class SimpleNet(nn.Module):
         large_embedding = self.large_distance_embedding(map_feature)
         assert large_embedding.shape[2] == H
         assert large_embedding.shape[3] == W
-        combined_feature = torch.cat([global_feature, map_feature, large_embedding, unit_feature], dim=1)
+        combined_feature = torch.cat([map_feature, large_embedding, unit_feature], dim=1)
 
         direction_feature = torch.cat([map_feature, large_embedding], dim=1)
         direction_feature = self.direction_net(direction_feature)

@@ -346,18 +346,14 @@ class ActionParser():
                     valid_actions["unit_act"]["act_type"][UnitActType.PICKUP, x, y] = False
                     valid_actions["unit_act"]["act_type"][UnitActType.RECHARGE, x, y] = False
                 else:
-                    # valid_actions["unit_act"]["act_type"][UnitActType.MOVE, x, y] = True
-                    # valid_actions["unit_act"]["act_type"][UnitActType.PICKUP, x, y] = True
+                    valid_actions["unit_act"]["act_type"][UnitActType.MOVE, x, y] = True
+                    valid_actions["unit_act"]["act_type"][UnitActType.PICKUP, x, y] = True
                     valid_actions["unit_act"]["act_type"][UnitActType.RECHARGE, x, y] = True
 
                 valid_actions["unit_act"]["act_type"][UnitActType.DO_NOTHING, x, y] = False
             else:
                 valid_actions["unit_act"]["act_type"][UnitActType.DO_NOTHING, x, y] = True
                 continue
-
-            # ICE OVERRIDE, TODO: Remove!
-            valid_actions["unit_act"]["act_type"][UnitActType.PICKUP, x, y] = False
-            valid_actions["unit_act"]["act_type"][UnitActType.TRANSFER, x, y] = False
 
             # valid unit move
             valid_actions["unit_act"]["move"]["repeat"][1, x, y] = True
@@ -392,11 +388,6 @@ class ActionParser():
                 if factory_under_unit(target_pos, game_state.factories[enemy]) is not None:
                     continue
 
-                # if not on factory, don't step on factory
-                if factory_under_unit(unit.pos, game_state.factories[player]) is None:
-                    if factory_under_unit(target_pos, game_state.factories[player]) is not None:
-                        continue
-
                 # don't step on other units
                 unit_at_target = unit_map[target_pos[0], target_pos[1]]
                 if unit_at_target != -1:
@@ -404,10 +395,6 @@ class ActionParser():
 
                 # don't step on middle of factory
                 if tuple(target_pos) in factory_positions:
-                    continue
-
-                # don't step on corner of factory (unless on edge of the map)
-                if tuple(target_pos) in factory_corner_positions and (target_pos[0] > 0 and target_pos[1] > 0 and target_pos[0] < EnvParam.map_size - 1 and target_pos[1] < EnvParam.map_size - 1):
                     continue
 
                 # only step on enemy if unit is heavy
@@ -428,8 +415,8 @@ class ActionParser():
             amounts = [unit.cargo.ice, unit.cargo.ore, unit.cargo.water, unit.cargo.metal, unit.power]
             for i, a in enumerate(amounts):
                 valid_actions["unit_act"]["transfer"]['resource'][i, x, y] = False
-            valid_actions["unit_act"]["transfer"]['resource'][0, x, y] = (a > 0)
-            valid_actions["unit_act"]["transfer"]['resource'][1, x, y] = (a > 0)
+            valid_actions["unit_act"]["transfer"]['resource'][0, x, y] = (unit.cargo.ice > 0) and (unit.cargo.ice >= 5)
+            valid_actions["unit_act"]["transfer"]['resource'][1, x, y] = (unit.cargo.ore > 0) and (unit.cargo.ore >= 5)
             for direction in range(1, len(move_deltas)):
                 target_pos = unit.pos + move_deltas[direction]
 
@@ -451,9 +438,9 @@ class ActionParser():
                 amounts = [
                     factory.cargo.ice, factory.cargo.ore, factory.cargo.water, factory.cargo.metal, factory.power
                 ]
-                for i, a in enumerate(amounts):
+                for i, _ in enumerate(amounts):
                     valid_actions["unit_act"]["pickup"]['resource'][i, x, y] = False
-                valid_actions["unit_act"]["pickup"]['resource'][4, x, y] = True
+                valid_actions["unit_act"]["pickup"]['resource'][4, x, y] = (factory.power > 0) and (unit.power < battery_capacity / 2)
 
             # valid dig
             if factory_under_unit(unit.pos, game_state.factories[player]) is None \
