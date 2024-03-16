@@ -38,8 +38,16 @@ class SimpleNet(nn.Module):
             nn.Conv2d(self.large_embedding_dim, self.large_embedding_dim, kernel_size=3, stride=1, padding="same", bias=True),
             nn.LeakyReLU(),
             nn.AvgPool2d(kernel_size=3, stride=1, padding=1),
+
+            nn.Conv2d(self.large_embedding_dim, self.large_embedding_dim, kernel_size=3, stride=1, padding="same", bias=True),
+            nn.LeakyReLU(),
+            nn.AvgPool2d(kernel_size=3, stride=1, padding=1),
+
+            nn.Conv2d(self.large_embedding_dim, self.large_embedding_dim, kernel_size=3, stride=1, padding="same", bias=True),
+            nn.LeakyReLU(),
+            nn.AvgPool2d(kernel_size=3, stride=1, padding=1),
         )
-        self.large_embedding_times = 3
+        self.large_embedding_times = 1
 
         self.combined_feature_dim = self.map_embedding_dim + self.large_embedding_dim + self.unit_feature_count
 
