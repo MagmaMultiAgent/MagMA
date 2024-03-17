@@ -110,7 +110,8 @@ class SimpleNet(nn.Module):
         critic_value = torch.zeros((B, 1000), device=combined_feature.device)
         _critic_value = self.critic(combined_feature)
         _critic_value_unit = _gather_from_map(_critic_value, unit_pos)
-        critic_value[unit_pos[0], unit_ids] = _critic_value_unit
+        for i in range(unit_ids.shape[0]):
+            critic_value[unit_pos[0][i], unit_ids[i]] += _critic_value_unit[i]
 
         # Actor
         logp, action, entropy = self.actor(combined_feature, direction_feature, factory_feature, va, factory_pos, unit_act_type_va, unit_pos, factory_ids, unit_ids, action)
@@ -173,8 +174,9 @@ class SimpleNet(nn.Module):
             unit_action,
         )
 
-        logp[unit_pos[0], unit_ids] = unit_logp
-        entropy[unit_pos[0], unit_ids] = unit_entropy
+        for i in range(unit_ids.shape[0]):
+            logp[unit_pos[0][i], unit_ids[i]] += unit_logp[i]
+            entropy[unit_pos[0][i], unit_ids[i]] += unit_entropy[i]
 
         output_action['unit_act'] = _put_into_map(unit_action, unit_pos)
 

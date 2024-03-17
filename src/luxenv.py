@@ -263,21 +263,19 @@ class LuxEnv(gym.Env):
         terminations_final = np.ones((2, 1000), dtype=np.bool_)
         truncations_final = np.ones((2, 1000), dtype=np.bool_)
 
-        terminations_final[:, 0] = terminations
-        truncations_final[:, 0] = truncations
-
-        for player in range(2):
-            unit_info = obs[f'player_{player}']['units']
-            for unit_name, _ in unit_info.items():
-                unit_id = int(unit_name.split("_")[1])
-                terminations_final[player, unit_id] = terminations[player]
-                truncations_final[player, unit_id] = truncations[player]
-
         self.real_obs = obs
         for player_id, player in enumerate(self.proxy.agents):
             o = obs[player]
             self.game_state[player_id] = obs_to_game_state(self.proxy.env_steps, self.env_cfg, o)
         obs_list, global_info = self.feature_parser.parse(obs, env_cfg=self.env_cfg)
+
+        for player in range(2):
+            unit_info = global_info[f"player_{player}"]["units"]
+            for _, unit in unit_info.items():
+                group_id = unit["group_id"]
+                terminations_final[player, group_id] = terminations[player]
+                truncations_final[player, group_id] = truncations[player]
+
         reward, sub_rewards = self.reward_parser.parse(
             dones,
             self.game_state,
