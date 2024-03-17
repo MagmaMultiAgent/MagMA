@@ -163,7 +163,8 @@ class FeatureParser():
                 'rubble_under',
                 'ice_under',
                 'x',
-                'y'
+                'y',
+                'group_id'
             ],
             'factories': [
                 'power',
@@ -218,7 +219,8 @@ class FeatureParser():
                 'rubble_under': obs.board.rubble[unit.pos[0], unit.pos[1]],
                 'ice_under': obs.board.ice[unit.pos[0], unit.pos[1]],
                 'x': unit.pos[0],
-                'y': unit.pos[1]
+                'y': unit.pos[1],
+                'group_id': self.get_unit_id(unit)
             }
         for factory in factories:
             factory_info[factory.unit_id] = {
@@ -356,13 +358,14 @@ class FeatureParser():
         
         for unit in units.values():
             x, y = unit.pos
-            location_feature['unit'][x, y] = int(unit.unit_id.split('_')[1])
+
+            unit_group_id = self.get_unit_id(unit)
+            location_feature['unit'][x, y] = unit_group_id
+
             unit_type = unit.unit_type
             cargo_space = light_cfg.CARGO_SPACE if unit_type == 'LIGHT' else heavy_cfg.CARGO_SPACE
             battery_capacity = light_cfg.BATTERY_CAPACITY if unit_type == 'LIGHT' else heavy_cfg.BATTERY_CAPACITY
             unit_feature['heavy'][x, y] = unit_type == 'HEAVY'
-            # TODO: remvoe
-            unit_feature['heavy'][x, y] = False
             unit_feature['power'][x, y] = unit.power / battery_capacity
             unit_feature['cargo_ice'][x, y] = unit.cargo.ice / cargo_space
 
@@ -378,6 +381,10 @@ class FeatureParser():
             return {'global_feature': global_feature, 'map_feature': map_feature, 'factory_feature': factory_feature, 'unit_feature': unit_feature, 'location_feature': location_feature}
         
         return LuxFeature(global_feature, map_feature, factory_feature, unit_feature, location_feature)
+
+    @staticmethod
+    def get_unit_id(unit):
+        return int(unit.unit_id.split('_')[1]) + 10
 
     @staticmethod
     def cluster_board(board):

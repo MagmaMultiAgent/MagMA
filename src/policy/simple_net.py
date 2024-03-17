@@ -33,7 +33,7 @@ class SimpleNet(nn.Module):
             nn.LeakyReLU(),
         )
 
-        self.large_embedding_dim = 16
+        self.large_embedding_dim = 8
         self.large_distance_embedding = nn.Sequential(
             nn.AvgPool2d(kernel_size=3, stride=1, padding=1),
             nn.Conv2d(self.map_embedding_dim, self.large_embedding_dim, kernel_size=5, stride=1, padding="same", bias=True),
@@ -104,7 +104,7 @@ class SimpleNet(nn.Module):
         def _gather_from_map(x, pos):
             return x[pos[0], ..., pos[1], pos[2]]
         factory_ids = _gather_from_map(location_feature[:, 0], factory_pos).int()
-        unit_ids = (_gather_from_map(location_feature[:, 1], unit_pos) + 10).int()
+        unit_ids = (_gather_from_map(location_feature[:, 1], unit_pos)).int()
 
         # Critic
         critic_value = torch.zeros((B, 1000), device=combined_feature.device)
