@@ -20,7 +20,7 @@ class SimpleNet(nn.Module):
         # Units and critic
         self.global_feature_count = 4
 
-        self.map_feature_count = 3
+        self.map_feature_count = 5
         self.map_embedding_dim = 2
         self.map_embedding = nn.Sequential(
             nn.Conv2d(self.map_feature_count, self.map_embedding_dim, kernel_size=1, stride=1, padding=0, bias=True),
