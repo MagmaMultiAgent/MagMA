@@ -110,8 +110,8 @@ class FeatureParser():
             # 'unit_water',
             # 'unit_ore',
             # 'unit_metal',
-            'unit_own',
-            'unit_enm',
+            # 'unit_own',
+            # 'unit_enm',
             # 'unit_light',
             # 'unit_heavy',
         ]
@@ -353,7 +353,6 @@ class FeatureParser():
 
         unit_feature = {name: np.zeros_like(obs.board.ice, dtype=np.float32) for name in self.unit_feature_names}
         units = obs.units[player]
-        enemy_units = obs.units['player_0' if player == 'player_1' else 'player_1']
         
         for unit in units.values():
             x, y = unit.pos
@@ -366,12 +365,6 @@ class FeatureParser():
             unit_feature['heavy'][x, y] = False
             unit_feature['power'][x, y] = unit.power / battery_capacity
             unit_feature['cargo_ice'][x, y] = unit.cargo.ice / cargo_space
-
-            map_feature['unit_own'][x, y] = 1.0
-
-        for unit in enemy_units.values():
-            x, y = unit.pos
-            map_feature['unit_enm'][x, y] = 1.0
 
         # Assemble return
 
