@@ -384,7 +384,9 @@ class FeatureParser():
 
     @staticmethod
     def get_unit_id(unit):
-        return int(unit.unit_id.split('_')[1]) + 10
+        unit_id = int(unit.unit_id.split('_')[1])
+        group_id = unit_id % 4
+        return group_id
 
     @staticmethod
     def cluster_board(board):
