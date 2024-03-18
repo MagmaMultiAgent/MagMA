@@ -68,6 +68,7 @@ class SimpleNet(nn.Module):
 
     def forward(self, global_feature, map_feature, factory_feature, unit_feature, location_feature, va, action=None):
         B, _, H, W = map_feature.shape
+        max_group_count = 1000
 
         # Embeddings
         global_feature = global_feature[..., None, None].expand(-1, -1, H, W)
@@ -105,16 +106,24 @@ class SimpleNet(nn.Module):
             return x[pos[0], ..., pos[1], pos[2]]
         factory_ids = _gather_from_map(location_feature[:, 0], factory_pos).int()
         unit_ids = (_gather_from_map(location_feature[:, 1], unit_pos)).int()
+        indices = unit_pos[0] * max_group_count + unit_ids
+        if len(indices) > 0:
+            assert indices.max(dim=-1)[0] < (B * max_group_count)
+            assert indices.min(dim=-1)[0] >= 0
 
         # Critic
-        critic_value = torch.zeros((B, 1000), device=combined_feature.device)
+        critic_value = torch.zeros((B, max_group_count), device=combined_feature.device)
+        critic_value = critic_value.view(-1)
+
         _critic_value = self.critic(combined_feature)
         _critic_value_unit = _gather_from_map(_critic_value, unit_pos)
-        for i in range(unit_ids.shape[0]):
-            critic_value[unit_pos[0][i], unit_ids[i]] += _critic_value_unit[i]
+        if len(indices) > 0:
+            critic_value.scatter_add_(0, indices, _critic_value_unit)
+
+        critic_value = critic_value.view(B, max_group_count)
 
         # Actor
-        logp, action, entropy = self.actor(combined_feature, direction_feature, factory_feature, va, factory_pos, unit_act_type_va, unit_pos, factory_ids, unit_ids, action)
+        logp, action, entropy = self.actor(combined_feature, direction_feature, factory_feature, va, factory_pos, unit_act_type_va, unit_pos, factory_ids, max_group_count, indices, action)
 
         return logp, critic_value, action, entropy
 
@@ -122,11 +131,13 @@ class SimpleNet(nn.Module):
         critic_value = self.critic_head(combined_feature)[:, 0]
         return critic_value
 
-    def actor(self, combined_feature, direction_feature, factory_feature, va, factory_pos, unit_act_type_va, unit_pos, factory_ids, unit_ids, action=None):
+    def actor(self, combined_feature, direction_feature, factory_feature, va, factory_pos, unit_act_type_va, unit_pos, factory_ids, max_group_count, indices, action=None):
         B, _, H, W = combined_feature.shape
 
-        logp = torch.zeros((B, 1000), device=combined_feature.device)
-        entropy = torch.zeros((B, 1000), device=combined_feature.device)
+        logp = torch.zeros((B, max_group_count), device=combined_feature.device)
+        logp = logp.view(-1)
+        entropy = torch.zeros((B, max_group_count), device=combined_feature.device)
+        entropy = entropy.view(-1)
         output_action = {}
 
         def _gather_from_map(x, pos):
@@ -174,11 +185,14 @@ class SimpleNet(nn.Module):
             unit_action,
         )
 
-        for i in range(unit_ids.shape[0]):
-            logp[unit_pos[0][i], unit_ids[i]] += unit_logp[i]
-            entropy[unit_pos[0][i], unit_ids[i]] += unit_entropy[i]
+        if len(indices) > 0:
+            logp.scatter_add_(0, indices, unit_logp)
+            entropy.scatter_add_(0, indices, unit_entropy)
 
         output_action['unit_act'] = _put_into_map(unit_action, unit_pos)
+
+        logp = logp.view(B, max_group_count)
+        entropy = entropy.view(B, max_group_count)
 
         return logp, output_action, entropy
 
