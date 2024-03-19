@@ -385,7 +385,10 @@ class FeatureParser():
     @staticmethod
     def get_unit_id(unit):
         unit_id = int(unit.unit_id.split('_')[1])
-        group_id = unit_id % 2
+        x = unit.pos[0]
+        y = unit.pos[1]
+        # 4 groups
+        group_id = (x % 2) + (y % 2) * 2
         return group_id
 
     @staticmethod
