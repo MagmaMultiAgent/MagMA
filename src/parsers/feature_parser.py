@@ -220,7 +220,7 @@ class FeatureParser():
                 'ice_under': obs.board.ice[unit.pos[0], unit.pos[1]],
                 'x': unit.pos[0],
                 'y': unit.pos[1],
-                'group_id': self.get_unit_id(unit)
+                'group_id': self.get_unit_id(unit, factories)
             }
         for factory in factories:
             factory_info[factory.unit_id] = {
@@ -359,7 +359,7 @@ class FeatureParser():
         for unit in units.values():
             x, y = unit.pos
 
-            unit_group_id = self.get_unit_id(unit)
+            unit_group_id = self.get_unit_id(unit, list(obs.factories[player].values()))
             location_feature['unit'][x, y] = unit_group_id
 
             unit_type = unit.unit_type
@@ -383,13 +383,24 @@ class FeatureParser():
         return LuxFeature(global_feature, map_feature, factory_feature, unit_feature, location_feature)
 
     @staticmethod
-    def get_unit_id(unit):
+    def get_unit_id(unit, factories):
         unit_id = int(unit.unit_id.split('_')[1])
         x = unit.pos[0]
         y = unit.pos[1]
+        cloest_factory = None
+        for factory in factories:
+            if cloest_factory is None:
+                cloest_factory = factory
+            else:
+                if abs(factory.pos[0] - x) + abs(factory.pos[1] - y) < abs(cloest_factory.pos[0] - x) + abs(cloest_factory.pos[1] - y):
+                    cloest_factory = factory
+        if not cloest_factory:
+            cloest_factory = 0
+        else:
+            cloest_factory = int(cloest_factory.unit_id.split('_')[1])
         # 4 groups
         # group_id = (x % 2) + (y % 2) * 2
-        return unit_id
+        return cloest_factory
 
     @staticmethod
     def cluster_board(board):
