@@ -388,7 +388,8 @@ class FeatureParser():
         x = unit.pos[0]
         y = unit.pos[1]
         # 4 groups
-        group_id = (x % 2) + (y % 2) * 2
+        # group_id = (x % 2) + (y % 2) * 2
+        group_id = 0
         return group_id
 
     @staticmethod
