@@ -389,8 +389,7 @@ class FeatureParser():
         y = unit.pos[1]
         # 4 groups
         # group_id = (x % 2) + (y % 2) * 2
-        group_id = 0
-        return group_id
+        return unit_id
 
     @staticmethod
     def cluster_board(board):
