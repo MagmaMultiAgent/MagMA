@@ -175,6 +175,36 @@ class SimpleNet(nn.Module):
         unit_emb = combined_emb[:, :self.combined_feature_dim]
         unit_dir = combined_emb[:, self.combined_feature_dim:]
 
+        # there is a tensor for each unit (dim 0)
+        # unit batch ids are in unit_pos[0]
+        # I want to average the unit embeddings for each batch
+        # I can do this by using scatter_add_ with the batch ids
+        # I can then divide by the number of units in each batch
+
+
+        batch = torch.tensor(unit_pos[0], device=combined_emb.device)
+        batch_broadcast = batch[..., None].expand(-1, self.combined_feature_dim + self.direction_dim_final)
+
+        combined_emb_sum = torch.zeros((B, self.combined_feature_dim + self.direction_dim_final), device=combined_emb.device)
+        combined_emb_count = torch.zeros((B), device=combined_emb.device)
+
+        combined_emb_sum.scatter_add_(0, batch_broadcast, combined_emb)
+        combined_emb_count.scatter_add_(0, unit_pos[0], torch.ones((unit_pos[0].shape[0]), device=combined_emb.device))
+
+        # repeat emb count for each dim1
+        combined_emb_count = combined_emb_count[:, None].expand(-1, self.combined_feature_dim + self.direction_dim_final)
+        
+        combined_emb_avg = combined_emb_sum / combined_emb_count
+
+        # need to repeat the average embedding for each unit in the batch
+        combined_emb_avg = combined_emb_avg[unit_pos[0]]
+
+        unit_emb_avg = combined_emb_avg[:, :self.combined_feature_dim]
+        unit_dir_avg = combined_emb_avg[:, self.combined_feature_dim:]
+
+        unit_emb = unit_emb * 0.5 + unit_emb_avg * 0.5
+        unit_dir = unit_dir * 0.5 + unit_dir_avg * 0.5
+        
         unit_va = {
             'act_type': _gather_from_map(unit_act_type_va, unit_pos),
             'move': _gather_from_map(va['move'], unit_pos),
