@@ -202,8 +202,8 @@ class SimpleNet(nn.Module):
         unit_emb_avg = combined_emb_avg[:, :self.combined_feature_dim]
         unit_dir_avg = combined_emb_avg[:, self.combined_feature_dim:]
 
-        unit_emb = unit_emb * 0.5 + unit_emb_avg * 0.5
-        unit_dir = unit_dir * 0.5 + unit_dir_avg * 0.5
+        unit_emb = unit_emb * 0.75 + unit_emb_avg * 0.25
+        unit_dir = unit_dir * 0.75 + unit_dir_avg * 0.25
         
         unit_va = {
             'act_type': _gather_from_map(unit_act_type_va, unit_pos),
