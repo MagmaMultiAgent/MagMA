@@ -81,6 +81,10 @@ class SimpleNet(nn.Module):
         assert large_embedding.shape[3] == W
         combined_feature = torch.cat([map_feature, large_embedding, unit_feature], dim=1)
 
+        map_feature = combined_feature[:, :self.map_embedding_dim]
+        large_embedding = combined_feature[:, self.map_embedding_dim:self.map_embedding_dim + self.large_embedding_dim]
+        unit_feature = combined_feature[:, self.map_embedding_dim + self.large_embedding_dim:]
+
         direction_feature = torch.cat([map_feature, large_embedding], dim=1)
         direction_feature = self.direction_net(direction_feature)
         direction_feature = torch.cat([direction_feature, unit_feature], dim=1)
@@ -165,6 +169,11 @@ class SimpleNet(nn.Module):
         # unit actor
         unit_emb = _gather_from_map(combined_feature, unit_pos)
         unit_dir = _gather_from_map(direction_feature, unit_pos)
+
+        combined_emb = torch.cat([unit_emb, unit_dir], dim=1)
+
+        unit_emb = combined_emb[:, :self.combined_feature_dim]
+        unit_dir = combined_emb[:, self.combined_feature_dim:]
 
         unit_va = {
             'act_type': _gather_from_map(unit_act_type_va, unit_pos),

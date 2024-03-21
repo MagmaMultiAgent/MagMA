@@ -385,22 +385,22 @@ class FeatureParser():
     @staticmethod
     def get_unit_id(unit, factories):
         unit_id = int(unit.unit_id.split('_')[1])
-        x = unit.pos[0]
-        y = unit.pos[1]
-        cloest_factory = None
-        for factory in factories:
-            if cloest_factory is None:
-                cloest_factory = factory
-            else:
-                if abs(factory.pos[0] - x) + abs(factory.pos[1] - y) < abs(cloest_factory.pos[0] - x) + abs(cloest_factory.pos[1] - y):
-                    cloest_factory = factory
-        if not cloest_factory:
-            cloest_factory = 0
-        else:
-            cloest_factory = int(cloest_factory.unit_id.split('_')[1])
+        # x = unit.pos[0]
+        # y = unit.pos[1]
+        # cloest_factory = None
+        # for factory in factories:
+        #     if cloest_factory is None:
+        #         cloest_factory = factory
+        #     else:
+        #         if abs(factory.pos[0] - x) + abs(factory.pos[1] - y) < abs(cloest_factory.pos[0] - x) + abs(cloest_factory.pos[1] - y):
+        #             cloest_factory = factory
+        # if not cloest_factory:
+        #     cloest_factory = 0
+        # else:
+        #     cloest_factory = int(cloest_factory.unit_id.split('_')[1])
         # 4 groups
         # group_id = (x % 2) + (y % 2) * 2
-        return cloest_factory
+        return unit_id
 
     @staticmethod
     def cluster_board(board):
