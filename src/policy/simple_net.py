@@ -60,6 +60,20 @@ class SimpleNet(nn.Module):
             nn.LeakyReLU(),
         )
 
+        self.query_embedder = nn.Linear(self.combined_feature_dim + self.direction_dim_final, self.combined_feature_dim + self.direction_dim_final, bias=True)
+        self.key_embedder = nn.Linear(self.combined_feature_dim + self.direction_dim_final, self.combined_feature_dim + self.direction_dim_final, bias=True)
+        self.value_embedder = nn.Linear(self.combined_feature_dim + self.direction_dim_final, self.combined_feature_dim + self.direction_dim_final, bias=True)
+
+        self.norm1 = nn.LayerNorm(self.combined_feature_dim + self.direction_dim_final)
+        self.norm2 = nn.LayerNorm(self.combined_feature_dim + self.direction_dim_final)
+
+        self.attention = torch.nn.MultiheadAttention(self.combined_feature_dim + self.direction_dim_final, 1)
+
+        self.combined_embedder2 = nn.Sequential(
+            nn.Linear(self.combined_feature_dim + self.direction_dim_final, self.combined_feature_dim + self.direction_dim_final, bias=True),
+            nn.LeakyReLU(),
+        )
+
         self.unit_act_type = nn.Linear(self.combined_feature_dim, len(UnitActType), bias=True)
         self.param_heads = nn.ModuleDict({
             unit_act_type.name: nn.ModuleDict({
@@ -177,8 +191,20 @@ class SimpleNet(nn.Module):
 
         combined_emb = torch.cat([unit_emb, unit_dir], dim=1)
 
-        # transformer to combine combine_emb
-        combined_emb = self.combined_embedder(combined_emb)
+        # attention
+
+        # create a 2D mask from unit_pos[0], that is 1 if the batch is the same, otherwise 0
+        batch_mask = unit_pos[0][:, None] == unit_pos[0][None, :]
+
+        query = self.query_embedder(combined_emb)
+        key = self.key_embedder(combined_emb)
+        value = self.value_embedder(combined_emb)
+        attention_output, _ = self.attention(query, key, value, attn_mask=~batch_mask)
+
+        combined_emb = self.norm1(combined_emb + attention_output)
+
+        _combined_emb = self.combined_embedder2(combined_emb)
+        combined_emb = self.norm2(combined_emb + _combined_emb)
 
         unit_emb = combined_emb[:, :self.combined_feature_dim]
         unit_dir = combined_emb[:, self.combined_feature_dim:]
