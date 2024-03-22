@@ -55,6 +55,11 @@ class SimpleNet(nn.Module):
         )
         self.direction_dim_final = self.direction_dim + self.unit_feature_count
 
+        self.combined_embedder = nn.Sequential(
+            nn.Linear(self.combined_feature_dim + self.direction_dim_final, self.combined_feature_dim + self.direction_dim_final, bias=True),
+            nn.LeakyReLU(),
+        )
+
         self.unit_act_type = nn.Linear(self.combined_feature_dim, len(UnitActType), bias=True)
         self.param_heads = nn.ModuleDict({
             unit_act_type.name: nn.ModuleDict({
@@ -172,6 +177,9 @@ class SimpleNet(nn.Module):
 
         combined_emb = torch.cat([unit_emb, unit_dir], dim=1)
 
+        # transformer to combine combine_emb
+        combined_emb = self.combined_embedder(combined_emb)
+
         unit_emb = combined_emb[:, :self.combined_feature_dim]
         unit_dir = combined_emb[:, self.combined_feature_dim:]
 
@@ -202,8 +210,8 @@ class SimpleNet(nn.Module):
         unit_emb_avg = combined_emb_avg[:, :self.combined_feature_dim]
         unit_dir_avg = combined_emb_avg[:, self.combined_feature_dim:]
 
-        unit_emb = unit_emb * 0.75 + unit_emb_avg * 0.25
-        unit_dir = unit_dir * 0.75 + unit_dir_avg * 0.25
+        unit_emb = unit_emb * 1.0 + unit_emb_avg * 0.0
+        unit_dir = unit_dir * 1.0 + unit_dir_avg * 0.0
         
         unit_va = {
             'act_type': _gather_from_map(unit_act_type_va, unit_pos),
