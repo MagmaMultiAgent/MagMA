@@ -285,7 +285,6 @@ class ActionParser():
 
         # factory actions
         factory_va = valid_actions["factory_act"]
-        max_units_on_factory = 9
         factories = game_state.factories[player]
         factory_positions = [tuple(f.pos) for f in factories.values()]
         factory_corner_positions = []
@@ -311,7 +310,7 @@ class ActionParser():
                 and factory.power >= env_cfg.ROBOTS['LIGHT'].POWER_COST\
                 and factory.cargo.metal < 60\
                 and not unit_on_factory:
-                factory_va[FactoryActType.BUILD_LIGHT, x, y] = ~factory_va[FactoryActType.BUILD_HEAVY, x, y]
+                factory_va[FactoryActType.BUILD_LIGHT, x, y] = True
 
             # valid grow lichen
             lichen_strains_size = np.sum(board.lichen_strains == factory.strain_id)
@@ -323,16 +322,14 @@ class ActionParser():
                 no_ice = (board.ice[adj_x, adj_y] == 0)
                 no_ore = (board.ore[adj_x, adj_y] == 0)
                 if (no_ruble & no_ice & no_ore).any():
-                    factory_va[FactoryActType.WATER, x, y] = True
-            
-            # ICE OVERRIDE, TODO: Remove!
-            factory_va[FactoryActType.WATER, x, y] = False
+                    # if enough resources to build hevay, don't water
+                    factory_va[FactoryActType.WATER, x, y] = ~factory_va[FactoryActType.BUILD_HEAVY, x, y]
 
             # always can do nothing
             factory_va[FactoryActType.DO_NOTHING, x, y] = ~factory_va[FactoryActType.BUILD_HEAVY, x, y] & ~factory_va[FactoryActType.BUILD_LIGHT, x, y] & ~factory_va[FactoryActType.WATER, x, y]
 
         # unit actions
-        target_pos_set = set()
+        unit_move_targets = {}
         for unit_id, unit in game_state.units[player].items():
             x, y = unit.pos
 
@@ -340,15 +337,18 @@ class ActionParser():
 
             battery_capacity = unit.unit_cfg.BATTERY_CAPACITY
 
+            # Power masking
             if unit.power >= action_queue_cost:
-                if (unit.power - action_queue_cost) >= unit.unit_cfg.DIG_COST:
-                    valid_actions["unit_act"]["act_type"][:, x, y] = True
-                    valid_actions["unit_act"]["act_type"][UnitActType.PICKUP, x, y] = False
+                valid_actions["unit_act"]["act_type"][:, x, y] = True
+
+                # don't recharge if on top of factory, can pickup instead
+                if factory_under_unit(unit.pos, game_state.factories[player]) is not None:
                     valid_actions["unit_act"]["act_type"][UnitActType.RECHARGE, x, y] = False
-                else:
-                    valid_actions["unit_act"]["act_type"][UnitActType.MOVE, x, y] = True
-                    valid_actions["unit_act"]["act_type"][UnitActType.PICKUP, x, y] = True
-                    valid_actions["unit_act"]["act_type"][UnitActType.RECHARGE, x, y] = True
+
+                # if battery not at least half empty, don't recharge or pickup
+                if unit.power >= (battery_capacity / 2):
+                    valid_actions["unit_act"]["act_type"][UnitActType.RECHARGE, x, y] = False
+                    valid_actions["unit_act"]["act_type"][UnitActType.PICKUP, x, y] = False
 
                 valid_actions["unit_act"]["act_type"][UnitActType.DO_NOTHING, x, y] = False
             else:
@@ -356,25 +356,25 @@ class ActionParser():
                 continue
 
             # valid unit move
-            valid_actions["unit_act"]["move"]["repeat"][1, x, y] = True
             valid_actions["unit_act"]["move"]["repeat"][0, x, y] = False
+            valid_actions["unit_act"]["move"]["repeat"][1, x, y] = True
             
             for direction in range(len(move_deltas)):
                 target_pos = unit.pos + move_deltas[direction]
 
-                # don't move backwards compared to last step
-                if len(unit.action_queue) > 0 and unit.action_queue[0][0] == UnitActType.MOVE:
-                    last_direction = unit.action_queue[0][1]
-                    # a[1] = direction (0 = center, 1 = up, 2 = right, 3 = down, 4 = left)
-                    # move_deltas = np.array([[0, 0], [0, -1], [1, 0], [0, 1], [-1, 0]])
-                    if direction == 1 and last_direction == 3:
-                        continue
-                    if direction == 2 and last_direction == 4:
-                        continue
-                    if direction == 3 and last_direction == 1:
-                        continue
-                    if direction == 4 and last_direction == 2:
-                        continue
+                # # don't move backwards compared to last step
+                # if len(unit.action_queue) > 0 and unit.action_queue[0][0] == UnitActType.MOVE:
+                #     last_direction = unit.action_queue[0][1]
+                #     # a[1] = direction (0 = center, 1 = up, 2 = right, 3 = down, 4 = left)
+                #     # move_deltas = np.array([[0, 0], [0, -1], [1, 0], [0, 1], [-1, 0]])
+                #     if direction == 1 and last_direction == 3:
+                #         continue
+                #     if direction == 2 and last_direction == 4:
+                #         continue
+                #     if direction == 3 and last_direction == 1:
+                #         continue
+                #     if direction == 4 and last_direction == 2:
+                #         continue
 
                 # always forbid to move to the same position
                 if direction == 0:
@@ -401,22 +401,39 @@ class ActionParser():
                 if unit.unit_type != "HEAVY" and tuple(target_pos) in enemy_unit_positions:
                     continue
 
+                # if on factory corner, step out of factory
+                if tuple(target_pos) in factory_corner_positions and tuple(target_pos) in factory_positions:
+                    continue
+
                 power_required = unit.move_cost(game_state, direction)
                 if unit.power - action_queue_cost >= power_required:
 
-                    if tuple(target_pos) in target_pos_set:
-                        continue
-                    
-                    target_pos_set.add(tuple(target_pos))
+                    if tuple(target_pos) in unit_move_targets:
+
+                        # if another heavy can already step there, don't step there
+                        if unit_move_targets[tuple(target_pos)]["is_heavy"]:
+                            continue
+
+                        # if not heavy, don't take away the step from other unit
+                        if unit.unit_type != "HEAVY":
+                            continue
+
+                        # if heavy, and the other unit is not heavy, take the step
+                        original_unit_x, original_unit_y = unit_move_targets[tuple(target_pos)]["coord"]
+                        original_unit_direction = unit_move_targets[tuple(target_pos)]["direction"]
+                        valid_actions["unit_act"]["move"]["direction"][original_unit_direction, original_unit_x, original_unit_y] = False
+
+                    unit_move_targets[tuple(target_pos)] = {"coord": (x, y), "direction": direction, "is_heavy": unit.unit_type == "HEAVY"}
                     valid_actions["unit_act"]["move"]["direction"][direction, x, y] = True
+
 
             # valid transfer
             valid_actions["unit_act"]["transfer"]['repeat'][0, x, y] = True
             amounts = [unit.cargo.ice, unit.cargo.ore, unit.cargo.water, unit.cargo.metal, unit.power]
             for i, a in enumerate(amounts):
                 valid_actions["unit_act"]["transfer"]['resource'][i, x, y] = False
-            valid_actions["unit_act"]["transfer"]['resource'][0, x, y] = (unit.cargo.ice > 0) and (unit.cargo.ice >= 5)
-            valid_actions["unit_act"]["transfer"]['resource'][1, x, y] = (unit.cargo.ore > 0) and (unit.cargo.ore >= 5)
+            valid_actions["unit_act"]["transfer"]['resource'][0, x, y] = (unit.cargo.ice > 0)
+            valid_actions["unit_act"]["transfer"]['resource'][1, x, y] = (unit.cargo.ore > 0)
             for direction in range(1, len(move_deltas)):
                 target_pos = unit.pos + move_deltas[direction]
 
@@ -440,26 +457,15 @@ class ActionParser():
                 ]
                 for i, _ in enumerate(amounts):
                     valid_actions["unit_act"]["pickup"]['resource'][i, x, y] = False
-                valid_actions["unit_act"]["pickup"]['resource'][4, x, y] = (factory.power > 0) and (unit.power < battery_capacity / 2)
+                if unit.power < unit.unit_cfg.BATTERY_CAPACITY:
+                    valid_actions["unit_act"]["pickup"]['resource'][4, x, y] = (factory.power > 0)
 
             # valid dig
-            if factory_under_unit(unit.pos, game_state.factories[player]) is None \
-                and unit.power - action_queue_cost >= unit.unit_cfg.DIG_COST:
-                # if (board.lichen[x, y] > 0) or (board.rubble[x, y] > 0) \
-                #     or (board.ice[x, y] > 0) or (board.ore[x, y] > 0):
-                if board.rubble[x, y] > 0:
-                    # if not enough power to clear away all rubble, move
-                    rubble_removed_on_dig = unit.unit_cfg.DIG_RUBBLE_REMOVED
-                    dig_cost = unit.unit_cfg.DIG_COST
-                    rubble_on_tile = board.rubble[x, y]
-                    power_required = dig_cost * ((rubble_on_tile / rubble_removed_on_dig)) + action_queue_cost
-                    # print(f"power_required: {power_required}", "rubble_on_tile: ", rubble_on_tile, "rubble_removed_on_dig: ", rubble_removed_on_dig, "dig_cost: ", dig_cost, "action_queue_cost: ", action_queue_cost, file=sys.stderr)
-                    if unit.power - power_required >= 0:
-                        if board.ice[x, y] > 0:
-                            valid_actions["unit_act"]["dig"]['repeat'][0, x, y] = False
-                            valid_actions["unit_act"]["dig"]['repeat'][1, x, y] = True
-
-                elif board.ice[x, y] > 0:
+            dig_action_queue_cost = 0 if len(unit.action_queue) > 0 and unit.action_queue[0][0] == UnitActType.DIG else action_queue_cost
+            cargo_capacity = unit.unit_cfg.CARGO_SPACE
+            cargo_full = sum([unit.cargo.ice, unit.cargo.ore, unit.cargo.water, unit.cargo.metal]) >= cargo_capacity * 0.9
+            if factory_under_unit(unit.pos, game_state.factories[player]) is None and (unit.power - dig_action_queue_cost) >= unit.unit_cfg.DIG_COST:
+                if (board.rubble[x, y] > 0) or (board.ice[x, y] > 0 and not cargo_full) or (board.ore[x, y] > 0 and not cargo_full):
                     valid_actions["unit_act"]["dig"]['repeat'][0, x, y] = False
                     valid_actions["unit_act"]["dig"]['repeat'][1, x, y] = True
 
