@@ -24,8 +24,8 @@ class FeatureParser():
 
         self.global_feature_names = [
             'env_step',
-            'cycle',
-            'hour',
+            # 'cycle',
+            # 'hour',
             'daytime_or_night',
             # 'num_factory_own',
             # 'num_factory_enm',
@@ -79,14 +79,16 @@ class FeatureParser():
             'factory_water',
             'factory_ore',
             'factory_metal',
-            'factory_water_cost'
+            'factory_water_cost',
         ]
 
         self.map_featrue_names = [
             'factory',
             'ice',
-            # 'ore',
+            'ore',
             'rubble',
+            'unit',
+            'enemy',
             # 'lichen',
             # 'lichen_strains',
             # 'lichen_strains_own',
@@ -118,13 +120,14 @@ class FeatureParser():
 
         self.location_feature_names = [
             "factory",
-            "unit"
+            "unit",
         ]
 
         self.unit_feature_names = [
             "heavy",
             "power",
-            "cargo_ice"
+            "cargo_ice",
+            "cargo_ore",
         ]
 
         self.global_info_names = [
@@ -172,7 +175,11 @@ class FeatureParser():
                 'cargo_ore',
                 'cargo_water',
                 'cargo_metal',
-                'water_cost'
+                'water_cost',
+                'lichen_count',
+                'x',
+                'y',
+                'group_id'
             ]
         }
 
@@ -229,7 +236,11 @@ class FeatureParser():
                 'cargo_ore': factory.cargo.ore,
                 'cargo_water': factory.cargo.water,
                 'cargo_metal': factory.cargo.metal,
-                'water_cost': np.sum(obs.board.lichen_strains == factory.strain_id) // obs.env_cfg.LICHEN_WATERING_COST_FACTOR + 1
+                'water_cost': np.sum(obs.board.lichen_strains == factory.strain_id) // obs.env_cfg.LICHEN_WATERING_COST_FACTOR + 1,
+                'lichen_count': obs.board.lichen[obs.board.lichen_strains == factory.strain_id].sum(),
+                'x': factory.pos[0],
+                'y': factory.pos[1],
+                'group_id': self.get_factory_id(factory)
             }
 
         global_info['light_count'] = sum(int(u.unit_type == 'LIGHT') for u in units)
@@ -295,6 +306,8 @@ class FeatureParser():
     def _get_feature(self, obs: kit.kit.GameState, player: str, output_dict=True):
         env_cfg: EnvConfig = obs.env_cfg
 
+        other_player = "player_0" if player == "player_1" else "player_1"
+
         # normalize
         light_cfg = env_cfg.ROBOTS['LIGHT']
         heavy_cfg = env_cfg.ROBOTS['HEAVY']
@@ -308,16 +321,18 @@ class FeatureParser():
         # Global
 
         global_feature = {name: 0 for name in self.global_feature_names}
-        global_feature['env_step'] = obs.real_env_steps
-        global_feature['cycle'] = obs.real_env_steps // env_cfg.CYCLE_LENGTH
-        global_feature['hour'] = obs.real_env_steps % env_cfg.CYCLE_LENGTH
-        global_feature['daytime_or_night'] = global_feature['hour'] < 30
+        global_feature['env_step'] = obs.real_env_steps / env_cfg.max_episode_length
+        # global_feature['cycle'] = obs.real_env_steps // env_cfg.CYCLE_LENGTH
+        # global_feature['hour'] = obs.real_env_steps % env_cfg.CYCLE_LENGTH
+        hour = obs.real_env_steps % env_cfg.CYCLE_LENGTH
+        global_feature['daytime_or_night'] = hour < 30
 
         # Map
 
         map_feature = {name: np.zeros_like(obs.board.ice, dtype=np.float32) for name in self.map_featrue_names}
         map_feature['ice'] = obs.board.ice
-        map_feature['rubble'] = obs.board.rubble
+        map_feature['ore'] = obs.board.ore
+        map_feature['rubble'] = obs.board.rubble / env_cfg.MAX_RUBBLE
 
         # Factory
 
@@ -325,7 +340,9 @@ class FeatureParser():
         for owner, factories in obs.factories.items():
             for fid, factory in factories.items():
                 x, y = factory.pos
-                location_feature['factory'][x, y] = int(factory.unit_id.split('_')[1])
+
+                factory_group_id = self.get_factory_id(factory)
+                location_feature['factory'][x, y] = factory_group_id
 
                 factory_feature['factory_power'][x, y] = factory.power
                 factory_feature['factory_ice'][x, y] = factory.cargo.ice
@@ -368,6 +385,18 @@ class FeatureParser():
             unit_feature['heavy'][x, y] = unit_type == 'HEAVY'
             unit_feature['power'][x, y] = unit.power / battery_capacity
             unit_feature['cargo_ice'][x, y] = unit.cargo.ice / cargo_space
+            unit_feature['cargo_ore'][x, y] = unit.cargo.ore / cargo_space
+
+            map_feature['unit'][x, y] = 1.0
+
+        for enemy_unit in obs.units[other_player].values():
+            x, y = enemy_unit.pos
+            map_feature['enemy'][x, y] = 1.0
+        for enemy_Factory in obs.factories[other_player].values():
+            x, y = enemy_Factory.pos
+            deltas = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+            for dx, dy in deltas:
+                map_feature['enemy'][x + dx, y + dy] = 1.0
 
         # Assemble return
 
@@ -385,22 +414,12 @@ class FeatureParser():
     @staticmethod
     def get_unit_id(unit, factories):
         unit_id = int(unit.unit_id.split('_')[1])
-        # x = unit.pos[0]
-        # y = unit.pos[1]
-        # cloest_factory = None
-        # for factory in factories:
-        #     if cloest_factory is None:
-        #         cloest_factory = factory
-        #     else:
-        #         if abs(factory.pos[0] - x) + abs(factory.pos[1] - y) < abs(cloest_factory.pos[0] - x) + abs(cloest_factory.pos[1] - y):
-        #             cloest_factory = factory
-        # if not cloest_factory:
-        #     cloest_factory = 0
-        # else:
-        #     cloest_factory = int(cloest_factory.unit_id.split('_')[1])
-        # 4 groups
-        # group_id = (x % 2) + (y % 2) * 2
-        return unit_id
+        return 0
+    
+    @staticmethod
+    def get_factory_id(factory):
+        factory_id = int(factory.unit_id.split('_')[1])
+        return 0
 
     @staticmethod
     def cluster_board(board):

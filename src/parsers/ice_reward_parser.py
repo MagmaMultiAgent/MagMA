@@ -24,27 +24,6 @@ class IceRewardParser(DenseRewardParser):
 
             unit_count = own_global_info["unit_count"]
 
-            # avg_distance_from_ice = own_global_info["avg_distance_from_ice"]
-            # if unit_count > 0:
-            #     reward[team] -= avg_distance_from_ice / 1000
-            # else:
-            #     reward[team] -= 0.001
-
-            units_on_ice = own_global_info["units_on_ice"]
-            if unit_count > 0:
-                global_reward[team] += units_on_ice / 1000
-            else:
-                pass  # 0 reward
-
-            # power_increment = (own_global_info["unit_power"] - last_count['unit_power']) / 50 / 200
-            # reward[team] += power_increment
-
-            rubble_on_ice_decrease = (last_count['rubble_on_ice'] - own_global_info["rubble_on_ice"]) / 100  # divide by 100 because max 100 rubble on tile
-            global_reward[team] += max(rubble_on_ice_decrease, 0)
-
-            ice_increment = own_global_info["total_ice"] - last_count['total_ice']
-            global_reward[team] += max(ice_increment, 0)
-
             own_reward_weight = 1.0
             unit_groups = {}
             for unit_name, unit in own_unit_info.items():
@@ -59,21 +38,42 @@ class IceRewardParser(DenseRewardParser):
                 ice_increment = max(cargo_ice - last_cargo_ice, 0)
                 ice_decrement = max(last_cargo_ice - cargo_ice, 0)  # transfer to factory
 
-                unit_reward += ice_increment * 0.1
-                unit_reward += ice_decrement
+                # unit_reward += ice_increment * 0.1
+                unit_reward += ice_decrement / 4  # 4 ice = 1 water
 
                 group_id = unit["group_id"]
                 if group_id not in unit_groups:
                     unit_groups[group_id] = 0
                 unit_groups[group_id] += unit_reward
 
+            for factory_name, factory in own_factory_info.items():
+                factory_reward = 0
+
+                if factory_name not in last_count_factories:
+                    continue
+
+                step_weight = game_state[0].real_env_steps / 1000
+
+                lichen_count = factory["lichen_count"]
+                lichen_reward = lichen_count / 20
+                lichen_reward *= 0.1
+                lichen_reward *= step_weight
+                factory_reward += lichen_reward
+
+                group_id = factory["group_id"]
+                if group_id not in unit_groups:
+                    unit_groups[group_id] = 0
+                unit_groups[group_id] += factory_reward
+
+            global_rev = 0
             if len(unit_groups) > 0:
                 total_reward = sum(unit_groups.values()) / len(unit_groups)
+                global_rev /= len(unit_groups)
             else:
                 total_reward = 0
 
             for group_id, group_reward in unit_groups.items():
-                final_reward[team][group_id] += (group_reward * own_reward_weight) + (total_reward * (1 - own_reward_weight))
+                final_reward[team][group_id] += (group_reward * own_reward_weight) + (total_reward * (1 - own_reward_weight)) + global_rev
             
         _, sub_rewards = super(IceRewardParser, self).parse(dones, game_state, env_stats, global_info)
 

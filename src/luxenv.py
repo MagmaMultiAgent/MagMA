@@ -78,23 +78,27 @@ def get_observation_space(map_size):
 def get_single_observation_space(map_size):
     global_feature_names = [
                             'env_step',                 # 1000+10
-                            'cycle',                    # 20
-                            'hour',                     # 50
+                            # 'cycle',                    # 20
+                            # 'hour',                     # 50
                             'daytime_or_night'          # 2
                         ]
 
     global_feature_space = [
-        1000, 
-        20, 
-        50, 
+        9999, 
+        # 20, 
+        # 50, 
         2
     ]
     global_feature_space = spaces.MultiDiscrete(np.array(global_feature_space), dtype=np.float64)
 
     map_feature_names = {
         'factory': 2,
-        'ice': 9999,
+        'ice': 2,
+        'ore': 2,
         'rubble': 9999,
+        'unit': 2,
+        'enemy': 2,
+
         # 'unit_own': 2,
         # 'unit_enm': 2
     }
@@ -115,7 +119,8 @@ def get_single_observation_space(map_size):
     unit_feature_names = {
         "heavy": 2,
         "power": 9999,
-        "cargo_ice": 9999
+        "cargo_ice": 9999,
+        "cargo_ore": 9999,
     }
     unit_feature_space = np.tile(np.array(list(unit_feature_names.values())).reshape(len(unit_feature_names), 1, 1), (1, map_size, map_size))
     unit_feature_space = spaces.MultiDiscrete(unit_feature_space, dtype=np.float64)
