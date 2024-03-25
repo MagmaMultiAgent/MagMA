@@ -54,11 +54,11 @@ class IceRewardParser(DenseRewardParser):
 
                 step_weight = game_state[0].real_env_steps / 1000
 
-                lichen_count = factory["lichen_count"]
-                lichen_reward = lichen_count / 20
-                lichen_reward *= 0.1
-                lichen_reward *= step_weight
-                factory_reward += lichen_reward
+                # lichen_count = factory["lichen_count"]
+                # lichen_reward = lichen_count / 20
+                # lichen_reward *= 0.1
+                # lichen_reward *= step_weight
+                # factory_reward += lichen_reward
 
                 group_id = factory["group_id"]
                 if group_id not in unit_groups:
