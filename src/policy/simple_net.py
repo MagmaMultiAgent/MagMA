@@ -335,7 +335,12 @@ class SimpleNet(nn.Module):
 
 
     def get_resource_param(self, x, va, action_type, unit_idx, direction, action=None):
-        resource_va = va[unit_idx, direction].flatten(2).any(-1)
+        if action_type in [UnitActType.TRANSFER]:
+            resource_va = va[unit_idx, direction].flatten(2).any(-1)
+        elif action_type in [UnitActType.PICKUP]:
+            resource_va = va.flatten(2).any(-1)
+        else:
+            resource_va = va
         resource_head = self.param_heads[action_type.name]['resource']
         resource_logp, resource, resource_entropy = sample_from_categorical(
             resource_head(x),

@@ -449,7 +449,6 @@ class ActionParser():
                     valid_actions["unit_act"]["transfer"]["direction"][direction, x, y] = True
 
             # valid pickup
-            valid_actions["unit_act"]["pickup"]['repeat'][0, x, y] = True
             factory = factory_under_unit(unit.pos, game_state.factories[player])
             if factory is not None and valid_actions["unit_act"]["act_type"][UnitActType.PICKUP, x, y]:
                 amounts = [
@@ -459,6 +458,7 @@ class ActionParser():
                     valid_actions["unit_act"]["pickup"]['resource'][i, x, y] = False
                 if unit.power < unit.unit_cfg.BATTERY_CAPACITY:
                     valid_actions["unit_act"]["pickup"]['resource'][4, x, y] = (factory.power > 0)
+                valid_actions["unit_act"]["pickup"]['repeat'][0, x, y] = valid_actions["unit_act"]["pickup"]['resource'][4, x, y]
 
             # valid dig
             dig_action_queue_cost = 0 if len(unit.action_queue) > 0 and unit.action_queue[0][0] == UnitActType.DIG else action_queue_cost
