@@ -41,6 +41,8 @@ class IceRewardParser(DenseRewardParser):
                 # unit_reward += ice_increment * 0.1
                 unit_reward += ice_decrement / 4  # 4 ice = 1 water
 
+                unit_reward += (ice_increment / 4) * 0.1
+
                 group_id = unit["group_id"]
                 if group_id not in unit_groups:
                     unit_groups[group_id] = 0
