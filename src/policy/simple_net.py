@@ -66,10 +66,11 @@ class SimpleNet(nn.Module):
         # combined
 
         self.combined_feature_count = self.global_embedding_dim + self.factory_embedding_dim + self.unit_embedding_dim + self.map_embedding_dim + self.large_distance_dim
-        self.combined_feature_dim = 16
+        self.combined_feature_dim = self.combined_feature_count
         self.combined_net = nn.Sequential(
-            nn.Conv2d(self.combined_feature_count, self.combined_feature_dim, kernel_size=3, stride=1, padding="same", bias=True),
-            nn.LeakyReLU(),
+            # nn.Conv2d(self.combined_feature_count, self.combined_feature_dim, kernel_size=3, stride=1, padding="same", bias=True),
+            # nn.LeakyReLU(),
+            nn.Identity()
         )
 
 
