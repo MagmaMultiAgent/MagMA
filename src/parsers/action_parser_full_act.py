@@ -308,7 +308,6 @@ class ActionParser():
             # valid build light
             if factory.cargo.metal >= env_cfg.ROBOTS['LIGHT'].METAL_COST\
                 and factory.power >= env_cfg.ROBOTS['LIGHT'].POWER_COST\
-                and factory.cargo.metal < 60\
                 and not unit_on_factory:
                 factory_va[FactoryActType.BUILD_LIGHT, x, y] = True
 
@@ -322,11 +321,11 @@ class ActionParser():
                 no_ice = (board.ice[adj_x, adj_y] == 0)
                 no_ore = (board.ore[adj_x, adj_y] == 0)
                 if (no_ruble & no_ice & no_ore).any():
-                    # if enough resources to build hevay, don't water
-                    factory_va[FactoryActType.WATER, x, y] = ~factory_va[FactoryActType.BUILD_HEAVY, x, y]
+                    # if enough resources to build heavy, don't water
+                    factory_va[FactoryActType.WATER, x, y] = False
 
-            # always can do nothing
-            factory_va[FactoryActType.DO_NOTHING, x, y] = ~factory_va[FactoryActType.BUILD_HEAVY, x, y] & ~factory_va[FactoryActType.BUILD_LIGHT, x, y] & ~factory_va[FactoryActType.WATER, x, y]
+            # can't do nothing if heavy building is possible
+            factory_va[FactoryActType.DO_NOTHING, x, y] = ~factory_va[FactoryActType.BUILD_HEAVY, x, y]
 
         # unit actions
         unit_move_targets = {}

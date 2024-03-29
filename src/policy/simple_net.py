@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+# import torchvision.ops as T
 import numpy as np
 from impl_config import ActDims, UnitActChannel, UnitActType, EnvParam
 from .actor_head import sample_from_categorical
@@ -14,63 +15,115 @@ class SimpleNet(nn.Module):
 
 
         # EMBEDDINGS
+        """
+        Embeddings are used to convert the input features into a lower-dimensional space, and to extract relevant information from the input features.
+        """
 
         self.embedding_dims = 2
+        self.embedding_extra_layers = 0
+        self.embedding_is_residual = False
+        self.embedding_use_se = False
 
-        # Global
-        self.global_feature_count = 2
-        self.global_embedding_dim = self.embedding_dims
-        self.global_embedding = nn.Sequential(
-            nn.Conv2d(self.global_feature_count, self.global_embedding_dim, kernel_size=1, stride=1, padding=0, bias=True),
-            nn.LeakyReLU(),
+        self.embedding_settings = {
+            "global": {
+                "feature_count": 2,
+                "embedding_dim": self.embedding_dims,
+                "residual": self.embedding_is_residual,
+                "extra_layers": self.embedding_extra_layers,
+                "use_se": self.embedding_use_se,
+            },
+            "factory": {
+                "feature_count": 6,
+                "embedding_dim": self.embedding_dims,
+                "residual": self.embedding_is_residual,
+                "extra_layers": self.embedding_extra_layers,
+                "use_se": self.embedding_use_se,
+            },
+            "unit": {
+                "feature_count": 4,
+                "embedding_dim": self.embedding_dims,
+                "residual": self.embedding_is_residual,
+                "extra_layers": self.embedding_extra_layers,
+                "use_se": self.embedding_use_se,
+            },
+            "map": {
+                "feature_count": 6,
+                "embedding_dim": self.embedding_dims,
+                "residual": self.embedding_is_residual,
+                "extra_layers": self.embedding_extra_layers,
+                "use_se": self.embedding_use_se,
+            },
+        }
+        self.embeddings = nn.ModuleDict()
+        self.embeddings_extra = nn.ModuleDict()
+        for embedding_name, embedding_params in self.embedding_settings.items():
+            feature_count = embedding_params["feature_count"]
+            embedding_dim = embedding_params["embedding_dim"]
+            layers = [
+                nn.Conv2d(feature_count, embedding_dim, kernel_size=1, stride=1, padding=0, bias=True),
+                nn.BatchNorm2d(embedding_dim),
+                nn.GELU(),
+            ]
+            # last_layer = T.SqueezeExcitation(embedding_dim, max(1, embedding_dim // 8)) if embedding_params["use_se"] else nn.GELU()
+            last_layer = nn.GELU()
+
+            layers_extra = [nn.Identity()]
+            for i in range(embedding_params["extra_layers"]):
+                layers_extra.append(
+                    nn.Conv2d(embedding_dim, embedding_dim, kernel_size=1, stride=1, padding=0, bias=True),
+                    nn.BatchNorm2d(embedding_dim),
+                )
+
+            layers_extra.append(last_layer)
+
+            self.embeddings[embedding_name] = nn.Sequential(*layers)
+            self.embeddings_extra[embedding_name] = nn.Sequential(*layers_extra)
+            
+
+        # SPATIAL INFORMATION
+
+        self.spatial_embedding_feature_count = self.embedding_settings["map"]["embedding_dim"]
+        self.spatial_embedding_dim = 4
+
+        # close distance
+        """
+        Units should be able to see close objects.
+        This large distance view radius is only used for the map features.
+        """
+        self.small_distance_feature_count = self.spatial_embedding_feature_count
+        self.small_distance_dim = self.spatial_embedding_dim
+        self.small_distance_net = nn.Sequential(
+            # can see 1 distance away
+            nn.Conv2d(self.small_distance_feature_count, self.small_distance_dim, kernel_size=3, stride=1, padding="same", bias=True),
+            nn.BatchNorm2d(self.small_distance_dim),
+            nn.GELU(),
         )
 
-        # Factories
-        self.factory_feature_count = 6
-        self.factory_embedding_dim = self.embedding_dims
-        self.factory_embedding = nn.Sequential(
-            nn.Conv2d(self.factory_feature_count, self.factory_embedding_dim, kernel_size=1, stride=1, padding=0, bias=True),
-            nn.LeakyReLU(),
-        )
+        # large distance
+        """
+        Units should be able to see far away objects.
+        This large distance view radius is only used for the map features.
+        """
 
-        # Units
-        self.unit_feature_count = 4
-        self.unit_embedding_dim = self.embedding_dims
-        self.unit_embedding = nn.Sequential(
-            nn.Conv2d(self.unit_feature_count, self.unit_embedding_dim, kernel_size=1, stride=1, padding=0, bias=True),
-            nn.LeakyReLU(),
-        )
-
-        # Map
-        self.map_feature_count = 6
-        self.map_embedding_dim = self.embedding_dims
-        self.map_embedding = nn.Sequential(
-            nn.Conv2d(self.map_feature_count, self.map_embedding_dim, kernel_size=1, stride=1, padding=0, bias=True),
-            nn.LeakyReLU(),
+        self.large_distance_feature_count = self.spatial_embedding_feature_count
+        self.large_distance_dim = self.spatial_embedding_dim
+        self.large_distance_net = nn.Sequential(
+            # can see 5 distance away
+            nn.AvgPool2d(kernel_size=3, stride=1, padding=1),  # +1 distance
+            nn.Conv2d(self.large_distance_feature_count, self.large_distance_dim, kernel_size=5, stride=1, padding="same", bias=True, dilation=2),  # +2*(5//2) distance
+            nn.BatchNorm2d(self.large_distance_dim),
+            nn.GELU(),
         )
 
 
         # COMBINED
 
-        # large distance
-
-        self.large_distance_feature_count = self.map_embedding_dim
-        self.large_distance_dim = 8
-        self.large_distance_net = nn.Sequential(
-            nn.AvgPool2d(kernel_size=3, stride=1, padding=1),
-            nn.Conv2d(self.large_distance_feature_count, self.large_distance_dim, kernel_size=5, stride=1, padding="same", bias=True),
-            nn.LeakyReLU(),
-            nn.AvgPool2d(kernel_size=3, stride=1, padding=1),
-        )
-
-        # combined
-
-        self.combined_feature_count = self.global_embedding_dim + self.factory_embedding_dim + self.unit_embedding_dim + self.map_embedding_dim + self.large_distance_dim
+        self.combined_feature_count = sum([embedding_params["embedding_dim"] for embedding_params in self.embedding_settings.values()]) + self.spatial_embedding_dim  # 4*2 + 4 = 12
         self.combined_feature_dim = self.combined_feature_count
         self.combined_net = nn.Sequential(
-            # nn.Conv2d(self.combined_feature_count, self.combined_feature_dim, kernel_size=3, stride=1, padding="same", bias=True),
-            # nn.LeakyReLU(),
-            nn.Identity()
+            nn.Conv2d(self.combined_feature_count, self.combined_feature_dim, kernel_size=1, stride=1, padding="same", bias=True),
+            nn.BatchNorm2d(self.combined_feature_dim),
+            nn.GELU(),
         )
 
 
@@ -111,15 +164,30 @@ class SimpleNet(nn.Module):
 
         # Embeddings
         global_feature = global_feature[..., None, None].expand(-1, -1, H, W)
-        global_feature = self.global_embedding(global_feature)
+        input_features = {
+            "global": global_feature,
+            "factory": factory_feature,
+            "unit": unit_feature,
+            "map": map_feature,
+        }
+        features_embedded = {}
+        for embedding_name, embedding in self.embeddings.items():
+            embedded = embedding(input_features[embedding_name])
+            embedded_extra = self.embeddings_extra[embedding_name](embedded)
+            if self.embedding_settings[embedding_name]["residual"]:
+                embedded_extra += embedded
+            features_embedded[embedding_name] = embedded_extra
 
-        factory_feature = self.factory_embedding(factory_feature)
-        unit_feature = self.unit_embedding(unit_feature)
-        map_feature = self.map_embedding(map_feature)
+        map_feature = features_embedded["map"]
+        small_distance = self.small_distance_net(map_feature)
+        large_distance = self.large_distance_net(map_feature)
+        aggregated_distance = small_distance + large_distance
 
         # Combined
-        large_distance = self.large_distance_net(map_feature)
-        combined_feature = torch.cat([global_feature, factory_feature, unit_feature, map_feature, large_distance], dim=1)
+        combined_feature = torch.cat(
+            [features_embedded["global"], features_embedded["factory"], features_embedded["unit"], features_embedded["map"], aggregated_distance],
+            dim=1,
+        )
         combined_feature = self.combined_net(combined_feature)
 
         # Valid actions

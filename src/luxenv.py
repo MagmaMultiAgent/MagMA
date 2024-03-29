@@ -280,6 +280,11 @@ class LuxEnv(gym.Env):
                 group_id = unit["group_id"]
                 terminations_final[player, group_id] = terminations[player]
                 truncations_final[player, group_id] = truncations[player]
+            factory_info = global_info[f"player_{player}"]["factories"]
+            for _, factory in factory_info.items():
+                group_id = factory["group_id"]
+                terminations_final[player, group_id] = terminations[player]
+                truncations_final[player, group_id] = truncations[player]
 
         reward, sub_rewards = self.reward_parser.parse(
             dones,
