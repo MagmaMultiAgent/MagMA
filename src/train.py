@@ -602,8 +602,6 @@ def main(args, device):
                         for key, value in group.items():
                             multiplier = (1 / args.num_envs) if groupname != "total" else (1 / (args.num_envs * 2))
                             writer.add_scalar(f"global_info/sum_{groupname}_{key}", value * multiplier, global_step)
-                            if key == "ice_transfered":
-                                print("ice transfered:", value * multiplier)
                         
             else:
                 for key in log_from_global_info:

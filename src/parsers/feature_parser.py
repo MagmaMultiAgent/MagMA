@@ -395,7 +395,8 @@ class FeatureParser():
         # Global
 
         global_feature = {name: 0 for name in self.global_feature_names}
-        global_feature['env_step'] = obs.real_env_steps / env_cfg.max_episode_length
+        # normalize between -1 and 1
+        global_feature['env_step'] = (obs.real_env_steps - 0) / (env_cfg.max_episode_length - 0) * 2 - 1
         # global_feature['cycle'] = obs.real_env_steps // env_cfg.CYCLE_LENGTH
         # global_feature['hour'] = obs.real_env_steps % env_cfg.CYCLE_LENGTH
         hour = obs.real_env_steps % env_cfg.CYCLE_LENGTH
@@ -406,7 +407,7 @@ class FeatureParser():
         map_feature = {name: np.zeros_like(obs.board.ice, dtype=np.float32) for name in self.map_featrue_names}
         map_feature['ice'] = obs.board.ice
         map_feature['ore'] = obs.board.ore
-        map_feature['rubble'] = obs.board.rubble / env_cfg.MAX_RUBBLE
+        map_feature['rubble'] = (obs.board.rubble - 0) / (env_cfg.MAX_RUBBLE - 0) * 2 - 1
 
         # Factory
 
@@ -418,15 +419,14 @@ class FeatureParser():
                 factory_group_id = self.get_factory_id(factory)
                 location_feature['factory'][x, y] = factory_group_id
 
-                factory_feature['factory_power'][x, y] = factory.power
-                factory_feature['factory_ice'][x, y] = factory.cargo.ice
-                factory_feature['factory_water'][x, y] = factory.cargo.water
-                factory_feature['factory_ore'][x, y] = factory.cargo.ore
-                factory_feature['factory_metal'][x, y] = factory.cargo.metal
+                factory_feature['factory_power'][x, y] = (factory.power - 0) / (heavy_cfg.BATTERY_CAPACITY - 0) * 2 - 1
+                factory_feature['factory_ice'][x, y] = (factory.cargo.ice - 0) / (heavy_cfg.CARGO_SPACE - 0) * 2 - 1
+                factory_feature['factory_water'][x, y] = (factory.cargo.water - 0) / (heavy_cfg.CARGO_SPACE - 0) * 2 - 1
+                factory_feature['factory_ore'][x, y] = (factory.cargo.ore - 0) / (heavy_cfg.CARGO_SPACE - 0) * 2 - 1
+                factory_feature['factory_metal'][x, y] = (factory.cargo.metal - 0) / (heavy_cfg.CARGO_SPACE - 0) * 2 - 1
 
-                water_cost = np.sum(
-                    obs.board.lichen_strains == factory.strain_id) // env_cfg.LICHEN_WATERING_COST_FACTOR + 1
-                factory_feature['factory_water_cost'][x, y] = water_cost
+                water_cost = np.sum(obs.board.lichen_strains == factory.strain_id) // env_cfg.LICHEN_WATERING_COST_FACTOR + 1
+                factory_feature['factory_water_cost'][x, y] = (water_cost - 0) / (heavy_cfg.CARGO_SPACE - 0) * 2 - 1
 
                 if owner == player:
                     for offset in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
@@ -434,13 +434,6 @@ class FeatureParser():
                         if 0 <= x + dx < obs.board.ice.shape[0] and 0 <= y + dy < obs.board.ice.shape[1]:
                             map_feature['factory'][x + dx, y + dy] = 1.0
                             pass
-
-        factory_feature['factory_power'] = factory_feature['factory_power'] / heavy_cfg.BATTERY_CAPACITY
-        factory_feature['factory_ice'] = factory_feature['factory_ice'] / heavy_cfg.CARGO_SPACE
-        factory_feature['factory_water'] = factory_feature['factory_water'] / heavy_cfg.CARGO_SPACE
-        factory_feature['factory_ore'] = factory_feature['factory_ore'] / heavy_cfg.CARGO_SPACE
-        factory_feature['factory_metal'] = factory_feature['factory_metal'] / heavy_cfg.CARGO_SPACE
-        factory_feature['factory_water_cost'] = factory_feature['factory_water_cost'] / heavy_cfg.CARGO_SPACE
 
         # Unit
 
@@ -457,9 +450,9 @@ class FeatureParser():
             cargo_space = light_cfg.CARGO_SPACE if unit_type == 'LIGHT' else heavy_cfg.CARGO_SPACE
             battery_capacity = light_cfg.BATTERY_CAPACITY if unit_type == 'LIGHT' else heavy_cfg.BATTERY_CAPACITY
             unit_feature['heavy'][x, y] = unit_type == 'HEAVY'
-            unit_feature['power'][x, y] = unit.power / battery_capacity
-            unit_feature['cargo_ice'][x, y] = unit.cargo.ice / cargo_space
-            unit_feature['cargo_ore'][x, y] = unit.cargo.ore / cargo_space
+            unit_feature['power'][x, y] = (unit.power - 0) / (battery_capacity - 0) * 2 - 1
+            unit_feature['cargo_ice'][x, y] = (unit.cargo.ice - 0) / (cargo_space - 0) * 2 - 1
+            unit_feature['cargo_ore'][x, y] = (unit.cargo.ore - 0) / (cargo_space - 0) * 2 - 1
 
             map_feature['unit'][x, y] = 1.0
 
