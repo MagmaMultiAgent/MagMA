@@ -43,6 +43,8 @@ class IceRewardParser(DenseRewardParser):
 
                 unit_reward += (ice_increment / 4) * 0.1
 
+                unit_reward /= 2
+
                 group_id = unit["group_id"]
                 if group_id not in unit_groups:
                     unit_groups[group_id] = 0
@@ -61,6 +63,12 @@ class IceRewardParser(DenseRewardParser):
                 # lichen_reward *= 0.1
                 # lichen_reward *= step_weight
                 # factory_reward += lichen_reward
+
+                cargo_ice = factory["cargo_ice"]
+                last_cargo_ice = last_count_factories[factory_name]['cargo_ice']
+                ice_increment = max(cargo_ice - last_cargo_ice, 0)
+
+                factory_reward += ice_increment / 4  # 4 ice = 1 water
 
                 group_id = factory["group_id"]
                 if group_id not in unit_groups:

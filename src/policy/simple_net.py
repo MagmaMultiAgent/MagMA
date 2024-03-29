@@ -47,7 +47,6 @@ class SimpleNet(nn.Module):
         # close distance
         """
         Units should be able to see close objects.
-        This large distance view radius is only used for the map features.
         """
         self.small_distance_feature_count = self.spatial_embedding_feature_count
         self.small_distance_dim = self.spatial_embedding_dim
@@ -61,7 +60,6 @@ class SimpleNet(nn.Module):
         # large distance
         """
         Units should be able to see far away objects.
-        This large distance view radius is only used for the map features.
         """
 
         self.large_distance_feature_count = self.spatial_embedding_feature_count
@@ -90,8 +88,11 @@ class SimpleNet(nn.Module):
 
         # critic
         self.critic_feature_count = self.combined_feature_dim
+        self.critic_dim = 4
         self.critic_head = nn.Sequential(
-            nn.Conv2d(self.critic_feature_count, 1, kernel_size=1, stride=1, padding=0, bias=True)
+            nn.Conv2d(self.critic_feature_count, self.critic_dim, kernel_size=1, stride=1, padding=0, bias=True),
+            nn.GELU(),
+            nn.Conv2d(self.critic_dim, 1, kernel_size=1, stride=1, padding=0, bias=True),
         )
 
         # factory
@@ -128,7 +129,7 @@ class SimpleNet(nn.Module):
 
         small_distance = self.small_distance_net(features_embedded)
         large_distance = self.large_distance_net(features_embedded)
-        aggregated_distance = small_distance + large_distance
+        aggregated_distance = (small_distance + large_distance) / 2
 
         # Combined
         combined_feature = torch.cat([features_embedded, aggregated_distance], dim=1)
