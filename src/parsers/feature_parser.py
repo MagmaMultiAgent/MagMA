@@ -22,6 +22,11 @@ class FeatureParser():
 
     def __init__(self):
 
+        self.last_game_states = {
+            "player_0": None,
+            "player_1": None
+        }
+
         self.global_feature_names = [
             'env_step',
             # 'cycle',
@@ -153,7 +158,19 @@ class FeatureParser():
             'lichen_count',
             'units_on_ice',
             'avg_distance_from_ice',
-            'rubble_on_ice'
+            'rubble_on_ice',
+
+            'ice_transfered',
+            'ore_transfered',
+            'ice_mined',
+            'ore_mined',
+            'lichen_grown',
+            'unit_created',
+            'light_created',
+            'heavy_created',
+            'unit_destroyed',
+            'light_destroyed',
+            'heavy_destroyed',
         ]
         self.global_info_dicts = {
             'units': [
@@ -183,15 +200,25 @@ class FeatureParser():
             ]
         }
 
-    def parse(self, obs, env_cfg):
+    def parse(self, obs, reset, env_cfg):
         all_feature = {}
+        global_info = {}
         for player, player_obs in obs.items():
             env_step = player_obs['real_env_steps'] + player_obs['board']['factories_per_team'] * 2 + 1
             game_state = kit.kit.obs_to_game_state(env_step, env_cfg, player_obs)
+            
+            if reset:
+                self.last_game_states[player] = None
+            
+            last_game_state = self.last_game_states[player]
+
             parsed_feature = self._get_feature(obs=game_state, player=player)
-            # all_feature.append(parsed_feature)
             all_feature[player] = parsed_feature
-        global_info = {player: self._get_info(player, game_state) for player in ['player_0', 'player_1']}
+
+            global_info[player] = self._get_info(player, game_state, last_game_state)
+
+            self.last_game_states[player] = game_state
+
         return all_feature, global_info
     
     def json_parser(self, obs, env_cfg):
@@ -207,7 +234,7 @@ class FeatureParser():
     def parse2(self, game_state, player):
         return self._get_feature(obs=game_state, player=player)
 
-    def _get_info(self, player: str, obs: kit.kit.GameState):
+    def _get_info(self, player: str, obs: kit.kit.GameState, prev_obs: kit.kit.GameState = None):
         global_info = {k: 0 for k in self.global_info_names}
         factories = list(obs.factories[player].values())
         units = list(obs.units[player].values())
@@ -295,6 +322,53 @@ class FeatureParser():
         rubble_board = obs.board.rubble.astype(np.float32)
         rubble_on_ice = ice_board * rubble_board
         global_info['rubble_on_ice'] = np.sum(rubble_on_ice)
+
+        # new infos based on previous obs
+        global_info['ice_transfered'] = 0
+        global_info['ore_transfered'] = 0
+        global_info['ice_mined'] = 0
+        global_info['ore_mined'] = 0
+        global_info['lichen_grown'] = 0
+        global_info['unit_created'] = 0
+        global_info['light_created'] = 0
+        global_info['heavy_created'] = 0
+        global_info['unit_destroyed'] = 0
+        global_info['light_destroyed'] = 0
+        global_info['heavy_destroyed'] = 0
+        if prev_obs is not None:
+            for unit in units:
+                unit_name = unit.unit_id
+                if unit_name in prev_obs.units[player]:
+                    prev_unit = prev_obs.units[player][unit_name]
+                    ice_mined = max(unit.cargo.ice - prev_unit.cargo.ice, 0)
+                    ice_transfered = max(prev_unit.cargo.ice - unit.cargo.ice, 0)
+                    ore_mined = max(unit.cargo.ore - prev_unit.cargo.ore, 0)
+                    ore_transfered = max(prev_unit.cargo.ore - unit.cargo.ore, 0)
+                    global_info['ice_mined'] += ice_mined
+                    global_info['ice_transfered'] += ice_transfered
+                    global_info['ore_mined'] += ore_mined
+                    global_info['ore_transfered'] += ore_transfered
+                if unit_name not in prev_obs.units[player]:
+                    global_info['unit_created'] += 1
+                    if unit.unit_type == 'LIGHT':
+                        global_info['light_created'] += 1
+                    else:
+                        global_info['heavy_created'] += 1
+            for unit in prev_obs.units[player].values():
+                if unit.unit_id not in units:
+                    global_info['unit_destroyed'] += 1
+                    if unit.unit_type == 'LIGHT':
+                        global_info['light_destroyed'] += 1
+                    else:
+                        global_info['heavy_destroyed'] += 1
+            for factory in factories:
+                factory_name = factory.unit_id
+                if factory_name in prev_obs.factories[player]:
+                    prev_factory = prev_obs.factories[player][factory_name]
+                    lichen_now = obs.board.lichen[obs.board.lichen_strains == factory.strain_id].sum()
+                    lichen_prev = prev_obs.board.lichen[prev_obs.board.lichen_strains == factory.strain_id].sum()
+                    lichen_grown = max(lichen_now - lichen_prev, 0)
+                    global_info['lichen_grown'] += lichen_grown
 
         # Add unit and factory info
 

@@ -67,7 +67,19 @@ log_from_global_info = [
     'lichen_count',
     'units_on_ice',
     'avg_distance_from_ice',
-    'rubble_on_ice'
+    'rubble_on_ice',
+
+    'ice_transfered',
+    'ore_transfered',
+    'ice_mined',
+    'ore_mined',
+    'lichen_grown',
+    'unit_created',
+    'light_created',
+    'heavy_created',
+    'unit_destroyed',
+    'light_destroyed',
+    'heavy_destroyed',
 ]
 
 def parse_args():
@@ -487,9 +499,12 @@ def main(args, device):
         total_return = 0.0
         episode_return = np.zeros(args.num_envs)
         episode_return_list = []
+        step_counts = np.zeros(args.num_envs)
+        episode_lengths = []
         episode_sub_return = {}
         episode_sub_return_list = []
         train_step = -1
+        global_info_save = {}
         
         for step in range(0, args.num_steps):
 
@@ -525,7 +540,10 @@ def main(args, device):
             next_obs, reward, terminated, truncation, info = envs.step(action)
             next_obs = tree.map_structure(lambda x: np2torch(x, torch.float32), next_obs)
 
+            # reward is shape (env, player, group)
             episode_return += np.mean(np.sum(reward, axis=-1), axis=-1)
+
+            step_counts += 1
 
             reward = np2torch(reward, torch.float32)
 
@@ -542,17 +560,22 @@ def main(args, device):
             if _done.any():
                 episode_return_list.append((episode_return[np.where(_done==True)]).mean())
                 episode_return[np.where(_done==True)] = 0
+                episode_lengths.append(step_counts[np.where(_done==True)].mean())
+                step_counts[np.where(_done==True)] = 0
                 tmp_sub_return_dict = {}
                 for key in episode_sub_return:
                     tmp_sub_return_dict.update({key: np.mean(episode_sub_return[key][np.where(_done==True)])})
                     episode_sub_return[key][np.where(_done==True)] = 0
                 episode_sub_return_list.append(tmp_sub_return_dict)
+
             total_return += cal_mean_return(info['agents'], player_id=0)
             total_return += cal_mean_return(info['agents'], player_id=1)
-            if (step== args.num_steps-1):
-                logger.info(f"global_step={global_step}, total_return={np.mean(episode_return_list)}")
+
+            if (step == args.num_steps-1):
+                logger.info(f"global_step={global_step}, total_return={np.mean(episode_return_list)}, episode_length={np.mean(episode_lengths)}")
                 if LOG:
                     writer.add_scalar("charts/episodic_total_return", np.mean(episode_return_list), global_step)
+                    writer.add_scalar("charts/episodic_length", np.mean(episode_lengths), global_step)
                     mean_episode_sub_return = {}
                     for key in episode_sub_return.keys():
                         mean_episode_sub_return[key] = np.mean(list(map(lambda sub: sub[key], episode_sub_return_list)))
@@ -574,6 +597,31 @@ def main(args, device):
                     for groupname, group in global_info_log.items():
                         for key, value in group.items():
                             writer.add_scalar(f"global_info/{groupname}_{key}", sum(value)/len(value), global_step)
+
+                    for groupname, group in global_info_save.items():
+                        for key, value in group.items():
+                            multiplier = (1 / args.num_envs) if groupname != "total" else (1 / (args.num_envs * 2))
+                            writer.add_scalar(f"global_info/sum_{groupname}_{key}", value * multiplier, global_step)
+                            if key == "ice_transfered":
+                                print("ice transfered:", value * multiplier)
+                        
+            else:
+                for key in log_from_global_info:
+                    for env_id in range(args.num_envs):
+                        for player in ["player_0", "player_1"]:
+                            if player not in global_info_save:
+                                global_info_save[player] = {}
+                            if "total" not in global_info_save:
+                                global_info_save["total"] = {}
+                            if key not in global_info_save[player]:
+                                global_info_save[player][key] = 0
+                            if key not in global_info_save["total"]:
+                                global_info_save["total"][key] = 0
+                            
+                            global_info_save[player][key] += info[player][env_id][key]
+                            global_info_save["total"][key] += info[player][env_id][key]
+                
+
 
             # Train with PPO
             if train_step >= args.max_train_step-1 or step == args.num_steps-1:  

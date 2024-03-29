@@ -205,6 +205,7 @@ class LuxEnv(gym.Env):
         self.action_space = get_action_space(self.rule_based_early_step, self.env_cfg.map_size)
         self.observation_space = get_observation_space(self.env_cfg.map_size)
         self.single_vas_space = self.get_va_space(self.env_cfg.map_size)
+
     def reset_proxy(self, seed=None, options=None):
         assert not ((EnvParam.init_from_replay_ratio != 0.) and (EnvParam.map_size != EnvConfig.map_size))
         seed = seed if seed is not None else np.random.SeedSequence().generate_state(1)
@@ -253,7 +254,7 @@ class LuxEnv(gym.Env):
         for player_id, player in enumerate(self.proxy.agents):
             o = obs[player]
             self.game_state[player_id] = obs_to_game_state(self.proxy.env_steps, self.env_cfg, o)
-        obs_list, global_info = self.feature_parser.parse(obs, env_cfg=self.env_cfg)
+        obs_list, global_info = self.feature_parser.parse(obs, reset=True, env_cfg=self.env_cfg)
         self.reward_parser.reset(self.game_state, global_info, self.proxy.state.stats)
 
         return obs_list, global_info
@@ -272,7 +273,7 @@ class LuxEnv(gym.Env):
         for player_id, player in enumerate(self.proxy.agents):
             o = obs[player]
             self.game_state[player_id] = obs_to_game_state(self.proxy.env_steps, self.env_cfg, o)
-        obs_list, global_info = self.feature_parser.parse(obs, env_cfg=self.env_cfg)
+        obs_list, global_info = self.feature_parser.parse(obs, reset=False, env_cfg=self.env_cfg)
 
         for player in range(2):
             unit_info = global_info[f"player_{player}"]["units"]
