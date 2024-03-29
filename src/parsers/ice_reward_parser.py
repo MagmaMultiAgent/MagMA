@@ -70,6 +70,8 @@ class IceRewardParser(DenseRewardParser):
 
                 factory_reward += ice_increment / 4  # 4 ice = 1 water
 
+                factory_reward /= 2
+
                 group_id = factory["group_id"]
                 if group_id not in unit_groups:
                     unit_groups[group_id] = 0
