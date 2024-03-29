@@ -19,70 +19,29 @@ class SimpleNet(nn.Module):
         Embeddings are used to convert the input features into a lower-dimensional space, and to extract relevant information from the input features.
         """
 
-        self.embedding_dims = 2
+        self.embedding_dims = 16
         self.embedding_extra_layers = 0
         self.embedding_is_residual = False
         self.embedding_use_se = False
 
-        self.embedding_settings = {
-            "global": {
-                "feature_count": 2,
-                "embedding_dim": self.embedding_dims,
-                "residual": self.embedding_is_residual,
-                "extra_layers": self.embedding_extra_layers,
-                "use_se": self.embedding_use_se,
-            },
-            "factory": {
-                "feature_count": 6,
-                "embedding_dim": self.embedding_dims,
-                "residual": self.embedding_is_residual,
-                "extra_layers": self.embedding_extra_layers,
-                "use_se": self.embedding_use_se,
-            },
-            "unit": {
-                "feature_count": 4,
-                "embedding_dim": self.embedding_dims,
-                "residual": self.embedding_is_residual,
-                "extra_layers": self.embedding_extra_layers,
-                "use_se": self.embedding_use_se,
-            },
-            "map": {
-                "feature_count": 6,
-                "embedding_dim": self.embedding_dims,
-                "residual": self.embedding_is_residual,
-                "extra_layers": self.embedding_extra_layers,
-                "use_se": self.embedding_use_se,
-            },
+        self.embedding_feature_counts = {
+            "global": 2,
+            "factory": 6,
+            "unit": 4,
+            "map": 6,
         }
-        self.embeddings = nn.ModuleDict()
-        self.embeddings_extra = nn.ModuleDict()
-        for embedding_name, embedding_params in self.embedding_settings.items():
-            feature_count = embedding_params["feature_count"]
-            embedding_dim = embedding_params["embedding_dim"]
-            layers = [
-                nn.Conv2d(feature_count, embedding_dim, kernel_size=1, stride=1, padding=0, bias=True),
-                nn.BatchNorm2d(embedding_dim),
-                nn.GELU(),
-            ]
-            # last_layer = T.SqueezeExcitation(embedding_dim, max(1, embedding_dim // 8)) if embedding_params["use_se"] else nn.GELU()
-            last_layer = nn.GELU()
+        self.embedding_feature_count = sum(self.embedding_feature_counts.values())
 
-            layers_extra = [nn.Identity()]
-            for i in range(embedding_params["extra_layers"]):
-                layers_extra.append(
-                    nn.Conv2d(embedding_dim, embedding_dim, kernel_size=1, stride=1, padding=0, bias=True),
-                    nn.BatchNorm2d(embedding_dim),
-                )
-
-            layers_extra.append(last_layer)
-
-            self.embeddings[embedding_name] = nn.Sequential(*layers)
-            self.embeddings_extra[embedding_name] = nn.Sequential(*layers_extra)
+        self.embedding_basic = nn.Sequential(
+            nn.Conv2d(self.embedding_feature_count, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True),
+            nn.BatchNorm2d(self.embedding_dims),
+            nn.GELU(),
+        )
             
 
         # SPATIAL INFORMATION
 
-        self.spatial_embedding_feature_count = self.embedding_settings["map"]["embedding_dim"]
+        self.spatial_embedding_feature_count = self.embedding_dims
         self.spatial_embedding_dim = 4
 
         # close distance
@@ -118,8 +77,8 @@ class SimpleNet(nn.Module):
 
         # COMBINED
 
-        self.combined_feature_count = sum([embedding_params["embedding_dim"] for embedding_params in self.embedding_settings.values()]) + self.spatial_embedding_dim  # 4*2 + 4 = 12
-        self.combined_feature_dim = self.combined_feature_count
+        self.combined_feature_count = self.embedding_dims + self.spatial_embedding_dim
+        self.combined_feature_dim = 16
         self.combined_net = nn.Sequential(
             nn.Conv2d(self.combined_feature_count, self.combined_feature_dim, kernel_size=1, stride=1, padding="same", bias=True),
             nn.BatchNorm2d(self.combined_feature_dim),
@@ -164,30 +123,15 @@ class SimpleNet(nn.Module):
 
         # Embeddings
         global_feature = global_feature[..., None, None].expand(-1, -1, H, W)
-        input_features = {
-            "global": global_feature,
-            "factory": factory_feature,
-            "unit": unit_feature,
-            "map": map_feature,
-        }
-        features_embedded = {}
-        for embedding_name, embedding in self.embeddings.items():
-            embedded = embedding(input_features[embedding_name])
-            embedded_extra = self.embeddings_extra[embedding_name](embedded)
-            if self.embedding_settings[embedding_name]["residual"]:
-                embedded_extra += embedded
-            features_embedded[embedding_name] = embedded_extra
+        all_features = torch.cat([global_feature, factory_feature, unit_feature, map_feature], dim=1)
+        features_embedded = self.embedding_basic(all_features)
 
-        map_feature = features_embedded["map"]
-        small_distance = self.small_distance_net(map_feature)
-        large_distance = self.large_distance_net(map_feature)
+        small_distance = self.small_distance_net(features_embedded)
+        large_distance = self.large_distance_net(features_embedded)
         aggregated_distance = small_distance + large_distance
 
         # Combined
-        combined_feature = torch.cat(
-            [features_embedded["global"], features_embedded["factory"], features_embedded["unit"], features_embedded["map"], aggregated_distance],
-            dim=1,
-        )
+        combined_feature = torch.cat([features_embedded, aggregated_distance], dim=1)
         combined_feature = self.combined_net(combined_feature)
 
         # Valid actions
