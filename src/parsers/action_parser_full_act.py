@@ -464,7 +464,7 @@ class ActionParser():
             cargo_capacity = unit.unit_cfg.CARGO_SPACE
             cargo_full = sum([unit.cargo.ice, unit.cargo.ore, unit.cargo.water, unit.cargo.metal]) >= cargo_capacity * 0.9
             if factory_under_unit(unit.pos, game_state.factories[player]) is None and (unit.power - dig_action_queue_cost) >= unit.unit_cfg.DIG_COST:
-                if (board.ice[x, y] > 0 and not cargo_full):
+                if (board.ice[x, y] > 0 and not cargo_full) or (board.ore[x, y] > 0 and not cargo_full):
                     valid_actions["unit_act"]["dig"]['repeat'][0, x, y] = False
                     valid_actions["unit_act"]["dig"]['repeat'][1, x, y] = True
 
