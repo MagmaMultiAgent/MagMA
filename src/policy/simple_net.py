@@ -19,8 +19,8 @@ class SimpleNet(nn.Module):
         Embeddings are used to convert the input features into a lower-dimensional space, and to extract relevant information from the input features.
         """
 
-        self.embedding_dims = 8
-        self.embedding_extra_layers = 0
+        self.embedding_dims = 16
+        self.embedding_layers = 1
         self.embedding_is_residual = False
         self.embedding_use_se = False
 
@@ -34,6 +34,10 @@ class SimpleNet(nn.Module):
 
         self.embedding_basic = nn.Sequential(
             nn.Conv2d(self.embedding_feature_count, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True),
+            nn.BatchNorm2d(self.embedding_dims),
+            nn.GELU(),
+
+            nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True),
             nn.BatchNorm2d(self.embedding_dims),
             nn.GELU(),
         )
