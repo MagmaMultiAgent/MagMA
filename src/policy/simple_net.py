@@ -42,6 +42,16 @@ class SimpleNet(nn.Module):
             nn.BatchNorm2d(self.embedding_dims),
             nn.GELU(),
         )
+
+        self.embedding_residual = nn.Sequential(
+            nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True),
+            nn.BatchNorm2d(self.embedding_dims),
+            nn.GELU(),
+
+            nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True),
+            nn.BatchNorm2d(self.embedding_dims),
+            nn.GELU()
+        )
             
 
         # SPATIAL INFORMATION
@@ -137,9 +147,11 @@ class SimpleNet(nn.Module):
         # Embeddings
         global_feature = global_feature[..., None, None].expand(-1, -1, H, W)
         all_features = torch.cat([global_feature, factory_feature, unit_feature, map_feature], dim=1)
-        _features_embedded = self.embedding(all_features)
-        features_embedded = self.embedding2(_features_embedded)
-        # features_embedded = (features_embedded + _features_embedded) / 2
+        features_embedded = self.embedding(all_features)
+        features_embedded = self.embedding2(features_embedded)
+        
+        _features_embedded = self.embedding_residual(features_embedded)
+        features_embedded = features_embedded + _features_embedded
 
         small_distance = self.small_distance_net(features_embedded)
         large_distance = self.large_distance_net(features_embedded)
