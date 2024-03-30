@@ -139,7 +139,7 @@ class SimpleNet(nn.Module):
         all_features = torch.cat([global_feature, factory_feature, unit_feature, map_feature], dim=1)
         _features_embedded = self.embedding(all_features)
         features_embedded = self.embedding2(_features_embedded)
-        features_embedded = (features_embedded + _features_embedded) / 2
+        # features_embedded = (features_embedded + _features_embedded) / 2
 
         small_distance = self.small_distance_net(features_embedded)
         large_distance = self.large_distance_net(features_embedded)
