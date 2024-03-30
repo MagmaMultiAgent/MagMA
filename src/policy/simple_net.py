@@ -33,12 +33,12 @@ class SimpleNet(nn.Module):
         self.embedding_feature_count = sum(self.embedding_feature_counts.values())
 
         self.embedding = nn.Sequential(
-            nn.Conv2d(self.embedding_feature_count, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True),
+            nn.Conv2d(self.embedding_feature_count, self.embedding_dims, kernel_size=3, stride=1, padding="same", bias=True),
             nn.BatchNorm2d(self.embedding_dims),
             nn.GELU()
         )
         self.embedding2 = nn.Sequential(
-            nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True),
+            nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=3, stride=1, padding="same", bias=True),
             nn.BatchNorm2d(self.embedding_dims),
             nn.GELU(),
         )
@@ -150,8 +150,8 @@ class SimpleNet(nn.Module):
         features_embedded = self.embedding(all_features)
         features_embedded = self.embedding2(features_embedded)
         
-        _features_embedded = self.embedding_residual(features_embedded)
-        features_embedded = features_embedded + _features_embedded
+        # _features_embedded = self.embedding_residual(features_embedded)
+        # features_embedded = features_embedded + _features_embedded
 
         small_distance = self.small_distance_net(features_embedded)
         large_distance = self.large_distance_net(features_embedded)
