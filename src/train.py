@@ -617,6 +617,7 @@ def main(args, device):
                             if key not in global_info_save["total"]:
                                 global_info_save["total"][key] = 0
                             
+                            # TODO: save by env, because this way we display half-done envs too
                             global_info_save[player][key] += info[player][env_id][key]
                             global_info_save["total"][key] += info[player][env_id][key]
                 
