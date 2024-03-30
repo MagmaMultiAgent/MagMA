@@ -32,11 +32,12 @@ class SimpleNet(nn.Module):
         }
         self.embedding_feature_count = sum(self.embedding_feature_counts.values())
 
-        self.embedding_basic = nn.Sequential(
+        self.embedding = nn.Sequential(
             nn.Conv2d(self.embedding_feature_count, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True),
             nn.BatchNorm2d(self.embedding_dims),
-            nn.GELU(),
-
+            nn.GELU()
+        )
+        self.embedding2 = nn.Sequential(
             nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True),
             nn.BatchNorm2d(self.embedding_dims),
             nn.GELU(),
@@ -87,9 +88,11 @@ class SimpleNet(nn.Module):
             nn.GELU(),
         )
         self.combined_net2 = nn.Sequential(
-            nn.Conv2d(self.combined_feature_dim, self.combined_feature_dim, kernel_size=1, stride=1, padding="same", bias=True),
-            nn.BatchNorm2d(self.combined_feature_dim),
-            nn.GELU(),
+            # nn.Conv2d(self.combined_feature_dim, self.combined_feature_dim, kernel_size=1, stride=1, padding="same", bias=True),
+            # nn.BatchNorm2d(self.combined_feature_dim),
+            # nn.GELU(),
+
+            nn.Identity(),
         )
 
 
@@ -134,7 +137,9 @@ class SimpleNet(nn.Module):
         # Embeddings
         global_feature = global_feature[..., None, None].expand(-1, -1, H, W)
         all_features = torch.cat([global_feature, factory_feature, unit_feature, map_feature], dim=1)
-        features_embedded = self.embedding_basic(all_features)
+        _features_embedded = self.embedding(all_features)
+        features_embedded = self.embedding2(_features_embedded)
+        features_embedded = (features_embedded + _features_embedded) / 2
 
         small_distance = self.small_distance_net(features_embedded)
         large_distance = self.large_distance_net(features_embedded)

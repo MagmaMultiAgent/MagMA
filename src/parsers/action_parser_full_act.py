@@ -476,8 +476,12 @@ class ActionParser():
             cargo_full = cargo_used >= cargo_capacity * 0.3 or cargo_used >= 200
             if factory_under_unit(unit.pos, game_state.factories[player]) is None and (unit.power - dig_action_queue_cost) >= unit.unit_cfg.DIG_COST:
                 if (board.rubble[x, y] > 0 and not cargo_full and unit.power >= (battery_capacity * 0.2)) or (board.ice[x, y] > 0 and not cargo_full) or (board.ore[x, y] > 0 and not cargo_full):
-                    valid_actions["unit_act"]["dig"]['repeat'][0, x, y] = False
-                    valid_actions["unit_act"]["dig"]['repeat'][1, x, y] = True
+                    if board.ice[x, y] > 0:
+                        valid_actions["unit_act"]["dig"]['repeat'][0, x, y] = False
+                        valid_actions["unit_act"]["dig"]['repeat'][1, x, y] = True
+                    else:
+                        valid_actions["unit_act"]["dig"]['repeat'][0, x, y] = True
+                        valid_actions["unit_act"]["dig"]['repeat'][1, x, y] = False
 
             # valid selfdestruct
             if unit.power - action_queue_cost >= unit.unit_cfg.SELF_DESTRUCT_COST:
