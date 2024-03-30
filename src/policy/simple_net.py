@@ -86,6 +86,11 @@ class SimpleNet(nn.Module):
             nn.BatchNorm2d(self.combined_feature_dim),
             nn.GELU(),
         )
+        self.combined_net2 = nn.Sequential(
+            nn.Conv2d(self.combined_feature_dim, self.combined_feature_dim, kernel_size=1, stride=1, padding="same", bias=True),
+            nn.BatchNorm2d(self.combined_feature_dim),
+            nn.GELU(),
+        )
 
 
         # FINAL
@@ -138,6 +143,7 @@ class SimpleNet(nn.Module):
         # Combined
         combined_feature = torch.cat([features_embedded, aggregated_distance], dim=1)
         combined_feature = self.combined_net(combined_feature)
+        combined_feature = self.combined_net2(combined_feature)
 
         # Valid actions
         unit_act_type_va = torch.stack(
