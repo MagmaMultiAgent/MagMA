@@ -32,12 +32,12 @@ class SimpleNet(nn.Module):
         }
         self.embedding_feature_count = sum(self.embedding_feature_counts.values())
 
-        self.embedding = nn.Sequential(
-            nn.Conv2d(self.embedding_feature_count, self.embedding_dims, kernel_size=1, stride=1, padding="same", bias=True),
+        self.embedding_basic = nn.Sequential(
+            nn.Conv2d(self.embedding_feature_count, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True),
             nn.BatchNorm2d(self.embedding_dims),
             nn.GELU(),
 
-            nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding="same", bias=True),
+            nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True),
             nn.BatchNorm2d(self.embedding_dims),
             nn.GELU(),
         )
@@ -93,15 +93,8 @@ class SimpleNet(nn.Module):
         # critic
         self.critic_feature_count = self.combined_feature_dim
         self.critic_dim = 4
-        self.critic_head_unit = nn.Sequential(
+        self.critic_head = nn.Sequential(
             nn.Conv2d(self.critic_feature_count, self.critic_dim, kernel_size=1, stride=1, padding=0, bias=True),
-            nn.BatchNorm2d(self.critic_dim),
-            nn.GELU(),
-            nn.Conv2d(self.critic_dim, 1, kernel_size=1, stride=1, padding=0, bias=True),
-        )
-        self.critic_head_factory = nn.Sequential(
-            nn.Conv2d(self.critic_feature_count, self.critic_dim, kernel_size=1, stride=1, padding=0, bias=True),
-            nn.BatchNorm2d(self.critic_dim),
             nn.GELU(),
             nn.Conv2d(self.critic_dim, 1, kernel_size=1, stride=1, padding=0, bias=True),
         )
@@ -112,12 +105,8 @@ class SimpleNet(nn.Module):
             nn.Linear(self.factory_feature_count, ActDims.factory_act, bias=True),
         )
 
-        # unit
-        self.unit_feature_count = self.combined_feature_dim
-        self.unit_dim = self.combined_feature_dim
-
         # act type
-        self.act_type_feature_count = self.unit_dim
+        self.act_type_feature_count = self.combined_feature_dim
         self.unit_act_type_net = nn.Sequential(
             nn.Linear(self.act_type_feature_count, len(UnitActType), bias=True),
         )
@@ -125,10 +114,10 @@ class SimpleNet(nn.Module):
         # params
         self.param_heads = nn.ModuleDict({
             unit_act_type.name: nn.ModuleDict({
-                "direction": nn.Linear(self.unit_dim, ActDims.direction, bias=True),
-                "resource": nn.Linear(self.unit_dim, ActDims.resource, bias=True),
-                "amount": nn.Linear(self.unit_dim, ActDims.amount, bias=True),
-                "repeat": nn.Linear(self.unit_dim, ActDims.repeat, bias=True),
+                "direction": nn.Linear(self.combined_feature_dim, ActDims.direction, bias=True),
+                "resource": nn.Linear(self.combined_feature_dim, ActDims.resource, bias=True),
+                "amount": nn.Linear(self.combined_feature_dim, ActDims.amount, bias=True),
+                "repeat": nn.Linear(self.combined_feature_dim, ActDims.repeat, bias=True),
             }) for unit_act_type in UnitActType
         })
 
@@ -140,7 +129,7 @@ class SimpleNet(nn.Module):
         # Embeddings
         global_feature = global_feature[..., None, None].expand(-1, -1, H, W)
         all_features = torch.cat([global_feature, factory_feature, unit_feature, map_feature], dim=1)
-        features_embedded = self.embedding(all_features)
+        features_embedded = self.embedding_basic(all_features)
 
         small_distance = self.small_distance_net(features_embedded)
         large_distance = self.large_distance_net(features_embedded)
@@ -181,11 +170,11 @@ class SimpleNet(nn.Module):
         critic_value = torch.zeros((B, max_group_count), device=combined_feature.device)
         critic_value = critic_value.view(-1)
 
-        _critic_value_unit, _critic_value_factory = self.critic(combined_feature)
-        _critic_value_unit = _gather_from_map(_critic_value_unit[:, 0], unit_pos)
+        _critic_value = self.critic(combined_feature)
+        _critic_value_unit = _gather_from_map(_critic_value, unit_pos)
         if len(unit_indices) > 0:
             critic_value.scatter_add_(0, unit_indices, _critic_value_unit)
-        _critic_value_factory = _gather_from_map(_critic_value_factory[:, 0], factory_pos)
+        _critic_value_factory = _gather_from_map(_critic_value, factory_pos)
         if len(factory_indices) > 0:
             critic_value.scatter_add_(0, factory_indices, _critic_value_factory)
 
@@ -197,9 +186,8 @@ class SimpleNet(nn.Module):
         return logp, critic_value, action, entropy
 
     def critic(self, combined_feature):
-        critic_value_unit = self.critic_head_unit(combined_feature)
-        critic_value_factory = self.critic_head_factory(combined_feature)
-        return critic_value_unit, critic_value_factory
+        critic_value = self.critic_head(combined_feature)[:, 0]
+        return critic_value
 
     def actor(self, combined_feature, va, factory_pos, unit_act_type_va, unit_pos, factory_ids, max_group_count, unit_indices, factory_indices, action=None):
         B, _, H, W = combined_feature.shape
@@ -238,6 +226,7 @@ class SimpleNet(nn.Module):
 
         # unit actor
         unit_emb = _gather_from_map(combined_feature, unit_pos)
+        unit_param = _gather_from_map(combined_feature, unit_pos)
         
         unit_va = {
             'act_type': _gather_from_map(unit_act_type_va, unit_pos),
@@ -253,7 +242,7 @@ class SimpleNet(nn.Module):
         unit_action = action and _gather_from_map(action['unit_act'], unit_pos)
         unit_logp, unit_action, unit_entropy = self.unit_actor(
             unit_emb,
-            unit_emb,
+            unit_param,
             unit_va,
             unit_action,
         )
@@ -407,3 +396,4 @@ class SimpleNet(nn.Module):
         )
 
         return repeat, repeat_logp, repeat_entropy
+    
