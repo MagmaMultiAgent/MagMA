@@ -127,9 +127,7 @@ class SimpleNet(nn.Module):
         self.unit_feature_count = self.combined_feature_dim
         self.unit_dim = self.combined_feature_dim
         self.unit_net = nn.Sequential(
-            nn.Linear(self.unit_feature_count, self.unit_dim, bias=True),
-            nn.BatchNorm1d(self.unit_dim),
-            nn.GELU(),
+            nn.Identity()
         )
 
         # act type
