@@ -110,11 +110,9 @@ class SimpleNet(nn.Module):
 
         # critic
         self.critic_feature_count = self.combined_feature_dim
-        self.critic_dim = 4
+        # self.critic_dim = 4
         self.critic_head = nn.Sequential(
-            nn.Conv2d(self.critic_feature_count, self.critic_dim, kernel_size=1, stride=1, padding=0, bias=True),
-            nn.GELU(),
-            nn.Conv2d(self.critic_dim, 2, kernel_size=1, stride=1, padding=0, bias=True),  # 2 dims: 0 = unit, 1 = factory
+            nn.Conv2d(self.critic_feature_count, 1, kernel_size=1, stride=1, padding=0, bias=True),
         )
 
         # factory
@@ -204,7 +202,7 @@ class SimpleNet(nn.Module):
         _critic_value_unit = _gather_from_map(_critic_value[:, 0], unit_pos)
         if len(unit_indices) > 0:
             critic_value.scatter_add_(0, unit_indices, _critic_value_unit)
-        _critic_value_factory = _gather_from_map(_critic_value[:, 1], factory_pos)
+        _critic_value_factory = _gather_from_map(_critic_value[:, 0], factory_pos)
         if len(factory_indices) > 0:
             critic_value.scatter_add_(0, factory_indices, _critic_value_factory)
 
