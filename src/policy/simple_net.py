@@ -33,25 +33,25 @@ class SimpleNet(nn.Module):
         self.embedding_feature_count = sum(self.embedding_feature_counts.values())
 
         self.embedding = nn.Sequential(
-            nn.Conv2d(self.embedding_feature_count, self.embedding_dims, kernel_size=3, stride=1, padding="same", bias=True),
+            nn.Conv2d(self.embedding_feature_count, self.embedding_dims, kernel_size=1, stride=1, padding="same", bias=True),
             nn.BatchNorm2d(self.embedding_dims),
             nn.GELU()
         )
         self.embedding2 = nn.Sequential(
-            nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=3, stride=1, padding="same", bias=True),
+            nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding="same", bias=True),
             nn.BatchNorm2d(self.embedding_dims),
             nn.GELU(),
         )
 
-        self.embedding_residual = nn.Sequential(
-            nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=3, stride=1, padding="same", bias=True),
-            nn.BatchNorm2d(self.embedding_dims),
-            nn.GELU(),
+        # self.embedding_residual = nn.Sequential(
+        #     nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=3, stride=1, padding="same", bias=True),
+        #     nn.BatchNorm2d(self.embedding_dims),
+        #     nn.GELU(),
 
-            nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=3, stride=1, padding="same", bias=True),
-            nn.BatchNorm2d(self.embedding_dims),
-            nn.GELU()
-        )
+        #     nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=3, stride=1, padding="same", bias=True),
+        #     nn.BatchNorm2d(self.embedding_dims),
+        #     nn.GELU()
+        # )
             
 
         # SPATIAL INFORMATION
@@ -110,11 +110,14 @@ class SimpleNet(nn.Module):
 
         # critic
         self.critic_feature_count = self.combined_feature_dim
-        self.critic_dim = 4
+        self.critic_dim1 = 8
+        self.critic_dim2 = 4
         self.critic_head = nn.Sequential(
-            nn.Conv2d(self.critic_feature_count, self.critic_dim, kernel_size=1, stride=1, padding=0, bias=True),
+            nn.Conv2d(self.critic_feature_count, self.critic_dim1, kernel_size=3, stride=1, padding="same", bias=True),
             nn.GELU(),
-            nn.Conv2d(self.critic_dim, 1, kernel_size=1, stride=1, padding=0, bias=True),
+            nn.Conv2d(self.critic_dim1, self.critic_dim2, kernel_size=1, stride=1, padding=0, bias=True),
+            nn.GELU(),
+            nn.Conv2d(self.critic_dim2, 2, kernel_size=1, stride=1, padding=0, bias=True),  # 2 dims: 0 = unit, 1 = factory
         )
 
         # factory
@@ -123,8 +126,17 @@ class SimpleNet(nn.Module):
             nn.Linear(self.factory_feature_count, ActDims.factory_act, bias=True),
         )
 
+        # unit
+        self.unit_feature_count = self.combined_feature_dim
+        self.unit_dim = self.combined_feature_dim
+        self.unit_net = nn.Sequential(
+            nn.Linear(self.unit_feature_count, self.unit_dim, bias=True),
+            nn.BatchNorm1d(self.unit_dim),
+            nn.GELU(),
+        )
+
         # act type
-        self.act_type_feature_count = self.combined_feature_dim
+        self.act_type_feature_count = self.unit_dim
         self.unit_act_type_net = nn.Sequential(
             nn.Linear(self.act_type_feature_count, len(UnitActType), bias=True),
         )
@@ -132,10 +144,10 @@ class SimpleNet(nn.Module):
         # params
         self.param_heads = nn.ModuleDict({
             unit_act_type.name: nn.ModuleDict({
-                "direction": nn.Linear(self.combined_feature_dim, ActDims.direction, bias=True),
-                "resource": nn.Linear(self.combined_feature_dim, ActDims.resource, bias=True),
-                "amount": nn.Linear(self.combined_feature_dim, ActDims.amount, bias=True),
-                "repeat": nn.Linear(self.combined_feature_dim, ActDims.repeat, bias=True),
+                "direction": nn.Linear(self.unit_dim, ActDims.direction, bias=True),
+                "resource": nn.Linear(self.unit_dim, ActDims.resource, bias=True),
+                "amount": nn.Linear(self.unit_dim, ActDims.amount, bias=True),
+                "repeat": nn.Linear(self.unit_dim, ActDims.repeat, bias=True),
             }) for unit_act_type in UnitActType
         })
 
@@ -194,10 +206,10 @@ class SimpleNet(nn.Module):
         critic_value = critic_value.view(-1)
 
         _critic_value = self.critic(combined_feature)
-        _critic_value_unit = _gather_from_map(_critic_value, unit_pos)
+        _critic_value_unit = _gather_from_map(_critic_value[:, 0], unit_pos)
         if len(unit_indices) > 0:
             critic_value.scatter_add_(0, unit_indices, _critic_value_unit)
-        _critic_value_factory = _gather_from_map(_critic_value, factory_pos)
+        _critic_value_factory = _gather_from_map(_critic_value[:, 1], factory_pos)
         if len(factory_indices) > 0:
             critic_value.scatter_add_(0, factory_indices, _critic_value_factory)
 
@@ -209,7 +221,7 @@ class SimpleNet(nn.Module):
         return logp, critic_value, action, entropy
 
     def critic(self, combined_feature):
-        critic_value = self.critic_head(combined_feature)[:, 0]
+        critic_value = self.critic_head(combined_feature)
         return critic_value
 
     def actor(self, combined_feature, va, factory_pos, unit_act_type_va, unit_pos, factory_ids, max_group_count, unit_indices, factory_indices, action=None):
@@ -249,7 +261,7 @@ class SimpleNet(nn.Module):
 
         # unit actor
         unit_emb = _gather_from_map(combined_feature, unit_pos)
-        unit_param = _gather_from_map(combined_feature, unit_pos)
+        unit_emb = self.unit_net(unit_emb)
         
         unit_va = {
             'act_type': _gather_from_map(unit_act_type_va, unit_pos),
@@ -265,7 +277,7 @@ class SimpleNet(nn.Module):
         unit_action = action and _gather_from_map(action['unit_act'], unit_pos)
         unit_logp, unit_action, unit_entropy = self.unit_actor(
             unit_emb,
-            unit_param,
+            unit_emb,
             unit_va,
             unit_action,
         )
