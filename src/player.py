@@ -14,9 +14,9 @@ class Player():
 
     def early_setup(self, step: int, obs, remainingOverageTime: int = 60):
         k = 200
-        ice_log_weight = 1
-        ore_log_weight = 0.5
-        rubble_weight = 0.1
+        ice_log_weight = 2
+        ore_log_weight = 0
+        rubble_weight = 0.01
         sigma = 3
         if step == 0:
             # bid 0 to not waste resources bidding and declare as the default faction
@@ -41,12 +41,13 @@ class Player():
                 kernal = np.ones((9, 9))
 
                 rubble_0 = (game_state.board.rubble == 0).astype(np.int32)
+                rubble = game_state.board.rubble
 
                 # yapf: disable
                 center_weight = ndimage.gaussian_filter(np.array([[1.]], dtype=np.float32), sigma=sigma, mode='constant', cval=0.0)
                 ice_sum = ndimage.gaussian_filter(game_state.board.ice.astype(np.float32), sigma=sigma, mode='constant', cval=0.0) / center_weight
                 ore_sum = ndimage.gaussian_filter(game_state.board.ore.astype(np.float32), sigma=sigma, mode='constant', cval=0.0) / center_weight
-                rubble_sum = ndimage.gaussian_filter(rubble_0.astype(np.float32), sigma=sigma, mode='constant', cval=0.0) / center_weight
+                rubble_sum = ndimage.gaussian_filter(rubble.astype(np.float32), sigma=sigma, mode='constant', cval=0.0) / center_weight
                 factory_occupancy_map = game_state.board.factory_occupancy_map
                 factory_occupancy_map = factory_occupancy_map == int(self.player[len('player_'):])
                 factory_occupancy_map = ndimage.gaussian_filter(factory_occupancy_map.astype(np.float32), sigma=sigma, mode='constant', cval=0.0) / center_weight
@@ -59,7 +60,7 @@ class Player():
                 score = sum([
                     np.log(ice_sum + 0.2) * ice_log_weight,
                     np.log(ore_sum + 0.2) * ore_log_weight,
-                    np.log(rubble_sum + 1) * rubble_weight,
+                    -np.log(rubble_sum + 1) * rubble_weight,
                     -np.log(factory_occupancy_map + 0.2),
                     np.log(valid_spawns_mask + np.finfo(np.float64).tiny),
                 ])
