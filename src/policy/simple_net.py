@@ -110,14 +110,11 @@ class SimpleNet(nn.Module):
 
         # critic
         self.critic_feature_count = self.combined_feature_dim
-        self.critic_dim1 = 8
-        self.critic_dim2 = 4
+        self.critic_dim = 4
         self.critic_head = nn.Sequential(
-            nn.Conv2d(self.critic_feature_count, self.critic_dim1, kernel_size=3, stride=1, padding="same", bias=True),
+            nn.Conv2d(self.critic_feature_count, self.critic_dim, kernel_size=1, stride=1, padding=0, bias=True),
             nn.GELU(),
-            nn.Conv2d(self.critic_dim1, self.critic_dim2, kernel_size=1, stride=1, padding=0, bias=True),
-            nn.GELU(),
-            nn.Conv2d(self.critic_dim2, 2, kernel_size=1, stride=1, padding=0, bias=True),  # 2 dims: 0 = unit, 1 = factory
+            nn.Conv2d(self.critic_dim, 2, kernel_size=1, stride=1, padding=0, bias=True),  # 2 dims: 0 = unit, 1 = factory
         )
 
         # factory
