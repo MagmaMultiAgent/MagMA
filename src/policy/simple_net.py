@@ -79,7 +79,7 @@ class SimpleNet(nn.Module):
 
         # COMBINED
 
-        self.combined_feature_count = self.embedding_dims + self.spatial_embedding_dim * 2
+        self.combined_feature_count = self.embedding_dims + self.spatial_embedding_dim
         self.combined_feature_dim = 16
         self.combined_net = nn.Sequential(
             nn.Conv2d(self.combined_feature_count, self.combined_feature_dim, kernel_size=1, stride=1, padding="same", bias=True),
@@ -132,10 +132,10 @@ class SimpleNet(nn.Module):
         features_embedded = self.embedding_basic(all_features)
 
         small_distance = self.small_distance_net(features_embedded)
-        large_distance = self.large_distance_net(features_embedded)
+        # large_distance = self.large_distance_net(features_embedded)
 
         # Combined
-        combined_feature = torch.cat([features_embedded, small_distance, large_distance], dim=1)
+        combined_feature = torch.cat([features_embedded, small_distance], dim=1)
         combined_feature = self.combined_net(combined_feature)
 
         # Valid actions
