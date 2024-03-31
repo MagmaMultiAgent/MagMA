@@ -132,10 +132,11 @@ class SimpleNet(nn.Module):
         features_embedded = self.embedding_basic(all_features)
 
         small_distance = self.small_distance_net(features_embedded)
-        # large_distance = self.large_distance_net(features_embedded)
+        large_distance = self.large_distance_net(features_embedded)
+        aggregated_distance = (small_distance + large_distance) / 2
 
         # Combined
-        combined_feature = torch.cat([features_embedded, small_distance], dim=1)
+        combined_feature = torch.cat([features_embedded, aggregated_distance], dim=1)
         combined_feature = self.combined_net(combined_feature)
 
         # Valid actions
