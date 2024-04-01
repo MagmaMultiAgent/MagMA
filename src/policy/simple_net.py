@@ -80,7 +80,7 @@ class SimpleNet(nn.Module):
         # COMBINED
 
         self.combined_feature_count = self.embedding_dims + self.spatial_embedding_dim
-        self.combined_feature_dim = 16
+        self.combined_feature_dim = 8
         self.combined_net = nn.Sequential(
             nn.Conv2d(self.combined_feature_count, self.combined_feature_dim, kernel_size=1, stride=1, padding="same", bias=True),
             nn.BatchNorm2d(self.combined_feature_dim),
@@ -106,11 +106,7 @@ class SimpleNet(nn.Module):
         )
 
         self.unit_feature_count = self.combined_feature_dim
-        self.unit_emb_dim = 8
-        self.unit_net = nn.Sequential(
-            nn.Linear(self.unit_feature_count, self.unit_emb_dim, bias=True),
-            nn.GELU(),
-        )
+        self.unit_emb_dim = self.unit_feature_count
 
         # act type
         self.act_type_feature_count = self.unit_emb_dim
@@ -233,7 +229,6 @@ class SimpleNet(nn.Module):
 
         # unit actor
         unit_emb = _gather_from_map(combined_feature, unit_pos)
-        unit_emb = self.unit_net(unit_emb)
         
         unit_va = {
             'act_type': _gather_from_map(unit_act_type_va, unit_pos),
