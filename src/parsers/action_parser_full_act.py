@@ -146,6 +146,8 @@ class ActionParser():
                         target_space = env_cfg.max_transfer_amount
                         break
 
+                # always transfer full
+                percentage = 1
                 action[UnitActChannel.AMOUNT] = round(min(target_space, self_amount) * percentage)
 
             if act_type == UnitActType.PICKUP:
@@ -343,6 +345,9 @@ class ActionParser():
                 # don't recharge if on top of factory, can pickup instead
                 if factory_under_unit(unit.pos, game_state.factories[player]) is not None:
                     valid_actions["unit_act"]["act_type"][UnitActType.RECHARGE, x, y] = False
+                    if unit.power < battery_capacity * 0.2:
+                        valid_actions["unit_act"]["act_type"][:, x, y] = False
+                        valid_actions["unit_act"]["act_type"][UnitActType.PICKUP, x, y] = True
 
                 # if battery not at least half empty, don't recharge or pickup
                 if unit.power >= (battery_capacity / 2):
@@ -361,19 +366,19 @@ class ActionParser():
             for direction in range(len(move_deltas)):
                 target_pos = unit.pos + move_deltas[direction]
 
-                # # don't move backwards compared to last step
-                # if len(unit.action_queue) > 0 and unit.action_queue[0][0] == UnitActType.MOVE:
-                #     last_direction = unit.action_queue[0][1]
-                #     # a[1] = direction (0 = center, 1 = up, 2 = right, 3 = down, 4 = left)
-                #     # move_deltas = np.array([[0, 0], [0, -1], [1, 0], [0, 1], [-1, 0]])
-                #     if direction == 1 and last_direction == 3:
-                #         continue
-                #     if direction == 2 and last_direction == 4:
-                #         continue
-                #     if direction == 3 and last_direction == 1:
-                #         continue
-                #     if direction == 4 and last_direction == 2:
-                #         continue
+                # don't move backwards compared to last step
+                if len(unit.action_queue) > 0 and unit.action_queue[0][0] == UnitActType.MOVE:
+                    last_direction = unit.action_queue[0][1]
+                    # a[1] = direction (0 = center, 1 = up, 2 = right, 3 = down, 4 = left)
+                    # move_deltas = np.array([[0, 0], [0, -1], [1, 0], [0, 1], [-1, 0]])
+                    if direction == 1 and last_direction == 3:
+                        continue
+                    if direction == 2 and last_direction == 4:
+                        continue
+                    if direction == 3 and last_direction == 1:
+                        continue
+                    if direction == 4 and last_direction == 2:
+                        continue
 
                 # always forbid to move to the same position
                 if direction == 0:
@@ -400,9 +405,9 @@ class ActionParser():
                 if unit.unit_type != "HEAVY" and tuple(target_pos) in enemy_unit_positions:
                     continue
 
-                # if on factory corner, step out of factory
-                if tuple(target_pos) in factory_corner_positions and tuple(target_pos) in factory_positions:
-                    continue
+                # # if on factory corner, step out of factory
+                # if tuple(target_pos) in factory_corner_positions and tuple(target_pos) in factory_positions:
+                #     continue
 
                 power_required = unit.move_cost(game_state, direction)
                 if unit.power - action_queue_cost >= power_required:
