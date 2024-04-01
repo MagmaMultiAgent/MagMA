@@ -105,7 +105,7 @@ def parse_args():
         help="total timesteps of the experiments")
     parser.add_argument("--learning-rate", type=float, default=2e-4,
         help="the learning rate of the optimizer")
-    parser.add_argument("--num-envs", type=int, default=1,
+    parser.add_argument("--num-envs", type=int, default=2,
         help="the number of parallel game environments")
     parser.add_argument("--num-steps", type=int, default=1024,
         help="the number of steps to run in each environment per policy rollout")
@@ -141,7 +141,7 @@ def parse_args():
         help="path for pretrained model loading")
     parser.add_argument("--evaluate-interval", type=int, default=4096,
         help="evaluation steps")
-    parser.add_argument("--evaluate-num", type=int, default=1,
+    parser.add_argument("--evaluate-num", type=int, default=20,
         help="evaluation numbers")
     parser.add_argument("--replay-dir", type=str, default=None,
         help="replay dirs to reset state")
@@ -151,7 +151,7 @@ def parse_args():
     args = parser.parse_args()
 
     # Test arguments
-    args.num_steps = 200
+    args.num_steps = 100
     args.train_num_collect = args.num_envs*args.num_steps
     args.evaluate_interval = args.train_num_collect
 
@@ -478,7 +478,24 @@ def main(args, device):
     rewards = dict(player_0=torch.zeros((args.max_train_step, args.num_envs, args.max_entity_number)).to(device),player_1=torch.zeros((args.max_train_step, args.num_envs, args.max_entity_number)).to(device))
     dones = dict(player_0=torch.zeros((args.max_train_step, args.num_envs, args.max_entity_number)).to(device),player_1=torch.zeros((args.max_train_step, args.num_envs, args.max_entity_number)).to(device))
     values = dict(player_0=torch.zeros((args.max_train_step, args.num_envs, args.max_entity_number)).to(device),player_1=torch.zeros((args.max_train_step, args.num_envs, args.max_entity_number)).to(device))
-    
+
+    # Evaluate
+    print("Evaluating")
+    with torch.no_grad():
+        eval_results = []
+        eval_seed = 420
+        eval_envs = LuxSyncVectorEnv(
+            [make_env(i, eval_seed + i, None, device="cpu") for i in range(args.evaluate_num)],
+            device="cpu"
+        )
+        eval_results = eval_envs.eval(agent.to("cpu"))
+        if LOG:
+            for key, value in eval_results.items():
+                writer.add_scalar(f"eval/{key}", value, global_step)
+        pprint(eval_results)
+        last_eval_step = global_step
+        agent.to(device)
+
     logger.info("Starting train")
     for update in range(1, num_updates + 1):
 
@@ -687,17 +704,20 @@ def main(args, device):
             
             # Evaluate
             if (global_step - last_eval_step) >= args.evaluate_interval:
-                eval_results = []
-                eval_seed = 420
-                for _ in range(args.evaluate_num):
-                    eval_results.append(eval_model(agent, seed=eval_seed))
-                    eval_seed += 1
-                eval_results = _process_eval_resluts(eval_results)
-                if LOG:
-                    for key, value in eval_results.items():
-                        writer.add_scalar(f"eval/{key}", value, global_step)
-                pprint(eval_results)
-                last_eval_step = global_step
+                with torch.no_grad():
+                    eval_results = []
+                    eval_seed = 420
+                    eval_envs = LuxSyncVectorEnv(
+                        [make_env(i, eval_seed + i, None, device="cpu") for i in range(args.evaluate_num)],
+                        device="cpu"
+                    )
+                    eval_results = eval_envs.eval(agent.to("cpu"))
+                    if LOG:
+                        for key, value in eval_results.items():
+                            writer.add_scalar(f"eval/{key}", value, global_step)
+                    pprint(eval_results)
+                    last_eval_step = global_step
+                    agent.to(device)
             
             # Save model
             if (global_step - last_save_model_step) >= args.save_interval:

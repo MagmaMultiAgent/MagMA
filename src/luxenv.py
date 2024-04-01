@@ -177,6 +177,8 @@ class LuxEnv(gym.Env):
 
         self.device = device
 
+        self.current_seed = None
+
         self.proxy = LuxAI_S2(
             collect_stats=True,
             verbose=False,
@@ -208,7 +210,11 @@ class LuxEnv(gym.Env):
 
     def reset_proxy(self, seed=None, options=None):
         assert not ((EnvParam.init_from_replay_ratio != 0.) and (EnvParam.map_size != EnvConfig.map_size))
-        seed = seed if seed is not None else np.random.SeedSequence().generate_state(1)
+
+        seed = seed if seed is not None else self.current_seed
+        seed =  np.random.SeedSequence(seed).generate_state(1)
+        self.current_seed = seed
+
         if self.kaggle_replays and EnvParam.init_from_replay_ratio != 0:
             if np.random.rand() < EnvParam.init_from_replay_ratio:
                 self.proxy.load_from_replay = True
@@ -236,6 +242,7 @@ class LuxEnv(gym.Env):
 
     def seed(self, seed):
         self.proxy.seed(seed)
+        self.current_seed = seed
 
     def reset(self, seed=None, options=None) -> tuple[dict[str, dict[str, np.ndarray]], dict[str, Any]]:
         obs = self.reset_proxy(seed=seed, options=options)
@@ -309,7 +316,7 @@ class LuxEnv(gym.Env):
         return obs_list, reward, terminations_final, truncations_final, info
     
     def eval(self, own_policy, enemy_policy):
-        np2torch = lambda x, dtype: torch.tensor(np.array(x)).type(dtype).cuda()
+        np2torch = lambda x, dtype: torch.tensor(np.array(x)).type(dtype)
         own_id = random.randint(0, 1)
         enemy_id = 1 - own_id
 
