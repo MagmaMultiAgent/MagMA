@@ -46,7 +46,7 @@ class SimpleNet(nn.Module):
         # SPATIAL INFORMATION
 
         self.spatial_embedding_feature_count = self.embedding_dims
-        self.spatial_embedding_dim = 8
+        self.spatial_embedding_dim = 4
 
         # close distance
         """
