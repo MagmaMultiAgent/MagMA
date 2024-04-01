@@ -443,7 +443,7 @@ def lux_worker(index, env_fn, pipe, parent_pipe, shared_memory, error_queue):
             )
         elif command == "eval":
             episode_length, r_own, r_enemy = env.eval(data[0], data[1])
-            pipe.send(episode_length, r_own, r_enemy)
+            pipe.send((episode_length, r_own, r_enemy))
         else:
             raise RuntimeError(
                 f"Received unknown command `{command}`. Must "
