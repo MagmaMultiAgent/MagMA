@@ -316,7 +316,7 @@ class LuxEnv(gym.Env):
         return obs_list, reward, terminations_final, truncations_final, info
     
     def eval(self, own_policy, enemy_policy):
-        np2torch = lambda x, dtype: torch.tensor(np.array(x)).type(dtype)
+        np2torch = lambda x, dtype: torch.tensor(np.array(x)).type(dtype).to(self.device)
         own_id = random.randint(0, 1)
         enemy_id = 1 - own_id
 
@@ -325,7 +325,9 @@ class LuxEnv(gym.Env):
         episode_length = 0
         return_own = 0
         return_enemy = 0
+        i = 0
         while not done:
+
             actions = {}
             for id, policy in zip([own_id, enemy_id], [own_policy, enemy_policy]):
                 valid_action = self.get_valid_actions(id)
@@ -345,6 +347,7 @@ class LuxEnv(gym.Env):
             return_own += reward[own_id].sum()
             return_enemy += reward[enemy_id].sum()
             episode_length += 1
+            i += 1
         return episode_length, return_own, return_enemy
 
     def get_valid_actions(self, player_id):

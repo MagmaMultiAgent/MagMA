@@ -141,7 +141,7 @@ def parse_args():
         help="path for pretrained model loading")
     parser.add_argument("--evaluate-interval", type=int, default=4096,
         help="evaluation steps")
-    parser.add_argument("--evaluate-num", type=int, default=20,
+    parser.add_argument("--evaluate-num", type=int, default=2,
         help="evaluation numbers")
     parser.add_argument("--replay-dir", type=str, default=None,
         help="replay dirs to reset state")
@@ -485,16 +485,15 @@ def main(args, device):
         eval_results = []
         eval_seed = 420
         eval_envs = LuxSyncVectorEnv(
-            [make_env(i, eval_seed + i, None, device="cpu") for i in range(args.evaluate_num)],
-            device="cpu"
+            [make_env(i, eval_seed + i, None, device=device) for i in range(args.evaluate_num)],
+            device=device
         )
-        eval_results = eval_envs.eval(agent.to("cpu"))
+        eval_results = eval_envs.eval(agent)
         if LOG:
             for key, value in eval_results.items():
                 writer.add_scalar(f"eval/{key}", value, global_step)
         pprint(eval_results)
         last_eval_step = global_step
-        agent.to(device)
 
     logger.info("Starting train")
     for update in range(1, num_updates + 1):
@@ -708,16 +707,15 @@ def main(args, device):
                     eval_results = []
                     eval_seed = 420
                     eval_envs = LuxSyncVectorEnv(
-                        [make_env(i, eval_seed + i, None, device="cpu") for i in range(args.evaluate_num)],
-                        device="cpu"
+                        [make_env(i, eval_seed + i, None, device=device) for i in range(args.evaluate_num)],
+                        device=device
                     )
-                    eval_results = eval_envs.eval(agent.to("cpu"))
+                    eval_results = eval_envs.eval(agent)
                     if LOG:
                         for key, value in eval_results.items():
                             writer.add_scalar(f"eval/{key}", value, global_step)
                     pprint(eval_results)
                     last_eval_step = global_step
-                    agent.to(device)
             
             # Save model
             if (global_step - last_save_model_step) >= args.save_interval:
@@ -729,6 +727,8 @@ def main(args, device):
 
 
 if __name__ == "__main__":
+    torch.multiprocessing.set_start_method('spawn')
+
     args = parse_args()
 
     # Get device
