@@ -688,8 +688,10 @@ def main(args, device):
             # Evaluate
             if (global_step - last_eval_step) >= args.evaluate_interval:
                 eval_results = []
+                eval_seed = 420
                 for _ in range(args.evaluate_num):
-                    eval_results.append(eval_model(agent))
+                    eval_results.append(eval_model(agent, seed=eval_seed))
+                    eval_seed += 1
                 eval_results = _process_eval_resluts(eval_results)
                 if LOG:
                     for key, value in eval_results.items():

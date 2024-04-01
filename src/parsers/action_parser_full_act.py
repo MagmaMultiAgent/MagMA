@@ -433,18 +433,27 @@ class ActionParser():
                 # disable recharge
                 valid_actions["unit_act"]["act_type"][UnitActType.RECHARGE, x, y] = False
 
-            # valid transfer
-            valid_actions["unit_act"]["transfer"]['repeat'][0, x, y] = True
-            amounts = [unit.cargo.ice, unit.cargo.ore, unit.cargo.water, unit.cargo.metal, unit.power]
-            for i, a in enumerate(amounts):
-                valid_actions["unit_act"]["transfer"]['resource'][i, x, y] = False
-            valid_actions["unit_act"]["transfer"]['resource'][0, x, y] = (unit.cargo.ice > 0)
-            valid_actions["unit_act"]["transfer"]['resource'][1, x, y] = (unit.cargo.ore > 0)
-            for direction in range(1, len(move_deltas)):
-                target_pos = unit.pos + move_deltas[direction]
+            cargo_capacity = unit.unit_cfg.CARGO_SPACE
+            cargo_full = sum([unit.cargo.ice, unit.cargo.ore, unit.cargo.water, unit.cargo.metal]) >= cargo_capacity * 0.6
 
-                if factory_under_unit(target_pos, game_state.factories[player]) is not None:
-                    valid_actions["unit_act"]["transfer"]["direction"][direction, x, y] = True
+            # valid transfer
+            if unit.power >= action_queue_cost:
+                valid_actions["unit_act"]["transfer"]['repeat'][0, x, y] = True
+                amounts = [unit.cargo.ice, unit.cargo.ore, unit.cargo.water, unit.cargo.metal, unit.power]
+                for i, a in enumerate(amounts):
+                    valid_actions["unit_act"]["transfer"]['resource'][i, x, y] = False
+                valid_actions["unit_act"]["transfer"]['resource'][0, x, y] = (unit.cargo.ice > 0)
+                valid_actions["unit_act"]["transfer"]['resource'][1, x, y] = (unit.cargo.ore > 0)
+                for direction in range(1, len(move_deltas)):
+                    target_pos = unit.pos + move_deltas[direction]
+
+                    if factory_under_unit(target_pos, game_state.factories[player]) is not None:
+                        valid_actions["unit_act"]["transfer"]["direction"][direction, x, y] = True
+
+                        # # if cargo is full, transfer to factory
+                        # if cargo_full:
+                        #     valid_actions["unit_act"]["act_type"][:, x, y] = False
+                        #     valid_actions["unit_act"]["act_type"][UnitActType.TRANSFER, x, y] = True
 
             # valid pickup
             factory = factory_under_unit(unit.pos, game_state.factories[player])
@@ -460,10 +469,8 @@ class ActionParser():
 
             # valid dig
             dig_action_queue_cost = 0 if len(unit.action_queue) > 0 and unit.action_queue[0][0] == UnitActType.DIG else action_queue_cost
-            cargo_capacity = unit.unit_cfg.CARGO_SPACE
-            cargo_full = sum([unit.cargo.ice, unit.cargo.ore, unit.cargo.water, unit.cargo.metal]) >= cargo_capacity * 0.6
-            if factory_under_unit(unit.pos, game_state.factories[player]) is None and (unit.power - dig_action_queue_cost) >= unit.unit_cfg.DIG_COST:
-                if (board.rubble[x, y] > 0) or (board.ice[x, y] > 0 and not cargo_full) or (board.ore[x, y] > 0 and not cargo_full):
+            if factory_under_unit(unit.pos, game_state.factories[player]) is None and (unit.power - dig_action_queue_cost) >= unit.unit_cfg.DIG_COST and not cargo_full:
+                if (board.rubble[x, y] > 0) or (board.ice[x, y] > 0) or (board.ore[x, y] > 0):
                     if board.ice[x, y] > 0 or board.ore[x, y] > 0:
                         valid_actions["unit_act"]["dig"]['repeat'][0, x, y] = False
                         valid_actions["unit_act"]["dig"]['repeat'][1, x, y] = True

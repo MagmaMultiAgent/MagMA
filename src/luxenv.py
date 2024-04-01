@@ -328,7 +328,8 @@ class LuxEnv(gym.Env):
                     np2torch([obs_list[f'player_{id}']['factory_feature']], torch.float32),
                     np2torch([obs_list[f'player_{id}']['unit_feature']], torch.float32),
                     np2torch([obs_list[f'player_{id}']['location_feature']], torch.int32),
-                    tree.map_structure(lambda x: np2torch([x], torch.bool), valid_action)
+                    tree.map_structure(lambda x: np2torch([x], torch.bool), valid_action),
+                    is_deterministic=True
                 )
                 actions[id] = raw_action
             actions = tree.map_structure(lambda x: torch2np(x), actions)                

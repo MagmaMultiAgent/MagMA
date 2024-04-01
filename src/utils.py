@@ -30,8 +30,9 @@ def load_model(net, file_path):
     net.load_state_dict(torch.load(file_path))
     return net
 
-def eval_model(net):
+def eval_model(net, seed=420):
     env = LuxEnv()
+    env.seed(seed)
     eval_results = env.eval(net, net)
     env.close()
     return eval_results
