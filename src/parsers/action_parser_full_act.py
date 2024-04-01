@@ -330,8 +330,9 @@ class ActionParser():
             factory_va[FactoryActType.DO_NOTHING, x, y] = ~factory_va[FactoryActType.BUILD_HEAVY, x, y] & ~factory_va[FactoryActType.BUILD_LIGHT, x, y]
 
         # unit actions
-        unit_move_targets = {}
-        for unit_id, unit in game_state.units[player].items():
+        unit_move_targets = set()
+        sorted_units = sorted(game_state.units[player].items(), reverse=True, key=(lambda x: (x[1].unit_type == "HEAVY", x[1].cargo.ice, x[1].power)))
+        for unit_id, unit in sorted_units:
             x, y = unit.pos
 
             action_queue_cost = unit.action_queue_cost(game_state)
@@ -348,10 +349,12 @@ class ActionParser():
                     if unit.power < battery_capacity * 0.2:
                         valid_actions["unit_act"]["act_type"][:, x, y] = False
                         valid_actions["unit_act"]["act_type"][UnitActType.PICKUP, x, y] = True
+                        valid_actions["unit_act"]["act_type"][UnitActType.TRANSFER, x, y] = True
 
                 # if battery not at least half empty, don't recharge or pickup
                 if unit.power >= (battery_capacity / 2):
                     valid_actions["unit_act"]["act_type"][UnitActType.RECHARGE, x, y] = False
+                if unit.power >= (battery_capacity * 0.8):
                     valid_actions["unit_act"]["act_type"][UnitActType.PICKUP, x, y] = False
 
                 valid_actions["unit_act"]["act_type"][UnitActType.DO_NOTHING, x, y] = False
@@ -363,6 +366,8 @@ class ActionParser():
             valid_actions["unit_act"]["move"]["repeat"][0, x, y] = False
             valid_actions["unit_act"]["move"]["repeat"][1, x, y] = True
             
+            can_move_to_factory = False
+            non_factory_moves = []
             for direction in range(len(move_deltas)):
                 target_pos = unit.pos + move_deltas[direction]
 
@@ -412,24 +417,21 @@ class ActionParser():
                 power_required = unit.move_cost(game_state, direction)
                 if unit.power - action_queue_cost >= power_required:
 
-                    if tuple(target_pos) in unit_move_targets:
+                    if tuple(target_pos) not in unit_move_targets:
+                        valid_actions["unit_act"]["move"]["direction"][direction, x, y] = True
+                        unit_move_targets.add(tuple(target_pos))
 
-                        # if another heavy can already step there, don't step there
-                        if unit_move_targets[tuple(target_pos)]["is_heavy"]:
-                            continue
+                        if factory_under_unit(target_pos, game_state.factories[player]) is None:
+                            non_factory_moves.append(direction)
+                        else:
+                            can_move_to_factory = True
 
-                        # if not heavy, don't take away the step from other unit
-                        if unit.unit_type != "HEAVY":
-                            continue
-
-                        # if heavy, and the other unit is not heavy, take the step
-                        original_unit_x, original_unit_y = unit_move_targets[tuple(target_pos)]["coord"]
-                        original_unit_direction = unit_move_targets[tuple(target_pos)]["direction"]
-                        valid_actions["unit_act"]["move"]["direction"][original_unit_direction, original_unit_x, original_unit_y] = False
-
-                    unit_move_targets[tuple(target_pos)] = {"coord": (x, y), "direction": direction, "is_heavy": unit.unit_type == "HEAVY"}
-                    valid_actions["unit_act"]["move"]["direction"][direction, x, y] = True
-
+            # if low power, force agent to move to factory
+            if unit.power < battery_capacity * 0.2 and can_move_to_factory:
+                for direction in non_factory_moves:
+                    valid_actions["unit_act"]["move"]["direction"][direction, x, y] = False
+                # disable recharge
+                valid_actions["unit_act"]["act_type"][UnitActType.RECHARGE, x, y] = False
 
             # valid transfer
             valid_actions["unit_act"]["transfer"]['repeat'][0, x, y] = True
@@ -441,15 +443,7 @@ class ActionParser():
             for direction in range(1, len(move_deltas)):
                 target_pos = unit.pos + move_deltas[direction]
 
-                # always forbid to transfer to self
-                if direction == 0:
-                    continue
-
-                there_is_a_target = False
                 if factory_under_unit(target_pos, game_state.factories[player]) is not None:
-                    there_is_a_target = True
-
-                if there_is_a_target:
                     valid_actions["unit_act"]["transfer"]["direction"][direction, x, y] = True
 
             # valid pickup
@@ -467,11 +461,15 @@ class ActionParser():
             # valid dig
             dig_action_queue_cost = 0 if len(unit.action_queue) > 0 and unit.action_queue[0][0] == UnitActType.DIG else action_queue_cost
             cargo_capacity = unit.unit_cfg.CARGO_SPACE
-            cargo_full = sum([unit.cargo.ice, unit.cargo.ore, unit.cargo.water, unit.cargo.metal]) >= cargo_capacity * 0.9
+            cargo_full = sum([unit.cargo.ice, unit.cargo.ore, unit.cargo.water, unit.cargo.metal]) >= cargo_capacity * 0.6
             if factory_under_unit(unit.pos, game_state.factories[player]) is None and (unit.power - dig_action_queue_cost) >= unit.unit_cfg.DIG_COST:
                 if (board.rubble[x, y] > 0) or (board.ice[x, y] > 0 and not cargo_full) or (board.ore[x, y] > 0 and not cargo_full):
-                    valid_actions["unit_act"]["dig"]['repeat'][0, x, y] = False
-                    valid_actions["unit_act"]["dig"]['repeat'][1, x, y] = True
+                    if board.ice[x, y] > 0 or board.ore[x, y] > 0:
+                        valid_actions["unit_act"]["dig"]['repeat'][0, x, y] = False
+                        valid_actions["unit_act"]["dig"]['repeat'][1, x, y] = True
+                    elif unit.power >= battery_capacity * 0.4:
+                        valid_actions["unit_act"]["dig"]['repeat'][0, x, y] = True
+                        valid_actions["unit_act"]["dig"]['repeat'][1, x, y] = False
 
             # valid selfdestruct
             if unit.power - action_queue_cost >= unit.unit_cfg.SELF_DESTRUCT_COST:
