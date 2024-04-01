@@ -80,7 +80,7 @@ class SimpleNet(nn.Module):
         # COMBINED
 
         self.combined_feature_count = self.embedding_dims + self.spatial_embedding_dim
-        self.combined_feature_dim = 8
+        self.combined_feature_dim = 16
         self.combined_net = nn.Sequential(
             nn.Conv2d(self.combined_feature_count, self.combined_feature_dim, kernel_size=1, stride=1, padding="same", bias=True),
             nn.BatchNorm2d(self.combined_feature_dim),
@@ -125,7 +125,7 @@ class SimpleNet(nn.Module):
         })
 
 
-    def forward(self, global_feature, map_feature, factory_feature, unit_feature, location_feature, va, action=None):
+    def forward(self, global_feature, map_feature, factory_feature, unit_feature, location_feature, va, action=None, is_deterministic=False):
         B, _, H, W = map_feature.shape
         max_group_count = 1000
 
@@ -184,7 +184,7 @@ class SimpleNet(nn.Module):
         critic_value = critic_value.view(B, max_group_count)
 
         # Actor
-        logp, action, entropy = self.actor(combined_feature, va, factory_pos, unit_act_type_va, unit_pos, factory_ids, max_group_count, unit_indices, factory_indices, action)
+        logp, action, entropy = self.actor(combined_feature, va, factory_pos, unit_act_type_va, unit_pos, factory_ids, max_group_count, unit_indices, factory_indices, action, is_deterministic)
 
         return logp, critic_value, action, entropy
 
@@ -192,7 +192,7 @@ class SimpleNet(nn.Module):
         critic_value = self.critic_head(combined_feature)[:, 0]
         return critic_value
 
-    def actor(self, combined_feature, va, factory_pos, unit_act_type_va, unit_pos, factory_ids, max_group_count, unit_indices, factory_indices, action=None):
+    def actor(self, combined_feature, va, factory_pos, unit_act_type_va, unit_pos, factory_ids, max_group_count, unit_indices, factory_indices, action=None, is_deterministic=False):
         B, _, H, W = combined_feature.shape
 
         logp = torch.zeros((B, max_group_count), device=combined_feature.device)
@@ -219,6 +219,7 @@ class SimpleNet(nn.Module):
             factory_emb,
             factory_va,
             factory_action,
+            is_deterministic=is_deterministic,
         )
 
         if len(factory_indices) > 0:
@@ -247,6 +248,7 @@ class SimpleNet(nn.Module):
             unit_emb,
             unit_va,
             unit_action,
+            is_deterministic=is_deterministic,
         )
 
         if len(unit_indices) > 0:
@@ -261,17 +263,18 @@ class SimpleNet(nn.Module):
         return logp, output_action, entropy
 
 
-    def factory_actor(self, x, va, action=None):
+    def factory_actor(self, x, va, action=None, is_deterministic=False):
         logits = self.factory_head(x)
-        logp, output_action, entropy = sample_from_categorical(logits, va, action)
+        logp, output_action, entropy = sample_from_categorical(logits, va, action, is_deterministic)
         return logp, output_action, entropy
 
 
-    def unit_actor(self, x_act, x_param,  va, action=None):
+    def unit_actor(self, x_act, x_param,  va, action=None, is_deterministic=False):
         act_type_logp, act_type, act_type_entropy = sample_from_categorical(
             self.unit_act_type_net(x_act),
             va['act_type'],
-            action[:, UnitActChannel.TYPE] if action is not None else None
+            action[:, UnitActChannel.TYPE] if action is not None else None,
+            is_deterministic
         )
         logp = act_type_logp
         entropy = act_type_entropy
@@ -284,6 +287,7 @@ class SimpleNet(nn.Module):
                 va[type.name.lower()][mask],
                 type,
                 action[mask] if action is not None else None,
+                is_deterministic,
             )
             logp[mask] += move_logp
             entropy[mask] += move_entropy
@@ -292,13 +296,13 @@ class SimpleNet(nn.Module):
         return logp, output_action, entropy
 
 
-    def get_unit_action(self, x, va, unit_act_type, action=None):
+    def get_unit_action(self, x, va, unit_act_type, action=None, is_deterministic=False):
         n_units = x.shape[0]
         unit_idx = torch.arange(n_units, device=x.device)
 
         output_action = torch.zeros((n_units, len(UnitActChannel)), device=x.device)
 
-        params, param_logp, param_entropy = self.get_params(unit_idx, x, unit_act_type, va, action)
+        params, param_logp, param_entropy = self.get_params(unit_idx, x, unit_act_type, va, action, is_deterministic)
 
         output_action[:, UnitActChannel.TYPE] = unit_act_type
         output_action[:, UnitActChannel.N] = 1
@@ -309,7 +313,7 @@ class SimpleNet(nn.Module):
         return param_logp, output_action, param_entropy
 
 
-    def get_params(self, unit_idx, x, action_type, va, action=None):
+    def get_params(self, unit_idx, x, action_type, va, action=None, is_deterministic=False):
         n_units = x.shape[0]
         
         direction, resource, amount, repeat = None, None, None, None
@@ -324,37 +328,38 @@ class SimpleNet(nn.Module):
 
         # direction
         if action_type in [UnitActType.MOVE, UnitActType.TRANSFER]:
-            direction, direction_logp, direction_entropy = self.get_direction_param(x, va, action_type, action)
+            direction, direction_logp, direction_entropy = self.get_direction_param(x, va, action_type, action, is_deterministic)
 
         # resource
         if action_type in [UnitActType.TRANSFER, UnitActType.PICKUP]:
-            resource, resource_logp, resource_entropy = self.get_resource_param(x, va, action_type, unit_idx, direction, action)
+            resource, resource_logp, resource_entropy = self.get_resource_param(x, va, action_type, unit_idx, direction, action, is_deterministic)
 
         # amount
-        if action_type in [UnitActType.TRANSFER, UnitActType.PICKUP, UnitActType.RECHARGE]:
-            amount, amount_logp, amount_entropy = self.get_amount_param(x, action_type, action)
+        if action_type in [UnitActType.PICKUP, UnitActType.RECHARGE]:
+            amount, amount_logp, amount_entropy = self.get_amount_param(x, action_type, action, is_deterministic)
 
         # repeat
         if action_type in [UnitActType.MOVE, UnitActType.DIG]:
-            repeat, repeat_logp, repeat_entropy = self.get_repeat_param(x, va, action_type, unit_idx, direction, resource, action)
+            repeat, repeat_logp, repeat_entropy = self.get_repeat_param(x, va, action_type, unit_idx, direction, resource, action, is_deterministic)
 
         return {"direction": direction, "resource": resource, "amount": amount, "repeat": repeat}, \
                 direction_logp + resource_logp + amount_logp + repeat_logp, \
                 direction_entropy + resource_entropy + amount_entropy + repeat_entropy
 
 
-    def get_direction_param(self, x, va, action_type, action=None):
+    def get_direction_param(self, x, va, action_type, action=None, is_deterministic=False):
         direction_va = va.flatten(2).any(dim=-1)
         direction_head = self.param_heads[action_type.name]['direction']
         direction_logp, direction, direction_entropy = sample_from_categorical(
             direction_head(x),
             direction_va,
             action[:, UnitActChannel.DIRECTION] if action is not None else None,
+            is_deterministic,
         )
         return direction, direction_logp, direction_entropy
 
 
-    def get_resource_param(self, x, va, action_type, unit_idx, direction, action=None):
+    def get_resource_param(self, x, va, action_type, unit_idx, direction, action=None, is_deterministic=False):
         if action_type in [UnitActType.TRANSFER]:
             resource_va = va[unit_idx, direction].flatten(2).any(-1)
         elif action_type in [UnitActType.PICKUP]:
@@ -366,21 +371,23 @@ class SimpleNet(nn.Module):
             resource_head(x),
             resource_va,
             action[:, UnitActChannel.RESOURCE] if action is not None else None,
+            is_deterministic,
         )
         return resource, resource_logp, resource_entropy
 
 
-    def get_amount_param(self, x, action_type, action=None):
+    def get_amount_param(self, x, action_type, action=None, is_deterministic=False):
         amount_head = self.param_heads[action_type.name]['amount']
         amount_logp, amount, amount_entropy = sample_from_categorical(
             amount_head(x),
             torch.tensor(True, device=x.device),
             action[:, UnitActChannel.AMOUNT] if action is not None else None,
+            is_deterministic,
         )
         return amount, amount_logp, amount_entropy
 
 
-    def get_repeat_param(self, x, va, action_type, unit_idx, direction, resource, action=None):
+    def get_repeat_param(self, x, va, action_type, unit_idx, direction, resource, action=None, is_deterministic=False):
         if action_type in [UnitActType.MOVE]:
             repeat_va = va[unit_idx, direction]
         elif action_type in [UnitActType.PICKUP]:
@@ -395,6 +402,7 @@ class SimpleNet(nn.Module):
             repeat_head(x),
             repeat_va,
             action[:, UnitActChannel.REPEAT] if action is not None else None,
+            is_deterministic,
         )
 
         return repeat, repeat_logp, repeat_entropy

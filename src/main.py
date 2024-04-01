@@ -23,7 +23,7 @@ import torch
 import numpy as np
 from player import Player
 ### The model path
-PATH = 'all_distr_p3x5xp3_8_01ice_10maxadvantage_uhf_perunit_fast_model_491520.pth'
+PATH = 'standard_icein_allemb16x2_small1x1_large5x5d2_sep4_comb16_val41_noun_perunit_rub_8k_fp_e000_model_327680.pth'
 ### DO NOT REMOVE THE FOLLOWING CODE ###
 agent_dict = (
     dict()
@@ -73,7 +73,8 @@ def agent_fn(observation, configurations, i):
                                   torch.tensor(obs['factory_feature'],dtype=torch.float).unsqueeze(0),\
                                      torch.tensor(obs['unit_feature'],dtype=torch.float).unsqueeze(0),\
                                      torch.tensor(obs['location_feature'],dtype=torch.float).unsqueeze(0),\
-                                tree.map_structure(lambda x: np2torch(x, torch.bool), valid_action)
+                                tree.map_structure(lambda x: np2torch(x, torch.bool), valid_action,),\
+                                    is_deterministic=True
                                             )
             actions = tree.map_structure(lambda x: torch2np(x), actions)
             action = ActionParser().parse2(game_state, actions, player)
