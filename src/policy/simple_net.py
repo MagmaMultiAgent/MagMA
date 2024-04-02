@@ -124,6 +124,16 @@ class SimpleNet(nn.Module):
             }) for unit_act_type in UnitActType
         })
 
+        all_param_heads = []
+        for unit_act_type in UnitActType:
+            for param_name in ["direction", "resource", "amount", "repeat"]:
+                all_param_heads.append(self.param_heads[unit_act_type.name][param_name])
+        self.actor_heads = nn.ModuleList([
+            self.factory_head,
+            self.unit_act_type_net,
+            *all_param_heads,
+        ])
+
 
     def forward(self, global_feature, map_feature, factory_feature, unit_feature, location_feature, va, action=None, is_deterministic=False):
         B, _, H, W = map_feature.shape
