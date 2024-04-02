@@ -610,9 +610,9 @@ def main(args, model_device, store_device):
                 for env_ind in done_envs:
                     episode_return_list.append(episode_return[env_ind])
                     episode_lengths.append(step_counts[env_ind])
-                episode_return[done_envs] = 0
-                step_counts[done_envs] = 0
-                first_episode[done_envs] = False
+                episode_return[done_envs_all] = 0
+                step_counts[done_envs_all] = 0
+                first_episode[done_envs_all] = False
 
             total_return += cal_mean_return(info['agents'], player_id=0)
             total_return += cal_mean_return(info['agents'], player_id=1)
