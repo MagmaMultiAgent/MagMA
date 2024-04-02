@@ -1,11 +1,10 @@
-#%%writefile src/train.py
+# %%writefile src/train.py
 
 import argparse
 import os
 import random
 import time
 from distutils.util import strtobool
-from pprint import pprint
 import sys
 from typing import Union
 
@@ -13,18 +12,13 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
 from policy.net import Net
 from policy.simple_net import SimpleNet
-from luxenv import LuxSyncVectorEnv,LuxEnv
+from luxenv import LuxSyncVectorEnv
 import tree
-import json
-import gzip
-from kit.load_from_replay import replay_to_state_action, get_obs_action_from_json
-from utils import save_args, save_model, load_model, eval_model, _process_eval_resluts, cal_mean_return, make_env
-
-import cProfile
+from utils import save_args, save_model, cal_mean_return, make_env
+import gc
 
 import logging
 logging.basicConfig(level=logging.DEBUG,
@@ -101,11 +95,11 @@ def parse_args():
     # Algorithm specific arguments
     parser.add_argument("--env-id", type=str, default="LuxAI_S2-v0",
         help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=1000000,
+    parser.add_argument("--total-timesteps", type=int, default=10000000,
         help="total timesteps of the experiments")
     parser.add_argument("--learning-rate", type=float, default=2e-4,
         help="the learning rate of the optimizer")
-    parser.add_argument("--num-envs", type=int, default=2,
+    parser.add_argument("--num-envs", type=int, default=8,
         help="the number of parallel game environments")
     parser.add_argument("--num-steps", type=int, default=1024,
         help="the number of steps to run in each environment per policy rollout")
@@ -115,7 +109,7 @@ def parse_args():
         help="the discount factor gamma")
     parser.add_argument("--gae-lambda", type=float, default=0.95,
         help="the lambda for the general advantage estimation")
-    parser.add_argument("--train-num-collect", type=int, default=4096,
+    parser.add_argument("--train-num-collect", type=int, default=8192,
         help="the number of data collections in training process")
     parser.add_argument("--num-minibatches", type=int, default=4,
         help="the number of mini-batches")
@@ -127,7 +121,7 @@ def parse_args():
         help="the surrogate clipping coefficient")
     parser.add_argument("--clip-vloss", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggles whether or not to use a clipped loss for the value function, as per the paper.")
-    parser.add_argument("--ent-coef", type=float, default=0.01,
+    parser.add_argument("--ent-coef", type=float, default=0.001,
         help="coefficient of the entropy")
     parser.add_argument("--vf-coef", type=float, default=0.5,
         help="coefficient of the value function")
@@ -135,25 +129,25 @@ def parse_args():
         help="the maximum norm for the gradient clipping")
     parser.add_argument("--target-kl", type=float, default=None,
         help="the target KL divergence threshold")
-    parser.add_argument("--save-interval", type=int, default=8192, 
+    parser.add_argument("--save-interval", type=int, default=32768,
         help="global step interval to save model")
     parser.add_argument("--load-model-path", type=str, default=None,
         help="path for pretrained model loading")
-    parser.add_argument("--evaluate-interval", type=int, default=4096,
-        help="evaluation steps")
-    parser.add_argument("--evaluate-num", type=int, default=2,
-        help="evaluation numbers")
     parser.add_argument("--replay-dir", type=str, default=None,
         help="replay dirs to reset state")
-    parser.add_argument("--eval", type=bool, default=False,
-        help="is eval model")
-    
+
     args = parser.parse_args()
 
+    if args.seed is None:
+        args.seed = 42
+
     # Test arguments
-    args.num_steps = 100
-    args.train_num_collect = args.num_envs*args.num_steps
-    args.evaluate_interval = args.train_num_collect
+    if True:
+        args.num_steps = 500
+        args.num_envs = 2
+        args.train_num_collect = args.num_envs*args.num_steps
+        args.evaluate_interval = None
+        args.save_interval = None
 
     # Reward per entity
     args.max_entity_number = 1000
@@ -177,7 +171,7 @@ def layer_init(layer, std: float = np.sqrt(2), bias_const: float = 0.0):
     return layer
 
 
-def put_into_store(data: dict, ind: int, store: dict, max_train_step: int, num_envs: int, device: torch.device):
+def put_into_store(data: dict, ind: int, store: dict, max_train_step: int, num_envs: int, device: Union[torch.device, str]):
     for key, value in data.items():
         if isinstance(value, dict):
             if key not in store:
@@ -185,7 +179,7 @@ def put_into_store(data: dict, ind: int, store: dict, max_train_step: int, num_e
             put_into_store(value, ind, store[key], max_train_step, num_envs, device)
         else:
             if key not in store:
-                store[key] = torch.zeros((max_train_step, num_envs) + value.shape[1:], dtype=value.dtype).to(device)
+                store[key] = torch.zeros((max_train_step, num_envs) + value.shape[1:], device=device, dtype=value.dtype)
             store[key][ind] = value
 
 
@@ -196,50 +190,36 @@ def reset_store(store: dict):
         else:
             if store[key].dtype in {torch.float32, torch.float64, torch.int32, torch.int64}:
                 store[key][:] = 0
-            elif store[key].dtype in {torch.bool}: 
+            elif store[key].dtype in {torch.bool}:
                 store[key][:] = False
             else:
                 raise NotImplementedError(f"store[key].dtype={store[key].dtype}")
 
 
-def create_model(device: torch.device, eval: bool, load_model_path: Union[str, None], evaluate_num: int, learning_rate: float, writer: Union[None, SummaryWriter] = None):
+def create_model(device: Union[torch.device, str], load_model_path: Union[str, None], learning_rate: float):
     """
     Create the model
     """
     agent = SimpleNet().to(device)
-    # agent = Net().to(device)
     if load_model_path is not None:
         agent.load_state_dict(torch.load(load_model_path))
         print('load successfully')
-        if eval:
-            import sys
-            for i in range(10):
-                eval_results = []
-                for _ in range(evaluate_num):
-                    eval_results.append(eval_model(agent))
-                eval_results = _process_eval_resluts(eval_results)
-                if LOG:
-                    for key, value in eval_results.items():
-                        if writer:
-                            writer.add_scalar(f"eval/{key}", value, i)
-                pprint(eval_results)
-            sys.exit()
     optimizer = optim.Adam(agent.parameters(), lr=learning_rate, eps=1e-5)
     return agent, optimizer
 
 
-def sample_action_for_player(agent: Net, obs: TensorPerKey, valid_action: TensorPerKey, forced_action: Union[TensorPerKey, None] = None):
+def sample_action_for_player(agent: Net, obs: TensorPerKey, valid_action: TensorPerKey, device: Union[torch.device, str], forced_action: Union[TensorPerKey, None] = None):
     """
     Sample action and value from the agent
     """
     logprob, value, action, entropy = agent(
-        obs['global_feature'],
-        obs['map_feature'],
-        obs['factory_feature'],
-        obs['unit_feature'],
-        obs['location_feature'],
-        valid_action,
-        forced_action
+        obs['global_feature'].to(device),
+        obs['map_feature'].to(device),
+        obs['factory_feature'].to(device),
+        obs['unit_feature'].to(device),
+        obs['location_feature'].to(device),
+        tree.map_structure(lambda x: x.to(device), valid_action),
+        None if forced_action is None else tree.map_structure(lambda x: x.to(device), forced_action)
     )
 
     return logprob, value, action, entropy
@@ -247,7 +227,9 @@ def sample_action_for_player(agent: Net, obs: TensorPerKey, valid_action: Tensor
 
 def sample_actions_for_players(envs: LuxSyncVectorEnv,
                                agent: Net,
-                               next_obs: TensorPerPlayer
+                               next_obs: TensorPerPlayer,
+                               model_device: Union[torch.device, str],
+                               store_device: Union[torch.device, str]
                                ) -> tuple[TensorPerPlayer, TensorPerPlayer, TensorPerPlayer, TensorPerPlayer]:
     """
     Sample action and value for both players
@@ -261,13 +243,13 @@ def sample_actions_for_players(envs: LuxSyncVectorEnv,
         with torch.no_grad():
             _valid_action = envs.get_valid_actions(player_id)
             _valid_action = tree.map_structure(lambda x: np2torch(x, torch.bool), _valid_action)
-            
-            _logprob, _value, _action, _ = sample_action_for_player(agent, next_obs[player], _valid_action, None)
 
-            action[player] = _action
+            _logprob, _value, _action, _ = sample_action_for_player(agent, next_obs[player], _valid_action, model_device, None)
+
+            action[player] = tree.map_structure(lambda x: x.detach().to(store_device), _action)
             valid_action[player] = _valid_action
-            logprob[player] = _logprob
-            value[player] = _value
+            logprob[player] = _logprob.detach().to(store_device)
+            value[player] = _value.detach().to(store_device)
 
     return action, valid_action, logprob, value
 
@@ -279,20 +261,21 @@ def calculate_returns(envs: LuxSyncVectorEnv,
                       dones: torch.Tensor,
                       rewards: TensorPerKey,
                       values: TensorPerKey,
-                      device: torch.device,
                       max_train_step: int,
                       num_envs: int,
                       max_entity_number: int,
                       gamma: float,
-                      gae_lambda: float
+                      gae_lambda: float,
+                      model_device: Union[torch.device, str],
+                      store_device: Union[torch.device, str]
                       ) -> tuple[dict[str, torch.Tensor], dict[str, torch.Tensor]]:
     """
     Calculate GAE returns
     """
-    returns = dict(player_0=torch.zeros((max_train_step, num_envs, max_entity_number)).to(device),player_1=torch.zeros((max_train_step, num_envs, max_entity_number)).to(device))
-    advantages = dict(player_0=torch.zeros((max_train_step, num_envs, max_entity_number)).to(device),player_1=torch.zeros((max_train_step, num_envs, max_entity_number)).to(device))
+    returns = dict(player_0=torch.zeros((max_train_step, num_envs, max_entity_number)).to("cpu"),player_1=torch.zeros((max_train_step, num_envs, max_entity_number)).to("cpu"))
+    advantages = dict(player_0=torch.zeros((max_train_step, num_envs, max_entity_number)).to("cpu"),player_1=torch.zeros((max_train_step, num_envs, max_entity_number)).to("cpu"))
     with torch.no_grad():
-        _, _, _, value = sample_actions_for_players(envs, agent, next_obs)
+        _, _, _, value = sample_actions_for_players(envs, agent, next_obs, model_device, store_device)
 
         for player in ['player_0', 'player_1']:
             next_value = value[player]
@@ -308,7 +291,7 @@ def calculate_returns(envs: LuxSyncVectorEnv,
                 delta = rewards[player][t] + gamma * nextvalues * nextnonterminal - values[player][t]
                 advantages[player][t] = lastgaelam = delta + gamma * gae_lambda * nextnonterminal * lastgaelam
             returns[player] = advantages[player] + values[player]
-    
+
     return returns, advantages
 
 
@@ -357,7 +340,6 @@ def calculate_loss(advantages: torch.Tensor,
 
 def optimize_for_player(player: str,
                         agent: Net,
-                        envs: LuxSyncVectorEnv,
                         optimizer: optim.Optimizer,
                         b_inds: torch.Tensor,
                         b_obs: dict[str, list[torch.Tensor]],
@@ -375,7 +357,8 @@ def optimize_for_player(player: str,
                         norm_adv: bool,
                         ent_coef: float,
                         vf_coef: float,
-                        max_grad_norm: float
+                        max_grad_norm: float,
+                        device: Union[torch.device, str]
                         ) -> tuple[float, float, float, float, float, list[float]]:
     """
     Update weights for a player with PPO
@@ -385,13 +368,16 @@ def optimize_for_player(player: str,
         end = start + minibatch_size
         mb_inds = b_inds[start:end]
 
-        mb_obs = tree.map_structure(lambda x: x.view(-1, *x.shape[2:])[mb_inds], b_obs[player])
-        mb_va = tree.map_structure(lambda x: x.view(-1, *x.shape[2:])[mb_inds], b_va[player])
-        mb_actions = tree.map_structure(lambda x: x.view(-1, *x.shape[2:])[mb_inds], b_actions[player])
+        mb_obs = tree.map_structure(lambda x: (x.view(-1, *x.shape[2:])[mb_inds]).to(device), b_obs[player])
+        mb_va = tree.map_structure(lambda x: (x.view(-1, *x.shape[2:])[mb_inds]).to(device), b_va[player])
+        mb_actions = tree.map_structure(lambda x: (x.view(-1, *x.shape[2:])[mb_inds]).to(device), b_actions[player])
+        mb_logprobs = (b_logprobs[player][mb_inds]).to(device)
+        mb_returns = (b_returns[player][mb_inds]).to(device)
+        mb_values = (b_values[player][mb_inds]).to(device)
 
-        newlogprob, newvalue, _, entropy = sample_action_for_player(agent, mb_obs, mb_va, mb_actions)
+        newlogprob, newvalue, _, entropy = sample_action_for_player(agent, mb_obs, mb_va, device, mb_actions)
 
-        logratio = newlogprob - b_logprobs[player][mb_inds]
+        logratio = newlogprob - mb_logprobs
         ratio = logratio.exp()
 
         with torch.no_grad():
@@ -399,16 +385,14 @@ def optimize_for_player(player: str,
             approx_kl = ((ratio - 1) - logratio).mean()
             clipfracs += [((ratio - 1.0).abs() > clip_coef).float().mean().item()]
 
-        mb_advantages = b_advantages[player][mb_inds]
+        mb_advantages = (b_advantages[player][mb_inds]).to(device)
         if norm_adv:
             if len(mb_inds)==1:
                 mb_advantages = mb_advantages
             else:
                 mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
-        mb_returns = b_returns[player][mb_inds]
-        mb_values = b_values[player][mb_inds]
 
-        # get top 10 lrgest logprob and use it to index every other tensor
+        # get top lrgest advantage and use it to index every other tensor
         mb_advantages_abs = torch.abs(mb_advantages)
         _, indices = torch.topk(mb_advantages_abs, 1000, dim=1)
         mb_advantages = torch.gather(mb_advantages, 1, indices)
@@ -428,17 +412,16 @@ def optimize_for_player(player: str,
         return v_loss, pg_loss, entropy_loss, approx_kl, old_approx_kl, clipfracs
 
 
-def main(args, device):
+def main(args, model_device, store_device):
     player_id = 0
     enemy_id = 1 - player_id
     player = f'player_{player_id}'
-    enemy = f'player_{enemy_id}'
-    run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
-    save_path = f'../results/{run_name}/'
+    run_name = 'standard_icein_allemb16x2_small1x1_large5x5d2_agr4_comb16_val41_noun_perunit_rub_8k_fp_e001_am_test'
+    save_path = f'/content/drive/MyDrive/Lux/MA/results/{run_name}/'
     if not os.path.exists(save_path):
         os.makedirs(save_path)
     if LOG:
-        writer = SummaryWriter(f"../results/{run_name}")
+        writer = SummaryWriter(f"/content/drive/MyDrive/Lux/MA/results/{run_name}")
         writer.add_text(
             "hyperparameters",
             "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
@@ -452,48 +435,42 @@ def main(args, device):
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
+    torch.cuda.manual_seed(args.seed)
+    torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = args.torch_deterministic
+    os.environ["TF_CUDNN_DETERMINISTIC"] = '1'
+    os.environ["TF_DETERMINISTIC_OPS"] = '1'
+    os.environ["PYTHONHASHSEED"] = str(args.seed)
+
+    # Create model
+    agent, optimizer = create_model(model_device, args.load_model_path, args.learning_rate)
+    # reset seed after model creation
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed(args.seed)
 
     # env setup
     envs = LuxSyncVectorEnv(
-        [make_env(i, args.seed + i, args.replay_dir, device=device) for i in range(args.num_envs)],
-        device=device
+        [make_env(i, args.seed + i, args.replay_dir, device=model_device) for i in range(args.num_envs)],
+        device=model_device
     )
-    
-    # Create model
-    agent, optimizer = create_model(device, args.eval, args.load_model_path, args.evaluate_num, args.learning_rate, writer)
 
     # Start the game
     global_step = 0
     last_save_model_step = 0
-    last_eval_step = 0
     start_time = time.time()
     num_updates = args.total_timesteps // args.batch_size
 
     # Init value stores for PPO
+    # Store the value on 'store_device' (cpu)
     obs = {}
     actions = {}
     valid_actions = {}
-    logprobs = dict(player_0=torch.zeros((args.max_train_step, args.num_envs, args.max_entity_number)).to(device), player_1=torch.zeros((args.max_train_step, args.num_envs, args.max_entity_number)).to(device))
-    rewards = dict(player_0=torch.zeros((args.max_train_step, args.num_envs, args.max_entity_number)).to(device),player_1=torch.zeros((args.max_train_step, args.num_envs, args.max_entity_number)).to(device))
-    dones = dict(player_0=torch.zeros((args.max_train_step, args.num_envs, args.max_entity_number)).to(device),player_1=torch.zeros((args.max_train_step, args.num_envs, args.max_entity_number)).to(device))
-    values = dict(player_0=torch.zeros((args.max_train_step, args.num_envs, args.max_entity_number)).to(device),player_1=torch.zeros((args.max_train_step, args.num_envs, args.max_entity_number)).to(device))
-
-    # Evaluate
-    print("Evaluating")
-    with torch.no_grad():
-        eval_results = []
-        eval_seed = 420
-        eval_envs = LuxSyncVectorEnv(
-            [make_env(i, eval_seed + i, None, device=device) for i in range(args.evaluate_num)],
-            device=device
-        )
-        eval_results = eval_envs.eval(agent)
-        if LOG:
-            for key, value in eval_results.items():
-                writer.add_scalar(f"eval/{key}", value, global_step)
-        pprint(eval_results)
-        last_eval_step = global_step
+    logprobs = dict(player_0=torch.zeros((args.max_train_step, args.num_envs, args.max_entity_number), device=store_device), player_1=torch.zeros((args.max_train_step, args.num_envs, args.max_entity_number), device=store_device))
+    rewards = dict(player_0=torch.zeros((args.max_train_step, args.num_envs, args.max_entity_number), device=store_device), player_1=torch.zeros((args.max_train_step, args.num_envs, args.max_entity_number), device=store_device))
+    dones = dict(player_0=torch.zeros((args.max_train_step, args.num_envs, args.max_entity_number), device=store_device), player_1=torch.zeros((args.max_train_step, args.num_envs, args.max_entity_number), device=store_device))
+    values = dict(player_0=torch.zeros((args.max_train_step, args.num_envs, args.max_entity_number), device=store_device), player_1=torch.zeros((args.max_train_step, args.num_envs, args.max_entity_number), device=store_device))
 
     logger.info("Starting train")
     for update in range(1, num_updates + 1):
@@ -503,8 +480,8 @@ def main(args, device):
         # Reset envs, get obs
         next_obs, _ = envs.reset()
         next_obs = tree.map_structure(lambda x: np2torch(x, torch.float32), next_obs)
-        next_done = torch.zeros(args.num_envs, 2, args.max_entity_number).to(device)
-        
+        next_done = torch.zeros((args.num_envs, 2, args.max_entity_number), device=store_device, dtype=torch.bool)
+
         # Annealing the rate if instructed to do so.
         if args.anneal_lr:
             frac = 1.0 - (update - 1.0) / num_updates
@@ -521,13 +498,14 @@ def main(args, device):
         episode_sub_return_list = []
         train_step = -1
         global_info_save = {}
-        
+        first_episode = np.ones(args.num_envs, dtype=bool)
+
         for step in range(0, args.num_steps):
 
             if (step+1) % (args.num_steps / 8) == 0:
                 logger.info(f"Step {step + 1} / {args.num_steps}")
 
-            train_step += 1 
+            train_step += 1
             global_step += 1 * args.num_envs
 
             # Save obervations for PPO
@@ -535,14 +513,14 @@ def main(args, device):
                 for env_id in range(0, args.num_envs):
                     # insert tensor [env, player, entity] into [player, step, env, entity]
                     dones[player][train_step, env_id] = next_done[env_id, player_id]
-            put_into_store(next_obs, train_step, obs, args.max_train_step, args.num_envs, device)
+            put_into_store(next_obs, train_step, obs, args.max_train_step, args.num_envs, store_device)
 
             # Sample actions
-            action, valid_action, logprob, value = sample_actions_for_players(envs, agent, next_obs)
+            action, valid_action, logprob, value = sample_actions_for_players(envs, agent, next_obs, model_device, store_device)
 
             # Save actions for PPO
-            put_into_store(action, train_step, actions, args.max_train_step, args.num_envs, device)
-            put_into_store(valid_action, train_step, valid_actions, args.max_train_step, args.num_envs, device)
+            put_into_store(action, train_step, actions, args.max_train_step, args.num_envs, store_device)
+            put_into_store(valid_action, train_step, valid_actions, args.max_train_step, args.num_envs, store_device)
             for player in ['player_0', 'player_1']:
                 logprobs[player][train_step] = logprob[player]
                 values[player][train_step] = value[player]
@@ -572,17 +550,37 @@ def main(args, device):
             for player_id, player in enumerate(['player_0', 'player_1']):
                 rewards[player][train_step] = reward[:, player_id]
 
+            # Save global info
+            for key in log_from_global_info:
+                for env_id in range(args.num_envs):
+
+                    if not first_episode[env_id]:
+                        continue
+
+                    for player in ["player_0", "player_1"]:
+                        if player not in global_info_save:
+                            global_info_save[player] = {}
+                        if "total" not in global_info_save:
+                            global_info_save["total"] = {}
+                        if key not in global_info_save[player]:
+                            global_info_save[player][key] = 0
+                        if key not in global_info_save["total"]:
+                            global_info_save["total"][key] = 0
+
+                        global_info_save[player][key] += info[player][env_id][key]
+                        global_info_save["total"][key] += info[player][env_id][key]
+
             # Save stats
             if _done.any():
-                episode_return_list.append((episode_return[np.where(_done==True)]).mean())
-                episode_return[np.where(_done==True)] = 0
-                episode_lengths.append(step_counts[np.where(_done==True)].mean())
-                step_counts[np.where(_done==True)] = 0
-                tmp_sub_return_dict = {}
-                for key in episode_sub_return:
-                    tmp_sub_return_dict.update({key: np.mean(episode_sub_return[key][np.where(_done==True)])})
-                    episode_sub_return[key][np.where(_done==True)] = 0
-                episode_sub_return_list.append(tmp_sub_return_dict)
+                done_envs_all = [d.item() for d in np.where(_done==True)[0]]
+                done_envs = [d.item() for d in np.where((_done==True) & (first_episode==True))[0]]
+                print(f"Finished envs at step {step}: {done_envs_all} with steps {step_counts[done_envs_all]}, finished envs with first episode: {done_envs}")
+                for env_ind in done_envs:
+                    episode_return_list.append(episode_return[env_ind])
+                    episode_lengths.append(step_counts[env_ind])
+                episode_return[done_envs] = 0
+                step_counts[done_envs] = 0
+                first_episode[done_envs] = False
 
             total_return += cal_mean_return(info['agents'], player_id=0)
             total_return += cal_mean_return(info['agents'], player_id=1)
@@ -596,59 +594,25 @@ def main(args, device):
                     for key in episode_sub_return.keys():
                         mean_episode_sub_return[key] = np.mean(list(map(lambda sub: sub[key], episode_sub_return_list)))
                         writer.add_scalar(f"sub_reward/{key}", mean_episode_sub_return[key], global_step)
-                    global_info_log = {
-                        "total": {},
-                        "player_0": {},
-                        "player_1": {}
-                    }
-                    for key in log_from_global_info:
-                        for env_id in range(args.num_envs):
-                            for player in ["player_0", "player_1"]:
-                                if key not in global_info_log[player]:
-                                    global_info_log[player][key] = []
-                                if key not in global_info_log["total"]:
-                                    global_info_log["total"][key] = []
-                                global_info_log[player][key].append(info[player][env_id][key])
-                                global_info_log["total"][key].append(info[player][env_id][key])
-                    for groupname, group in global_info_log.items():
-                        for key, value in group.items():
-                            writer.add_scalar(f"global_info/{groupname}_{key}", sum(value)/len(value), global_step)
 
                     for groupname, group in global_info_save.items():
                         for key, value in group.items():
                             multiplier = (1 / args.num_envs) if groupname != "total" else (1 / (args.num_envs * 2))
                             writer.add_scalar(f"global_info/sum_{groupname}_{key}", value * multiplier, global_step)
                             global_info_save[groupname][key] = 0
-                        
-            else:
-                for key in log_from_global_info:
-                    for env_id in range(args.num_envs):
-                        for player in ["player_0", "player_1"]:
-                            if player not in global_info_save:
-                                global_info_save[player] = {}
-                            if "total" not in global_info_save:
-                                global_info_save["total"] = {}
-                            if key not in global_info_save[player]:
-                                global_info_save[player][key] = 0
-                            if key not in global_info_save["total"]:
-                                global_info_save["total"][key] = 0
-                            
-                            # TODO: save by env, because this way we display half-done envs too
-                            global_info_save[player][key] += info[player][env_id][key]
-                            global_info_save["total"][key] += info[player][env_id][key]
-                
+                    global_info_save = {}
 
 
             # Train with PPO
-            if train_step >= args.max_train_step-1 or step == args.num_steps-1:  
+            if train_step >= args.max_train_step-1 or step == args.num_steps-1:
                 logger.info("Training with PPO")
-                returns, advantages = calculate_returns(envs, agent, next_obs, next_done, dones, rewards, values, device, args.max_train_step, args.num_envs, args.max_entity_number, args.gamma, args.gae_lambda)
+                returns, advantages = calculate_returns(envs, agent, next_obs, next_done, dones, rewards, values, args.max_train_step, args.num_envs, args.max_entity_number, args.gamma, args.gae_lambda, model_device, store_device)
 
                 # flatten the batch
                 b_obs = obs
                 b_actions = actions
                 b_va = valid_actions
-                
+
                 b_logprobs = tree.map_structure(lambda x: x.view(-1, args.max_entity_number), logprobs)
                 b_advantages = tree.map_structure(lambda x: x.view(-1, args.max_entity_number), advantages)
                 b_returns = tree.map_structure(lambda x: x.view(-1, args.max_entity_number), returns)
@@ -657,17 +621,18 @@ def main(args, device):
                 # Optimizing the policy and value network
                 b_inds = np.arange(args.train_num_collect)
                 clipfracs = []
-                for epoch in range(args.update_epochs):
+                for _ in range(args.update_epochs):
                     np.random.shuffle(b_inds)
                     _b_inds = np2torch(b_inds, torch.long)
                     for player_id, player in enumerate(['player_0', 'player_1']):
-                        v_loss, pg_loss, entropy_loss, approx_kl, old_approx_kl, clipfracs = optimize_for_player(player, agent, envs, optimizer, _b_inds, b_obs, b_va, b_actions, b_logprobs, b_advantages, b_returns, b_values, args.max_entity_number, args.train_num_collect, args.minibatch_size, args.clip_vloss, args.clip_coef, args.norm_adv, args.ent_coef, args.vf_coef, args.max_grad_norm)
+                        v_loss, pg_loss, entropy_loss, approx_kl, old_approx_kl, clipfracs = optimize_for_player(player, agent, optimizer, _b_inds, b_obs, b_va, b_actions, b_logprobs, b_advantages, b_returns, b_values, args.max_entity_number, args.train_num_collect, args.minibatch_size, args.clip_vloss, args.clip_coef, args.norm_adv, args.ent_coef, args.vf_coef, args.max_grad_norm, model_device)
                         clipfracs += clipfracs
 
                         if args.target_kl is not None:
                             if approx_kl > args.target_kl:
+                                print(f"Approx KL {approx_kl} > Target KL {args.target_kl}")
                                 break
-                        
+
                         y_pred, y_true = b_values[player].cpu().numpy(), b_returns[player].cpu().numpy()
                         var_y = np.var(y_true)
                         explained_var = np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
@@ -681,11 +646,22 @@ def main(args, device):
                             writer.add_scalar(f"losses/approx_kl_{player_id}", approx_kl.item(), global_step)
                             writer.add_scalar(f"losses/clipfrac_{player_id}", np.mean(clipfracs), global_step)
                             writer.add_scalar(f"losses/explained_variance_{player_id}", explained_var, global_step)
-                
+
+                # free up memory
+                del b_obs
+                del b_actions
+                del b_va
+                del b_logprobs
+                del b_advantages
+                del b_returns
+                del b_values
+                gc.collect()
+                torch.cuda.empty_cache()
+
                 if LOG:
                     writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
                     writer.add_scalar("charts/SPS", round(global_step / (time.time() - start_time), 2), global_step)
-                
+
                 logger.info(f"SPS: {round(global_step / (time.time() - start_time), 2)}")
                 logger.info(f"global step: {global_step}")
 
@@ -700,27 +676,12 @@ def main(args, device):
                     values[player][:] = 0
 
                 train_step = -1
-            
-            # Evaluate
-            if (global_step - last_eval_step) >= args.evaluate_interval:
-                with torch.no_grad():
-                    eval_results = []
-                    eval_seed = 420
-                    eval_envs = LuxSyncVectorEnv(
-                        [make_env(i, eval_seed + i, None, device=device) for i in range(args.evaluate_num)],
-                        device=device
-                    )
-                    eval_results = eval_envs.eval(agent)
-                    if LOG:
-                        for key, value in eval_results.items():
-                            writer.add_scalar(f"eval/{key}", value, global_step)
-                    pprint(eval_results)
-                    last_eval_step = global_step
-            
+
             # Save model
-            if (global_step - last_save_model_step) >= args.save_interval:
+            if args.save_interval and (global_step - last_save_model_step) >= args.save_interval:
                 save_model(agent, save_path+f'model_{global_step}.pth')
                 last_save_model_step = global_step
+    
     envs.close()
     if LOG:
         writer.close()
@@ -732,10 +693,14 @@ if __name__ == "__main__":
     args = parse_args()
 
     # Get device
-    device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
-    logger.info(f"Device: {device}")
+    device1 = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
+    device2 = torch.device("cpu")
 
-    np2torch = lambda x, dtype: torch.tensor(x).type(dtype).to(device)
-    torch2np = lambda x, dtype: x.cpu().numpy().astype(dtype)
- 
-    main(args, device)
+    logger.info(f"Device: {device1}")
+
+    np2torch = lambda x, dtype: torch.tensor(x, device=device2, dtype=dtype)
+    cpu2device = lambda x: x.to(device1)
+    device2cpu = lambda x: x.detach().to(device2)
+    torch2np = lambda x, dtype: x.detach().cpu().numpy().astype(dtype)
+
+    main(args, device1, device2)

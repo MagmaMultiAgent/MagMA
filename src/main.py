@@ -23,7 +23,7 @@ import torch
 import numpy as np
 from player import Player
 ### The model path
-PATH = 'standard_icein_allemb16x2_small1x1_large5x5d2_sep4_comb16_val41_noun_perunit_rub_8k_fp_e000_model_327680.pth'
+PATH = 'standard_icein_allemb16x2_small1x1_large5x5d2_agr4_comb16_val41_noun_perunit_rub_8k_fp_e001_am_model_753664.pth'
 ### DO NOT REMOVE THE FOLLOWING CODE ###
 agent_dict = (
     dict()
