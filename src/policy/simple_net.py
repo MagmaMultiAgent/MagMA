@@ -19,7 +19,7 @@ class SimpleNet(nn.Module):
     def __init__(self):
         super(SimpleNet, self).__init__()
 
-        activation_function = nn.LeakyReLU
+        activation_function = nn.SiLU
 
         # LAYER INIT
         init_relu_ = lambda m: m
