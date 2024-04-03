@@ -20,8 +20,10 @@ class SimpleNet(nn.Module):
         super(SimpleNet, self).__init__()
 
         # LAYER INIT
-        init_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, lambda x: nn.init.constant_(x, 0), nn.init.calculate_gain("relu"))
-        init_regression_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, lambda x: nn.init.constant_(x, 0), 1.0)
+        # init_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, lambda x: nn.init.constant_(x, 0), nn.init.calculate_gain("relu"))
+        init_relu_ = lambda m: m
+        # init_regression_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, lambda x: nn.init.constant_(x, 0), 1.0)
+        init_regression_ = lambda m: m
         init_actor_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, lambda x: nn.init.constant_(x, 0), 0.01)
 
         # EMBEDDINGS
@@ -106,13 +108,13 @@ class SimpleNet(nn.Module):
         self.critic_head = nn.Sequential(
             init_relu_(nn.Conv2d(self.critic_feature_count, self.critic_dim, kernel_size=1, stride=1, padding=0, bias=True)),
             nn.ReLU(),
-            (nn.Conv2d(self.critic_dim, 1, kernel_size=1, stride=1, padding=0, bias=True)),
+            init_regression_(nn.Conv2d(self.critic_dim, 1, kernel_size=1, stride=1, padding=0, bias=True)),
         )
 
         # factory
         self.factory_feature_count = self.combined_feature_dim
         self.factory_head = nn.Sequential(
-            (nn.Linear(self.factory_feature_count, ActDims.factory_act, bias=True)),
+            init_actor_(nn.Linear(self.factory_feature_count, ActDims.factory_act, bias=True)),
         )
 
         self.unit_feature_count = self.combined_feature_dim
@@ -121,16 +123,16 @@ class SimpleNet(nn.Module):
         # act type
         self.act_type_feature_count = self.unit_emb_dim
         self.unit_act_type_net = nn.Sequential(
-            (nn.Linear(self.act_type_feature_count, len(UnitActType), bias=True)),
+            init_actor_(nn.Linear(self.act_type_feature_count, len(UnitActType), bias=True)),
         )
 
         # params
         self.param_heads = nn.ModuleDict({
             unit_act_type.name: nn.ModuleDict({
-                "direction": (nn.Linear(self.unit_emb_dim, ActDims.direction, bias=True)),
-                "resource": (nn.Linear(self.unit_emb_dim, ActDims.resource, bias=True)),
-                "amount": (nn.Linear(self.unit_emb_dim, ActDims.amount, bias=True)),
-                "repeat": (nn.Linear(self.unit_emb_dim, ActDims.repeat, bias=True)),
+                "direction": init_actor_(nn.Linear(self.unit_emb_dim, ActDims.direction, bias=True)),
+                "resource": init_actor_(nn.Linear(self.unit_emb_dim, ActDims.resource, bias=True)),
+                "amount": init_actor_(nn.Linear(self.unit_emb_dim, ActDims.amount, bias=True)),
+                "repeat": init_actor_(nn.Linear(self.unit_emb_dim, ActDims.repeat, bias=True)),
             }) for unit_act_type in UnitActType
         })
 
