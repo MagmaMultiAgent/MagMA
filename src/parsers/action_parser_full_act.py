@@ -375,18 +375,19 @@ class ActionParser():
                 target_pos = unit.pos + move_deltas[direction]
 
                 # don't move backwards compared to last step
-                if len(unit.action_queue) > 0 and unit.action_queue[0][0] == UnitActType.MOVE:
-                    last_direction = unit.action_queue[0][1]
-                    # a[1] = direction (0 = center, 1 = up, 2 = right, 3 = down, 4 = left)
-                    # move_deltas = np.array([[0, 0], [0, -1], [1, 0], [0, 1], [-1, 0]])
-                    if direction == 1 and last_direction == 3:
-                        continue
-                    if direction == 2 and last_direction == 4:
-                        continue
-                    if direction == 3 and last_direction == 1:
-                        continue
-                    if direction == 4 and last_direction == 2:
-                        continue
+                if False:
+                    if len(unit.action_queue) > 0 and unit.action_queue[0][0] == UnitActType.MOVE:
+                        last_direction = unit.action_queue[0][1]
+                        # a[1] = direction (0 = center, 1 = up, 2 = right, 3 = down, 4 = left)
+                        # move_deltas = np.array([[0, 0], [0, -1], [1, 0], [0, 1], [-1, 0]])
+                        if direction == 1 and last_direction == 3:
+                            continue
+                        if direction == 2 and last_direction == 4:
+                            continue
+                        if direction == 3 and last_direction == 1:
+                            continue
+                        if direction == 4 and last_direction == 2:
+                            continue
 
                 # always forbid to move to the same position
                 if direction == 0:
@@ -444,12 +445,13 @@ class ActionParser():
                     else:
                         can_move_to_factory = True
 
-            # if low power, force agent to move to factory
-            if unit.power < battery_capacity * 0.2 and can_move_to_factory:
-                for direction in non_factory_moves:
-                    valid_actions["unit_act"]["move"]["direction"][direction, x, y] = False
-                # disable recharge
-                valid_actions["unit_act"]["act_type"][UnitActType.RECHARGE, x, y] = False
+            if False:
+                # if low power, force agent to move to factory
+                if unit.power < battery_capacity * 0.2 and can_move_to_factory:
+                    for direction in non_factory_moves:
+                        valid_actions["unit_act"]["move"]["direction"][direction, x, y] = False
+                    # disable recharge
+                    valid_actions["unit_act"]["act_type"][UnitActType.RECHARGE, x, y] = False
 
             # valid pickup
             if unit.power >= action_queue_cost:
