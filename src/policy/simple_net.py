@@ -19,7 +19,7 @@ class SimpleNet(nn.Module):
     def __init__(self):
         super(SimpleNet, self).__init__()
 
-        activation_function = nn.LeakyReLU
+        activation_function = nn.GELU
 
         # LAYER INIT
         # init_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, lambda x: nn.init.constant_(x, 0), nn.init.calculate_gain("relu"))
