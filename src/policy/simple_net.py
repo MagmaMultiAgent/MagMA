@@ -19,6 +19,8 @@ class SimpleNet(nn.Module):
     def __init__(self):
         super(SimpleNet, self).__init__()
 
+        activation_function = nn.LeakyReLU
+
         # LAYER INIT
         # init_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, lambda x: nn.init.constant_(x, 0), nn.init.calculate_gain("relu"))
         init_relu_ = lambda m: m
@@ -48,11 +50,11 @@ class SimpleNet(nn.Module):
         self.embedding_basic = nn.Sequential(
             init_relu_(nn.Conv2d(self.embedding_feature_count, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True)),
             nn.BatchNorm2d(self.embedding_dims),
-            nn.ReLU(),
+            activation_function(),
 
             init_relu_(nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True)),
             nn.BatchNorm2d(self.embedding_dims),
-            nn.ReLU(),
+            activation_function(),
         )
             
 
@@ -71,7 +73,7 @@ class SimpleNet(nn.Module):
             # can see 1 distance away
             init_relu_(nn.Conv2d(self.small_distance_feature_count, self.small_distance_dim, kernel_size=3, stride=1, padding="same", bias=True)),
             nn.BatchNorm2d(self.small_distance_dim),
-            nn.ReLU(),
+            activation_function(),
         )
 
         # large distance
@@ -86,7 +88,7 @@ class SimpleNet(nn.Module):
             nn.AvgPool2d(kernel_size=3, stride=1, padding=1),  # +1 distance
             init_relu_(nn.Conv2d(self.large_distance_feature_count, self.large_distance_dim, kernel_size=5, stride=1, padding="same", bias=True, dilation=2)),  # +2*(5//2) distance
             nn.BatchNorm2d(self.large_distance_dim),
-            nn.ReLU(),
+            activation_function(),
         )
 
 
@@ -97,7 +99,7 @@ class SimpleNet(nn.Module):
         self.combined_net = nn.Sequential(
             init_relu_(nn.Conv2d(self.combined_feature_count, self.combined_feature_dim, kernel_size=1, stride=1, padding="same", bias=True)),
             nn.BatchNorm2d(self.combined_feature_dim),
-            nn.ReLU(),
+            activation_function(),
         )
 
 
@@ -108,7 +110,7 @@ class SimpleNet(nn.Module):
         self.critic_dim = 4
         self.critic_head = nn.Sequential(
             init_relu_(nn.Conv2d(self.critic_feature_count, self.critic_dim, kernel_size=1, stride=1, padding=0, bias=True)),
-            nn.ReLU(),
+            activation_function(),
             init_regression_(nn.Conv2d(self.critic_dim, 1, kernel_size=1, stride=1, padding=0, bias=True)),
         )
 
