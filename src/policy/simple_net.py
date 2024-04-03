@@ -106,13 +106,13 @@ class SimpleNet(nn.Module):
         self.critic_head = nn.Sequential(
             init_relu_(nn.Conv2d(self.critic_feature_count, self.critic_dim, kernel_size=1, stride=1, padding=0, bias=True)),
             nn.ReLU(),
-            init_regression_(nn.Conv2d(self.critic_dim, 1, kernel_size=1, stride=1, padding=0, bias=True)),
+            (nn.Conv2d(self.critic_dim, 1, kernel_size=1, stride=1, padding=0, bias=True)),
         )
 
         # factory
         self.factory_feature_count = self.combined_feature_dim
         self.factory_head = nn.Sequential(
-            init_actor_(nn.Linear(self.factory_feature_count, ActDims.factory_act, bias=True)),
+            (nn.Linear(self.factory_feature_count, ActDims.factory_act, bias=True)),
         )
 
         self.unit_feature_count = self.combined_feature_dim
@@ -121,16 +121,16 @@ class SimpleNet(nn.Module):
         # act type
         self.act_type_feature_count = self.unit_emb_dim
         self.unit_act_type_net = nn.Sequential(
-            init_actor_(nn.Linear(self.act_type_feature_count, len(UnitActType), bias=True)),
+            (nn.Linear(self.act_type_feature_count, len(UnitActType), bias=True)),
         )
 
         # params
         self.param_heads = nn.ModuleDict({
             unit_act_type.name: nn.ModuleDict({
-                "direction": init_actor_(nn.Linear(self.unit_emb_dim, ActDims.direction, bias=True)),
-                "resource": init_actor_(nn.Linear(self.unit_emb_dim, ActDims.resource, bias=True)),
-                "amount": init_actor_(nn.Linear(self.unit_emb_dim, ActDims.amount, bias=True)),
-                "repeat": init_actor_(nn.Linear(self.unit_emb_dim, ActDims.repeat, bias=True)),
+                "direction": (nn.Linear(self.unit_emb_dim, ActDims.direction, bias=True)),
+                "resource": (nn.Linear(self.unit_emb_dim, ActDims.resource, bias=True)),
+                "amount": (nn.Linear(self.unit_emb_dim, ActDims.amount, bias=True)),
+                "repeat": (nn.Linear(self.unit_emb_dim, ActDims.repeat, bias=True)),
             }) for unit_act_type in UnitActType
         })
 
