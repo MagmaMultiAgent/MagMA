@@ -369,6 +369,7 @@ class ActionParser():
             valid_actions["unit_act"]["move"]["repeat"][1, x, y] = True
             
             # unit move directions
+            can_move_to_factory = False
             non_factory_moves = []
             for direction in range(len(move_deltas)):
                 target_pos = unit.pos + move_deltas[direction]
@@ -440,6 +441,15 @@ class ActionParser():
 
                     if factory_under_unit(target_pos, game_state.factories[player]) is not None:
                         valid_actions["unit_act"]["transfer"]["direction"][direction, x, y] = True
+                    else:
+                        can_move_to_factory = True
+
+            # if low power, force agent to move to factory
+            if unit.power < battery_capacity * 0.2 and can_move_to_factory:
+                for direction in non_factory_moves:
+                    valid_actions["unit_act"]["move"]["direction"][direction, x, y] = False
+                # disable recharge
+                valid_actions["unit_act"]["act_type"][UnitActType.RECHARGE, x, y] = False
 
             # valid pickup
             if unit.power >= action_queue_cost:
