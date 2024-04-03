@@ -305,18 +305,27 @@ def calculate_loss(advantages: torch.Tensor,
                    clip_vloss: bool,
                    clip_coef: float,
                    ent_coef: float,
-                   vf_coef: float
+                   vf_coef: float,
+                   valid_samples: torch.Tensor
                    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """
     Calculate the loss
     """
+    newvalue = newvalue.view(-1, max_entity_number)
+
+    advantages = advantages[valid_samples]
+    returns = returns[valid_samples]
+    values = values[valid_samples]
+    newvalue = newvalue[valid_samples]
+    entropy = entropy[valid_samples]
+    ratio = ratio[valid_samples]
+
     # Policy loss
     pg_loss1 = -advantages * ratio
     pg_loss2 = -advantages * torch.clamp(ratio, 1 - clip_coef, 1 + clip_coef)
     pg_loss = torch.max(pg_loss1, pg_loss2).mean()
 
     # Value loss
-    newvalue = newvalue.view(-1, max_entity_number)
     if clip_vloss:
         v_loss_unclipped = (newvalue - returns) ** 2
         v_clipped = values + torch.clamp(
@@ -375,6 +384,8 @@ def optimize_for_player(player: str,
         mb_returns = (b_returns[player][mb_inds]).to(device)
         mb_values = (b_values[player][mb_inds]).to(device)
 
+        valid_samples = torch.where(mb_logprobs != 0)
+
         newlogprob, newvalue, _, entropy = sample_action_for_player(agent, mb_obs, mb_va, device, mb_actions)
 
         logratio = newlogprob - mb_logprobs
@@ -392,7 +403,7 @@ def optimize_for_player(player: str,
             else:
                 mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
 
-        loss, pg_loss, entropy_loss, v_loss = calculate_loss(mb_advantages, mb_returns, mb_values, newvalue, entropy, ratio, max_entity_number, clip_vloss, clip_coef, ent_coef, vf_coef)
+        loss, pg_loss, entropy_loss, v_loss = calculate_loss(mb_advantages, mb_returns, mb_values, newvalue, entropy, ratio, max_entity_number, clip_vloss, clip_coef, ent_coef, vf_coef, valid_samples)
 
         optimizer.zero_grad()
         loss.backward()
