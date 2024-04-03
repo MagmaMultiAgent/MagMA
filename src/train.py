@@ -143,8 +143,8 @@ def parse_args():
 
     # Test arguments
     if True:
-        args.num_steps = 500
-        args.num_envs = 2
+        args.num_steps = 100
+        args.num_envs = 1
         args.train_num_collect = args.num_envs*args.num_steps
         args.evaluate_interval = None
         args.save_interval = None
@@ -196,33 +196,6 @@ def reset_store(store: dict):
                 raise NotImplementedError(f"store[key].dtype={store[key].dtype}")
 
 
-def init_all_weights(module, init_fn):
-    if isinstance(module, nn.Sequential) or isinstance(module, nn.ModuleList):
-        for m in module:
-            init_all_weights(m, init_fn)
-    elif isinstance(module, nn.ModuleDict):
-        for m in module.values():
-            init_all_weights(m, init_fn)
-    elif isinstance(module, nn.Conv2d) or isinstance(module, nn.Linear):
-        init_fn(module)
-
-
-def init_weights_hidden(module):
-    # Orthogonal initialization with scaling sqrt(2)
-    nn.init.orthogonal_(module.weight, np.sqrt(2))
-    # Biases are set to 0
-    if module.bias is not None:
-        nn.init.constant_(module.bias, 0.0)
-
-
-def init_weights_actor(module):
-    # Actor head initialization for normal distribution
-    nn.init.normal_(module.weight, 0, 0.01)
-    # Biases are set to 0
-    if module.bias is not None:
-        nn.init.constant_(module.bias, 0)
-
-
 def create_model(device: Union[torch.device, str], load_model_path: Union[str, None], learning_rate: float):
     """
     Create the model
@@ -231,10 +204,6 @@ def create_model(device: Union[torch.device, str], load_model_path: Union[str, N
     if load_model_path is not None:
         agent.load_state_dict(torch.load(load_model_path))
         print('load successfully')
-    else:
-        print("Initiating weights")
-        init_all_weights(agent, init_weights_hidden)
-        init_all_weights(agent.actor_heads, init_weights_actor)
 
     optimizer = optim.Adam(agent.parameters(), lr=learning_rate, eps=1e-5)
     return agent, optimizer
@@ -473,6 +442,7 @@ def main(args, model_device, store_device):
     os.environ["TF_CUDNN_DETERMINISTIC"] = '1'
     os.environ["TF_DETERMINISTIC_OPS"] = '1'
     os.environ["PYTHONHASHSEED"] = str(args.seed)
+    torch.use_deterministic_algorithms(True)
 
     # Create model
     agent, optimizer = create_model(model_device, args.load_model_path, args.learning_rate)

@@ -8,11 +8,21 @@ from .actor_head import sample_from_categorical
 import sys
 
 
+def init_orthogonal(module, weight_init, bias_init, gain=1):
+    """Helper to initialize a layer weight and bias."""
+    weight_init(module.weight.data, gain=gain)
+    bias_init(module.bias.data)
+    return module
+
 class SimpleNet(nn.Module):
 
     def __init__(self):
         super(SimpleNet, self).__init__()
 
+        # LAYER INIT
+        init_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, lambda x: nn.init.constant_(x, 0), nn.init.calculate_gain("relu"))
+        init_regression_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, lambda x: nn.init.constant_(x, 0), 1.0)
+        init_actor_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, lambda x: nn.init.constant_(x, 0), 0.01)
 
         # EMBEDDINGS
         """
@@ -33,13 +43,13 @@ class SimpleNet(nn.Module):
         self.embedding_feature_count = sum(self.embedding_feature_counts.values())
 
         self.embedding_basic = nn.Sequential(
-            nn.Conv2d(self.embedding_feature_count, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True),
+            init_relu_(nn.Conv2d(self.embedding_feature_count, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True)),
             nn.BatchNorm2d(self.embedding_dims),
-            nn.GELU(),
+            nn.ReLU(),
 
-            nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True),
+            init_relu_(nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True)),
             nn.BatchNorm2d(self.embedding_dims),
-            nn.GELU(),
+            nn.ReLU(),
         )
             
 
@@ -56,9 +66,9 @@ class SimpleNet(nn.Module):
         self.small_distance_dim = self.spatial_embedding_dim
         self.small_distance_net = nn.Sequential(
             # can see 1 distance away
-            nn.Conv2d(self.small_distance_feature_count, self.small_distance_dim, kernel_size=3, stride=1, padding="same", bias=True),
+            init_relu_(nn.Conv2d(self.small_distance_feature_count, self.small_distance_dim, kernel_size=3, stride=1, padding="same", bias=True)),
             nn.BatchNorm2d(self.small_distance_dim),
-            nn.GELU(),
+            nn.ReLU(),
         )
 
         # large distance
@@ -71,9 +81,9 @@ class SimpleNet(nn.Module):
         self.large_distance_net = nn.Sequential(
             # can see 5 distance away
             nn.AvgPool2d(kernel_size=3, stride=1, padding=1),  # +1 distance
-            nn.Conv2d(self.large_distance_feature_count, self.large_distance_dim, kernel_size=5, stride=1, padding="same", bias=True, dilation=2),  # +2*(5//2) distance
+            init_relu_(nn.Conv2d(self.large_distance_feature_count, self.large_distance_dim, kernel_size=5, stride=1, padding="same", bias=True, dilation=2)),  # +2*(5//2) distance
             nn.BatchNorm2d(self.large_distance_dim),
-            nn.GELU(),
+            nn.ReLU(),
         )
 
 
@@ -82,9 +92,9 @@ class SimpleNet(nn.Module):
         self.combined_feature_count = self.embedding_dims + self.spatial_embedding_dim
         self.combined_feature_dim = 16
         self.combined_net = nn.Sequential(
-            nn.Conv2d(self.combined_feature_count, self.combined_feature_dim, kernel_size=1, stride=1, padding="same", bias=True),
+            init_relu_(nn.Conv2d(self.combined_feature_count, self.combined_feature_dim, kernel_size=1, stride=1, padding="same", bias=True)),
             nn.BatchNorm2d(self.combined_feature_dim),
-            nn.GELU(),
+            nn.ReLU(),
         )
 
 
@@ -94,15 +104,15 @@ class SimpleNet(nn.Module):
         self.critic_feature_count = self.combined_feature_dim
         self.critic_dim = 4
         self.critic_head = nn.Sequential(
-            nn.Conv2d(self.critic_feature_count, self.critic_dim, kernel_size=1, stride=1, padding=0, bias=True),
-            nn.GELU(),
-            nn.Conv2d(self.critic_dim, 1, kernel_size=1, stride=1, padding=0, bias=True),
+            init_relu_(nn.Conv2d(self.critic_feature_count, self.critic_dim, kernel_size=1, stride=1, padding=0, bias=True)),
+            nn.ReLU(),
+            init_regression_(nn.Conv2d(self.critic_dim, 1, kernel_size=1, stride=1, padding=0, bias=True)),
         )
 
         # factory
         self.factory_feature_count = self.combined_feature_dim
         self.factory_head = nn.Sequential(
-            nn.Linear(self.factory_feature_count, ActDims.factory_act, bias=True),
+            init_actor_(nn.Linear(self.factory_feature_count, ActDims.factory_act, bias=True)),
         )
 
         self.unit_feature_count = self.combined_feature_dim
@@ -111,29 +121,18 @@ class SimpleNet(nn.Module):
         # act type
         self.act_type_feature_count = self.unit_emb_dim
         self.unit_act_type_net = nn.Sequential(
-            nn.Linear(self.act_type_feature_count, len(UnitActType), bias=True),
+            init_actor_(nn.Linear(self.act_type_feature_count, len(UnitActType), bias=True)),
         )
 
         # params
         self.param_heads = nn.ModuleDict({
             unit_act_type.name: nn.ModuleDict({
-                "direction": nn.Linear(self.unit_emb_dim, ActDims.direction, bias=True),
-                "resource": nn.Linear(self.unit_emb_dim, ActDims.resource, bias=True),
-                "amount": nn.Linear(self.unit_emb_dim, ActDims.amount, bias=True),
-                "repeat": nn.Linear(self.unit_emb_dim, ActDims.repeat, bias=True),
+                "direction": init_actor_(nn.Linear(self.unit_emb_dim, ActDims.direction, bias=True)),
+                "resource": init_actor_(nn.Linear(self.unit_emb_dim, ActDims.resource, bias=True)),
+                "amount": init_actor_(nn.Linear(self.unit_emb_dim, ActDims.amount, bias=True)),
+                "repeat": init_actor_(nn.Linear(self.unit_emb_dim, ActDims.repeat, bias=True)),
             }) for unit_act_type in UnitActType
         })
-
-        all_param_heads = []
-        for unit_act_type in UnitActType:
-            for param_name in ["direction", "resource", "amount", "repeat"]:
-                all_param_heads.append(self.param_heads[unit_act_type.name][param_name])
-        self.actor_heads = nn.ModuleList([
-            self.factory_head,
-            self.unit_act_type_net,
-            *all_param_heads,
-        ])
-
 
     def forward(self, global_feature, map_feature, factory_feature, unit_feature, location_feature, va, action=None, is_deterministic=False):
         B, _, H, W = map_feature.shape
