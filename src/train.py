@@ -437,12 +437,10 @@ def main(args, model_device, store_device):
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed(args.seed)
-    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.benchmark = True
     torch.backends.cudnn.deterministic = args.torch_deterministic
-    os.environ["TF_CUDNN_DETERMINISTIC"] = '1'
-    os.environ["TF_DETERMINISTIC_OPS"] = '1'
     os.environ["PYTHONHASHSEED"] = str(args.seed)
-    torch.use_deterministic_algorithms(True)
+    torch.use_deterministic_algorithms(False)
 
     # Create model
     agent, optimizer = create_model(model_device, args.load_model_path, args.learning_rate)
