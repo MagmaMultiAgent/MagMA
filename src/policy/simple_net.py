@@ -24,7 +24,7 @@ class SimpleNet(nn.Module):
         init_relu_ = lambda m: m
         # init_regression_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, lambda x: nn.init.constant_(x, 0), 1.0)
         init_regression_ = lambda m: m
-        init_actor_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, lambda x: nn.init.constant_(x, 0), 0.01)
+        init_actor_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, lambda x: nn.init.constant_(x, 0), 1.0)
 
         # EMBEDDINGS
         """
