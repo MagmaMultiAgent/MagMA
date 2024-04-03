@@ -16,8 +16,10 @@ def init_orthogonal(module, weight_init, bias_init, gain=1):
 
 class SimpleNet(nn.Module):
 
-    def __init__(self):
+    def __init__(self, max_entity_number: int):
         super(SimpleNet, self).__init__()
+
+        self.max_entity_number = max_entity_number
 
         activation_function = nn.SiLU
 
@@ -138,7 +140,7 @@ class SimpleNet(nn.Module):
 
     def forward(self, global_feature, map_feature, factory_feature, unit_feature, location_feature, va, action=None, is_deterministic=False):
         B, _, H, W = map_feature.shape
-        max_group_count = 1000
+        max_group_count = self.max_entity_number
 
         # Embeddings
         global_feature = global_feature[..., None, None].expand(-1, -1, H, W)

@@ -172,12 +172,13 @@ def crop_map(env, pos=(0, 0), size=24):
 
 class LuxEnv(gym.Env):
     
-    def __init__(self, kaggle_replays=None, device="cpu", **kwargs):
+    def __init__(self, kaggle_replays=None, device="cpu", max_entity_number: int = 1000, **kwargs):
         super().__init__(**kwargs)
 
         self.device = device
 
         self.current_seed = None
+        self.max_entity_number = max_entity_number
 
         self.proxy = LuxAI_S2(
             collect_stats=True,
@@ -194,7 +195,7 @@ class LuxEnv(gym.Env):
         elif EnvParam.parser == 'dense2':
             self.reward_parser = Dense2RewardParser()
         elif EnvParam.parser == 'ice':
-            self.reward_parser = IceRewardParser()
+            self.reward_parser = IceRewardParser(max_entity_number)
         else:
             raise NotImplementedError
         self.feature_parser = FeatureParser()
@@ -273,8 +274,8 @@ class LuxEnv(gym.Env):
         terminations = list(terminations.values())
         truncations = list(truncations.values())
 
-        terminations_final = np.ones((2, 1000), dtype=np.bool_)
-        truncations_final = np.ones((2, 1000), dtype=np.bool_)
+        terminations_final = np.ones((2, self.max_entity_number), dtype=np.bool_)
+        truncations_final = np.ones((2, self.max_entity_number), dtype=np.bool_)
 
         self.real_obs = obs
         for player_id, player in enumerate(self.proxy.agents):

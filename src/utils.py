@@ -123,10 +123,10 @@ class LuxRecordEpisodeStatistics(gym.Wrapper):
             infos
         )
 
-def make_env(env_id, seed, replay_dir, device="cpu"):
+def make_env(env_id, seed, replay_dir, device="cpu", max_entity_number: int = 1000):
     def thunk():
         logger.info(f"Creating environment {env_id} with seed {seed}")
-        env = LuxEnv(replay_dir, device)
+        env = LuxEnv(replay_dir, device, max_entity_number)
         env = LuxRecordEpisodeStatistics(env)
         env.seed(seed)
         return env

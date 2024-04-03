@@ -196,11 +196,11 @@ def reset_store(store: dict):
                 raise NotImplementedError(f"store[key].dtype={store[key].dtype}")
 
 
-def create_model(device: Union[torch.device, str], load_model_path: Union[str, None], learning_rate: float):
+def create_model(device: Union[torch.device, str], load_model_path: Union[str, None], learning_rate: float, max_entity_number: int):
     """
     Create the model
     """
-    agent = SimpleNet().to(device)
+    agent = SimpleNet(max_entity_number).to(device)
     if load_model_path is not None:
         agent.load_state_dict(torch.load(load_model_path))
         print('load successfully')
@@ -292,7 +292,6 @@ def calculate_returns(envs: LuxSyncVectorEnv,
                 delta = rewards[player][t] + gamma * nextvalues * nextnonterminal - values[player][t]
                 advantages[player][t] = lastgaelam = delta + gamma * gae_lambda * nextnonterminal * lastgaelam
             returns[player] = advantages[player] + values[player]
-
     return returns, advantages
 
 
@@ -317,7 +316,7 @@ def calculate_loss(advantages: torch.Tensor,
     pg_loss = torch.max(pg_loss1, pg_loss2).mean()
 
     # Value loss
-    newvalue = newvalue.view(-1, 1000)
+    newvalue = newvalue.view(-1, max_entity_number)
     if clip_vloss:
         v_loss_unclipped = (newvalue - returns) ** 2
         v_clipped = values + torch.clamp(
@@ -393,16 +392,6 @@ def optimize_for_player(player: str,
             else:
                 mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
 
-        # get top lrgest advantage and use it to index every other tensor
-        mb_advantages_abs = torch.abs(mb_advantages)
-        _, indices = torch.topk(mb_advantages_abs, 1000, dim=1)
-        mb_advantages = torch.gather(mb_advantages, 1, indices)
-        mb_returns = torch.gather(mb_returns, 1, indices)
-        mb_values = torch.gather(mb_values, 1, indices)
-        newvalue = torch.gather(newvalue, 1, indices)
-        entropy = torch.gather(entropy, 1, indices)
-        ratio = torch.gather(ratio, 1, indices)
-
         loss, pg_loss, entropy_loss, v_loss = calculate_loss(mb_advantages, mb_returns, mb_values, newvalue, entropy, ratio, max_entity_number, clip_vloss, clip_coef, ent_coef, vf_coef)
 
         optimizer.zero_grad()
@@ -443,7 +432,7 @@ def main(args, model_device, store_device):
     torch.use_deterministic_algorithms(False)
 
     # Create model
-    agent, optimizer = create_model(model_device, args.load_model_path, args.learning_rate)
+    agent, optimizer = create_model(model_device, args.load_model_path, args.learning_rate, args.max_entity_number)
     # reset seed after model creation
     random.seed(args.seed)
     np.random.seed(args.seed)
@@ -452,7 +441,7 @@ def main(args, model_device, store_device):
 
     # env setup
     envs = LuxSyncVectorEnv(
-        [make_env(i, args.seed + i, args.replay_dir, device=model_device) for i in range(args.num_envs)],
+        [make_env(i, args.seed + i, args.replay_dir, device=model_device, max_entity_number=args.max_entity_number) for i in range(args.num_envs)],
         device=model_device
     )
 

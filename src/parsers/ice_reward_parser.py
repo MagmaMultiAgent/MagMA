@@ -7,10 +7,14 @@ import sys
 
 
 class IceRewardParser(DenseRewardParser):
+    def __init__(self, max_entity_number: int = 1000):
+        super(IceRewardParser, self).__init__()
+        self.max_entity_number = max_entity_number
+
     def parse(self, dones, game_state, env_stats, global_info):
         global_reward = [0.0, 0.0]
 
-        final_reward = [np.zeros((1000,), dtype=np.float32) for _ in range(2)]
+        final_reward = [np.zeros((self.max_entity_number,), dtype=np.float32) for _ in range(2)]
 
         for team in [0, 1]:
             player = f"player_{team}"
