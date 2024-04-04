@@ -35,12 +35,15 @@ class SimpleNet(nn.Module):
 
         self.max_entity_number = max_entity_number
 
-        activation_function = nn.LeakyReLU
+        activation_function = nn.SiLU
 
         # LAYER INIT
-        init_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('leaky_relu'))
-        init_regression_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 1.0)
-        init_actor_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 0.01)
+        # init_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('leaky_relu'))
+        # init_regression_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 1.0)
+        # init_actor_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 0.01)
+        init_relu_ = lambda m: m
+        init_regression_ = lambda m: m
+        init_actor_ = lambda m: m
 
         # EMBEDDINGS
         """
@@ -51,6 +54,15 @@ class SimpleNet(nn.Module):
         self.embedding_layers = 1
         self.embedding_is_residual = False
         self.embedding_use_se = False
+
+        # EMBEDDING RESIDUAL SE
+        self.embedding_res = nn.Sequential(
+            init_relu_(nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True)),
+            activation_function(),
+            nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True),
+
+            SELayer(self.embedding_dims, reduction=4)
+        )
 
         self.embedding_feature_counts = {
             "global": 2,
@@ -151,15 +163,6 @@ class SimpleNet(nn.Module):
                 "repeat": init_actor_(nn.Linear(self.unit_emb_dim, ActDims.repeat, bias=True)),
             }) for unit_act_type in UnitActType
         })
-
-        # EMBEDDING RESIDUAL SE
-        self.embedding_res = nn.Sequential(
-            init_relu_(nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True)),
-            activation_function(),
-            nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True),
-
-            SELayer(self.embedding_dims, reduction=4)
-        )
 
 
     def forward(self, global_feature, map_feature, factory_feature, unit_feature, location_feature, va, action=None, is_deterministic=False):
