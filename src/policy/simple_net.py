@@ -165,9 +165,9 @@ class SimpleNet(nn.Module):
 
         # EMBEDDING RESIDUAL SE
         self.embedding_res = nn.Sequential(
-            init_leaky_relu_(nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True)),
+            init_leaky_relu_(nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=3, stride=1, padding="same", bias=True)),
             activation_function(),
-            init_leaky_relu_(conv_norm_(nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True))),
+            init_leaky_relu_(conv_norm_(nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=3, stride=1, padding="same", bias=True))),
             activation_function(),
 
             SELayer(self.embedding_dims, reduction=4)
