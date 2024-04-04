@@ -35,15 +35,12 @@ class SimpleNet(nn.Module):
 
         self.max_entity_number = max_entity_number
 
-        activation_function = nn.SiLU
+        activation_function = nn.LeakyReLU
 
         # LAYER INIT
-        # init_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('leaky_relu'))
-        # init_regression_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 1.0)
-        # init_actor_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 0.01)
-        init_relu_ = lambda m: m
-        init_regression_ = lambda m: m
-        init_actor_ = lambda m: m
+        init_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('leaky_relu'))
+        init_regression_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 1.0)
+        init_actor_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 0.01)
 
         # EMBEDDINGS
         """
