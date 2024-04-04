@@ -429,7 +429,9 @@ class ActionParser():
                             can_move_to_factory = True
 
             cargo_capacity = unit.unit_cfg.CARGO_SPACE
-            cargo_full = sum([unit.cargo.ice, unit.cargo.ore, unit.cargo.water, unit.cargo.metal]) >= min(cargo_capacity * 0.6, 200)
+            cargo_full = sum([unit.cargo.ice, unit.cargo.ore, unit.cargo.water, unit.cargo.metal]) >= cargo_capacity * 0.6
+            if False:
+                cargo_full = cargo_full and sum([unit.cargo.ice, unit.cargo.ore, unit.cargo.water, unit.cargo.metal]) > 200
             cargo_empty = sum([unit.cargo.ice, unit.cargo.ore, unit.cargo.water, unit.cargo.metal]) == 0
 
             # valid transfer
@@ -450,7 +452,7 @@ class ActionParser():
                             valid_actions["unit_act"]["act_type"][:, x, y] = False
                             valid_actions["unit_act"]["act_type"][UnitActType.TRANSFER, x, y] = True
 
-            if True:
+            if False:
                 # if low power, force agent to move to factory
                 if unit.power < battery_capacity * 0.2 and can_move_to_factory:
                     for direction in non_factory_moves:
@@ -479,14 +481,15 @@ class ActionParser():
                         valid_actions["unit_act"]["dig"]['repeat'][0, x, y] = False
                         valid_actions["unit_act"]["dig"]['repeat'][1, x, y] = True
 
-                        rubble_on_tile = board.rubble[x, y]
-                        dig_cost = unit.unit_cfg.DIG_COST
-                        rubble_destory_on_dig = unit.unit_cfg.DIG_RUBBLE_REMOVED
-                        moves_to_remove_rubble = rubble_on_tile // rubble_destory_on_dig + 1
-                        power_to_remove_rubble = moves_to_remove_rubble * dig_cost + dig_action_queue_cost
-                        if board.ice[x, y] > 0 and cargo_empty and (board.rubble[x, y] == 0 or (board.rubble[x, y] > 0 and moves_to_remove_rubble <= 2 and power_to_remove_rubble <= unit.power)):
-                            valid_actions["unit_act"]["act_type"][:, x, y] = False
-                            valid_actions["unit_act"]["act_type"][UnitActType.DIG, x, y] = True
+                        if False:
+                            rubble_on_tile = board.rubble[x, y]
+                            dig_cost = unit.unit_cfg.DIG_COST
+                            rubble_destory_on_dig = unit.unit_cfg.DIG_RUBBLE_REMOVED
+                            moves_to_remove_rubble = rubble_on_tile // rubble_destory_on_dig + 1
+                            power_to_remove_rubble = moves_to_remove_rubble * dig_cost + dig_action_queue_cost
+                            if board.ice[x, y] > 0 and cargo_empty and (board.rubble[x, y] == 0 or (board.rubble[x, y] > 0 and moves_to_remove_rubble <= 2 and power_to_remove_rubble <= unit.power)):
+                                valid_actions["unit_act"]["act_type"][:, x, y] = False
+                                valid_actions["unit_act"]["act_type"][UnitActType.DIG, x, y] = True
                             
 
                     elif unit.power >= battery_capacity * 100000000000000:
