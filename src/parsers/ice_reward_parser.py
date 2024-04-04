@@ -42,10 +42,8 @@ class IceRewardParser(DenseRewardParser):
                 ice_increment = max(cargo_ice - last_cargo_ice, 0)
                 ice_decrement = max(last_cargo_ice - cargo_ice, 0)  # transfer to factory
 
-                # unit_reward += ice_increment * 0.1
+                unit_reward += ice_increment / 4 * 0.1
                 unit_reward += ice_decrement / 4  # 4 ice = 1 water
-
-                # unit_reward += (ice_increment / 4) * 0.1
 
                 unit_reward /= 2
 
