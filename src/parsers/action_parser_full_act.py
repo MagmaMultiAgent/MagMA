@@ -338,6 +338,7 @@ class ActionParser():
             action_queue_cost = unit.action_queue_cost(game_state)
 
             battery_capacity = unit.unit_cfg.BATTERY_CAPACITY
+            low_power = battery_capacity * 0.2
 
             # Power masking
             if unit.power >= action_queue_cost:
@@ -346,7 +347,7 @@ class ActionParser():
                 # don't recharge if on top of factory, can pickup instead
                 if factory_under_unit(unit.pos, game_state.factories[player]) is not None:
                     valid_actions["unit_act"]["act_type"][UnitActType.RECHARGE, x, y] = False
-                    if unit.power < battery_capacity * 0.2:
+                    if unit.power < low_power:
                         valid_actions["unit_act"]["act_type"][:, x, y] = False
                         valid_actions["unit_act"]["act_type"][UnitActType.PICKUP, x, y] = True
                         valid_actions["unit_act"]["act_type"][UnitActType.TRANSFER, x, y] = True
@@ -452,9 +453,9 @@ class ActionParser():
                             valid_actions["unit_act"]["act_type"][:, x, y] = False
                             valid_actions["unit_act"]["act_type"][UnitActType.TRANSFER, x, y] = True
 
-            if False:
+            if True:
                 # if low power, force agent to move to factory
-                if unit.power < battery_capacity * 0.2 and can_move_to_factory:
+                if unit.power < low_power and can_move_to_factory:
                     for direction in non_factory_moves:
                         valid_actions["unit_act"]["move"]["direction"][direction, x, y] = False
                     # disable recharge
@@ -481,7 +482,7 @@ class ActionParser():
                         valid_actions["unit_act"]["dig"]['repeat'][0, x, y] = False
                         valid_actions["unit_act"]["dig"]['repeat'][1, x, y] = True
 
-                        if False:
+                        if True:
                             rubble_on_tile = board.rubble[x, y]
                             dig_cost = unit.unit_cfg.DIG_COST
                             rubble_destory_on_dig = unit.unit_cfg.DIG_RUBBLE_REMOVED
@@ -490,11 +491,6 @@ class ActionParser():
                             if board.ice[x, y] > 0 and cargo_empty and (board.rubble[x, y] == 0 or (board.rubble[x, y] > 0 and moves_to_remove_rubble <= 2 and power_to_remove_rubble <= unit.power)):
                                 valid_actions["unit_act"]["act_type"][:, x, y] = False
                                 valid_actions["unit_act"]["act_type"][UnitActType.DIG, x, y] = True
-                            
-
-                    elif unit.power >= battery_capacity * 100000000000000:
-                        valid_actions["unit_act"]["dig"]['repeat'][0, x, y] = True
-                        valid_actions["unit_act"]["dig"]['repeat'][1, x, y] = False
 
             # valid selfdestruct
             if unit.power - action_queue_cost >= unit.unit_cfg.SELF_DESTRUCT_COST:
