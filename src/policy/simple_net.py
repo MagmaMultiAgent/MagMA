@@ -67,9 +67,7 @@ class SimpleNet(nn.Module):
 
             init_relu_(nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True)),
             nn.BatchNorm2d(self.embedding_dims),
-            activation_function(),
-
-            SELayer(self.embedding_dims, reduction=4)
+            activation_function()
         )
             
 
@@ -154,6 +152,16 @@ class SimpleNet(nn.Module):
             }) for unit_act_type in UnitActType
         })
 
+        # EMBEDDING RESIDUAL SE
+        self.embedding_res = nn.Sequential(
+            nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True),
+            activation_function(),
+            nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True),
+
+            SELayer(self.embedding_dims, reduction=4)
+        )
+
+
     def forward(self, global_feature, map_feature, factory_feature, unit_feature, location_feature, va, action=None, is_deterministic=False):
         B, _, H, W = map_feature.shape
         max_group_count = self.max_entity_number
@@ -162,6 +170,9 @@ class SimpleNet(nn.Module):
         global_feature = global_feature[..., None, None].expand(-1, -1, H, W)
         all_features = torch.cat([global_feature, factory_feature, unit_feature, map_feature], dim=1)
         features_embedded = self.embedding_basic(all_features)
+        _features_embedded = self.embedding_res(features_embedded)
+        features_embedded = features_embedded + _features_embedded
+        del _features_embedded
 
         small_distance = self.small_distance_net(features_embedded)
         large_distance = self.large_distance_net(features_embedded)
