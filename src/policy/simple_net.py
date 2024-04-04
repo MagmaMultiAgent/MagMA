@@ -119,7 +119,7 @@ class SimpleNet(nn.Module):
         self.combined_feature_count = self.embedding_dims + self.spatial_embedding_dim
         self.combined_feature_dim = 16
         self.combined_net = nn.Sequential(
-            init_leaky_relu_(nn.Conv2d(self.combined_feature_count, self.combined_feature_dim, kernel_size=1, stride=1, padding="same", bias=True)),
+            init_leaky_relu_(nn.utils.spectral_norm(nn.Conv2d(self.combined_feature_count, self.combined_feature_dim, kernel_size=1, stride=1, padding="same", bias=True))),
             # nn.BatchNorm2d(self.combined_feature_dim),
             activation_function(),
         )
