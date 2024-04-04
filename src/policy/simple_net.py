@@ -14,20 +14,6 @@ def init_orthogonal(module, weight_init, bias_init, gain=1):
     bias_init(module.bias.data)
     return module
 
-class SELayer(nn.Module):
-
-    def __init__(self, channel, reduction=16):
-        super(SELayer, self).__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.fc = nn.Sequential(nn.Linear(channel, channel // reduction, bias=True), nn.ReLU(inplace=True),
-                                nn.Linear(channel // reduction, channel, bias=True), nn.Sigmoid())
-
-    def forward(self, x):
-        b, c, _, _ = x.size()
-        y = self.avg_pool(x).view(b, c)
-        y = self.fc(y).view(b, c, 1, 1)
-        return x * y.expand_as(x)
-
 class SimpleNet(nn.Module):
 
     def __init__(self, max_entity_number: int):
@@ -38,12 +24,32 @@ class SimpleNet(nn.Module):
         activation_function = nn.LeakyReLU
 
         # LAYER INIT
-        init_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('leaky_relu'))
+        init_leaky_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('leaky_relu'))
+        init_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('relu'))
+        init_sigmoid_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('sigmoid'))
         init_regression_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 1.0)
         init_actor_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 0.01)
-        # init_relu_ = lambda m: m
+        # init_leaky_relu_ = lambda m: m
         # init_regression_ = lambda m: m
         # init_actor_ = lambda m: m
+
+        class SELayer(nn.Module):
+
+            def __init__(self, channel, reduction=16):
+                super(SELayer, self).__init__()
+                self.avg_pool = nn.AdaptiveAvgPool2d(1)
+                self.fc = nn.Sequential(
+                    init_relu_(nn.Linear(channel, channel // reduction, bias=True)),
+                    nn.ReLU(inplace=True),
+                    init_sigmoid_(nn.Linear(channel // reduction, channel, bias=True)),
+                    nn.Sigmoid()
+                )
+
+            def forward(self, x):
+                b, c, _, _ = x.size()
+                y = self.avg_pool(x).view(b, c)
+                y = self.fc(y).view(b, c, 1, 1)
+                return x * y.expand_as(x)
 
         # EMBEDDINGS
         """
@@ -64,12 +70,12 @@ class SimpleNet(nn.Module):
         self.embedding_feature_count = sum(self.embedding_feature_counts.values())
 
         self.embedding_basic = nn.Sequential(
-            init_relu_(nn.Conv2d(self.embedding_feature_count, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True)),
-            nn.BatchNorm2d(self.embedding_dims),
+            init_leaky_relu_(nn.Conv2d(self.embedding_feature_count, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True)),
+            # nn.BatchNorm2d(self.embedding_dims),
             activation_function(),
 
-            init_relu_(nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True)),
-            nn.BatchNorm2d(self.embedding_dims),
+            init_leaky_relu_(nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True)),
+            # nn.BatchNorm2d(self.embedding_dims),
             activation_function()
         )
             
@@ -87,8 +93,8 @@ class SimpleNet(nn.Module):
         self.small_distance_dim = self.spatial_embedding_dim
         self.small_distance_net = nn.Sequential(
             # can see 1 distance away
-            init_relu_(nn.Conv2d(self.small_distance_feature_count, self.small_distance_dim, kernel_size=3, stride=1, padding="same", bias=True)),
-            nn.BatchNorm2d(self.small_distance_dim),
+            init_leaky_relu_(nn.Conv2d(self.small_distance_feature_count, self.small_distance_dim, kernel_size=3, stride=1, padding="same", bias=True)),
+            # nn.BatchNorm2d(self.small_distance_dim),
             activation_function(),
         )
 
@@ -102,8 +108,8 @@ class SimpleNet(nn.Module):
         self.large_distance_net = nn.Sequential(
             # can see 5 distance away
             nn.AvgPool2d(kernel_size=3, stride=1, padding=1),  # +1 distance
-            init_relu_(nn.Conv2d(self.large_distance_feature_count, self.large_distance_dim, kernel_size=5, stride=1, padding="same", bias=True, dilation=2)),  # +2*(5//2) distance
-            nn.BatchNorm2d(self.large_distance_dim),
+            init_leaky_relu_(nn.Conv2d(self.large_distance_feature_count, self.large_distance_dim, kernel_size=5, stride=1, padding="same", bias=True, dilation=2)),  # +2*(5//2) distance
+            # nn.BatchNorm2d(self.large_distance_dim),
             activation_function(),
         )
 
@@ -113,8 +119,8 @@ class SimpleNet(nn.Module):
         self.combined_feature_count = self.embedding_dims + self.spatial_embedding_dim
         self.combined_feature_dim = 16
         self.combined_net = nn.Sequential(
-            init_relu_(nn.Conv2d(self.combined_feature_count, self.combined_feature_dim, kernel_size=1, stride=1, padding="same", bias=True)),
-            nn.BatchNorm2d(self.combined_feature_dim),
+            init_leaky_relu_(nn.Conv2d(self.combined_feature_count, self.combined_feature_dim, kernel_size=1, stride=1, padding="same", bias=True)),
+            # nn.BatchNorm2d(self.combined_feature_dim),
             activation_function(),
         )
 
@@ -125,7 +131,7 @@ class SimpleNet(nn.Module):
         self.critic_feature_count = self.combined_feature_dim
         self.critic_dim = 4
         self.critic_head = nn.Sequential(
-            init_relu_(nn.Conv2d(self.critic_feature_count, self.critic_dim, kernel_size=1, stride=1, padding=0, bias=True)),
+            init_leaky_relu_(nn.Conv2d(self.critic_feature_count, self.critic_dim, kernel_size=1, stride=1, padding=0, bias=True)),
             activation_function(),
             init_regression_(nn.Conv2d(self.critic_dim, 1, kernel_size=1, stride=1, padding=0, bias=True)),
         )
@@ -157,7 +163,7 @@ class SimpleNet(nn.Module):
 
         # EMBEDDING RESIDUAL SE
         self.embedding_res = nn.Sequential(
-            init_relu_(nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True)),
+            init_leaky_relu_(nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True)),
             activation_function(),
             nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True),
 
