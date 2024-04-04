@@ -14,6 +14,20 @@ def init_orthogonal(module, weight_init, bias_init, gain=1):
     bias_init(module.bias.data)
     return module
 
+class SELayer(nn.Module):
+
+    def __init__(self, channel, reduction=16):
+        super(SELayer, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Sequential(nn.Linear(channel, channel // reduction, bias=True), nn.ReLU(inplace=True),
+                                nn.Linear(channel // reduction, channel, bias=True), nn.Sigmoid())
+
+    def forward(self, x):
+        b, c, _, _ = x.size()
+        y = self.avg_pool(x).view(b, c)
+        y = self.fc(y).view(b, c, 1, 1)
+        return x * y.expand_as(x)
+
 class SimpleNet(nn.Module):
 
     def __init__(self, max_entity_number: int):
@@ -54,6 +68,8 @@ class SimpleNet(nn.Module):
             init_relu_(nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True)),
             nn.BatchNorm2d(self.embedding_dims),
             activation_function(),
+
+            SELayer(self.embedding_dims, reduction=4)
         )
             
 
