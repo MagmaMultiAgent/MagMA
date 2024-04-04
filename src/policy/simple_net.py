@@ -33,6 +33,8 @@ class SimpleNet(nn.Module):
         # init_regression_ = lambda m: m
         # init_actor_ = lambda m: m
 
+        conv_norm_ = nn.utils.spectral_norm
+
         class SELayer(nn.Module):
 
             def __init__(self, channel, reduction=16):
@@ -70,11 +72,11 @@ class SimpleNet(nn.Module):
         self.embedding_feature_count = sum(self.embedding_feature_counts.values())
 
         self.embedding_basic = nn.Sequential(
-            init_leaky_relu_(nn.Conv2d(self.embedding_feature_count, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True)),
+            init_leaky_relu_(conv_norm_(nn.Conv2d(self.embedding_feature_count, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True))),
             nn.BatchNorm2d(self.embedding_dims),
             activation_function(),
 
-            init_leaky_relu_(nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True)),
+            init_leaky_relu_(conv_norm_(nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True))),
             nn.BatchNorm2d(self.embedding_dims),
             activation_function()
         )
@@ -93,7 +95,7 @@ class SimpleNet(nn.Module):
         self.small_distance_dim = self.spatial_embedding_dim
         self.small_distance_net = nn.Sequential(
             # can see 1 distance away
-            init_leaky_relu_(nn.Conv2d(self.small_distance_feature_count, self.small_distance_dim, kernel_size=3, stride=1, padding="same", bias=True)),
+            init_leaky_relu_(conv_norm_(nn.Conv2d(self.small_distance_feature_count, self.small_distance_dim, kernel_size=3, stride=1, padding="same", bias=True))),
             nn.BatchNorm2d(self.small_distance_dim),
             activation_function(),
         )
@@ -108,7 +110,7 @@ class SimpleNet(nn.Module):
         self.large_distance_net = nn.Sequential(
             # can see 5 distance away
             nn.AvgPool2d(kernel_size=3, stride=1, padding=1),  # +1 distance
-            init_leaky_relu_(nn.Conv2d(self.large_distance_feature_count, self.large_distance_dim, kernel_size=5, stride=1, padding="same", bias=True, dilation=2)),  # +2*(5//2) distance
+            init_leaky_relu_(conv_norm_(nn.Conv2d(self.large_distance_feature_count, self.large_distance_dim, kernel_size=5, stride=1, padding="same", bias=True, dilation=2))),  # +2*(5//2) distance
             nn.BatchNorm2d(self.large_distance_dim),
             activation_function(),
         )
@@ -119,7 +121,7 @@ class SimpleNet(nn.Module):
         self.combined_feature_count = self.embedding_dims + self.spatial_embedding_dim
         self.combined_feature_dim = 16
         self.combined_net = nn.Sequential(
-            init_leaky_relu_(nn.utils.spectral_norm(nn.Conv2d(self.combined_feature_count, self.combined_feature_dim, kernel_size=1, stride=1, padding="same", bias=True))),
+            init_leaky_relu_(conv_norm_(nn.Conv2d(self.combined_feature_count, self.combined_feature_dim, kernel_size=1, stride=1, padding="same", bias=True))),
             nn.BatchNorm2d(self.combined_feature_dim),
             activation_function(),
         )
@@ -131,7 +133,7 @@ class SimpleNet(nn.Module):
         self.critic_feature_count = self.combined_feature_dim
         self.critic_dim = 4
         self.critic_head = nn.Sequential(
-            init_leaky_relu_(nn.Conv2d(self.critic_feature_count, self.critic_dim, kernel_size=1, stride=1, padding=0, bias=True)),
+            init_leaky_relu_(conv_norm_(nn.Conv2d(self.critic_feature_count, self.critic_dim, kernel_size=1, stride=1, padding=0, bias=True))),
             activation_function(),
             init_regression_(nn.Conv2d(self.critic_dim, 1, kernel_size=1, stride=1, padding=0, bias=True)),
         )
@@ -165,7 +167,8 @@ class SimpleNet(nn.Module):
         self.embedding_res = nn.Sequential(
             init_leaky_relu_(nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True)),
             activation_function(),
-            nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True),
+            init_leaky_relu_(conv_norm_(nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=True))),
+            activation_function(),
 
             SELayer(self.embedding_dims, reduction=4)
         )
