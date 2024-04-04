@@ -12,17 +12,18 @@ BIG_NEG = -1e10
 def sample_from_categorical(logits, va, action=None, is_deterministic=False):
     n = logits.shape[0]
     if n > 0:
-        logits = torch.where(va, logits, torch.tensor(BIG_NEG).type_as(logits))
-        distribution = Categorical(logits=logits)
+        new_logits = torch.where(va, logits, torch.tensor(BIG_NEG).type_as(logits))
+        distribution = Categorical(logits=new_logits)
+        distribution_orig = Categorical(logits=logits)
         if is_deterministic:
             # Choose action with highest probability deterministically
-            action = torch.argmax(logits, dim=-1) if action is None else action
+            action = torch.argmax(new_logits, dim=-1) if action is None else action
         else:
             action = distribution.sample() if action is None else action
-        logp = distribution.log_prob(action)
+        logp = distribution_orig.log_prob(action)
         probs = distribution.probs
         zero = torch.tensor(0.).type_as(probs)
-        entropy = -(torch.where(va, probs, zero) * distribution.logits).sum(-1)
+        entropy = -(torch.where(va, probs, zero) * distribution_orig.logits).sum(-1)
     else:
         action = torch.zeros(torch.Size((0, )), device=logits.device, dtype=torch.long)
         logp = torch.ones(torch.Size((0, )), device=logits.device, dtype=torch.float32)
