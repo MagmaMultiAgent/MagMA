@@ -586,10 +586,14 @@ def main(args, model_device, store_device):
             total_return += cal_mean_return(info['agents'], player_id=1)
 
             if (step == args.num_steps-1):
-                logger.info(f"global_step={global_step}, total_return={np.mean(episode_return_list)}, episode_length={np.mean(episode_lengths)}")
+                return_mean = np.mean(episode_return_list)
+                return_median = np.median(episode_return_list)
+                length_mean = np.mean(episode_lengths)
+                length_median = np.median(episode_lengths)
+                logger.info(f"global_step={global_step}, total_return={return_mean.round(8)} ({return_median.round(8)}), episode_length={length_mean.round(2)} ({length_median.round(2)})")
                 if LOG:
-                    writer.add_scalar("charts/episodic_total_return", np.mean(episode_return_list), global_step)
-                    writer.add_scalar("charts/episodic_length", np.mean(episode_lengths), global_step)
+                    writer.add_scalar("charts/episodic_total_return", return_mean, global_step)
+                    writer.add_scalar("charts/episodic_length", length_mean, global_step)
                     mean_episode_sub_return = {}
                     for key in episode_sub_return.keys():
                         mean_episode_sub_return[key] = np.mean(list(map(lambda sub: sub[key], episode_sub_return_list)))
@@ -624,9 +628,30 @@ def main(args, model_device, store_device):
                 for _ in range(args.update_epochs):
                     np.random.shuffle(b_inds)
                     _b_inds = np2torch(b_inds, torch.long)
+                    v_loss_total = 0
+                    pg_loss_total = 0
+                    entropy_loss_total = 0
+                    approx_kl_total = 0
+                    old_approx_kl_total = 0
+                    explained_var_total = 0
+                    advantage_total = 0
+                    reward_total = 0
+                    logprob_total = 0
+                    valid_sample_count_total = 0
+                    clipfracs_total = []
+                    total_weight_norm_total = 0
+                    total_bias_norm_total = 0
+
                     for player_id, player in enumerate(['player_0', 'player_1']):
                         v_loss, pg_loss, entropy_loss, approx_kl, old_approx_kl, clipfracs = optimize_for_player(player, agent, optimizer, _b_inds, b_obs, b_va, b_actions, b_logprobs, b_advantages, b_returns, b_values, args.max_entity_number, args.train_num_collect, args.minibatch_size, args.clip_vloss, args.clip_coef, args.norm_adv, args.ent_coef, args.vf_coef, args.max_grad_norm, model_device)
                         clipfracs += clipfracs
+                        clipfracs_total += clipfracs
+
+                        v_loss_total += v_loss
+                        pg_loss_total += pg_loss
+                        entropy_loss_total += entropy_loss
+                        approx_kl_total += approx_kl
+                        old_approx_kl_total += old_approx_kl
 
                         if args.target_kl is not None:
                             if approx_kl > args.target_kl:
@@ -636,6 +661,19 @@ def main(args, model_device, store_device):
                         y_pred, y_true = b_values[player].cpu().numpy(), b_returns[player].cpu().numpy()
                         var_y = np.var(y_true)
                         explained_var = np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
+                        
+                        explained_var_total += explained_var
+
+                        valid_samples = torch.where(b_logprobs[player] != 0)
+                        valid_sample_count = len(valid_samples[0])
+                        advantage = b_advantages[player][valid_samples].mean().item()
+                        reward = b_returns[player][valid_samples].mean().item()
+                        logprob = b_logprobs[player][valid_samples].mean().item()
+
+                        advantage_total += advantage
+                        reward_total += reward
+                        logprob_total += logprob
+                        valid_sample_count_total += valid_sample_count
 
                         # TRY NOT TO MODIFY: record rewards for plotting purposes
                         if LOG:
@@ -646,6 +684,50 @@ def main(args, model_device, store_device):
                             writer.add_scalar(f"losses/approx_kl_{player_id}", approx_kl.item(), global_step)
                             writer.add_scalar(f"losses/clipfrac_{player_id}", np.mean(clipfracs), global_step)
                             writer.add_scalar(f"losses/explained_variance_{player_id}", explained_var, global_step)
+                            writer.add_scalar(f"losses/advantage_{player_id}", advantage, global_step)
+                            writer.add_scalar(f"losses/return_{player_id}", reward, global_step)
+                            writer.add_scalar(f"losses/logprob_{player_id}", logprob, global_step)
+                            writer.add_scalar(f"losses/num_agents_{player_id}", valid_sample_count, global_step)
+                            # norm of all weights as a single number
+                            total_weight_norm = 0
+                            for param in agent.parameters():
+                                if param.requires_grad:
+                                    total_weight_norm += torch.norm(param.data)
+                            total_bias_norm = 0
+                            for param in agent.parameters():
+                                if param.requires_grad:
+                                    total_bias_norm += torch.norm(param.data)
+                            writer.add_scalar(f"losses/weight_norm_{player_id}", total_weight_norm, global_step)
+                            writer.add_scalar(f"losses/bias_norm_{player_id}", total_bias_norm, global_step)
+                            total_weight_norm_total += total_weight_norm
+                            total_bias_norm_total += total_bias_norm
+                    
+                    if LOG:
+                        v_loss_total /= 2
+                        pg_loss_total /= 2
+                        entropy_loss_total /= 2
+                        approx_kl_total /= 2
+                        old_approx_kl_total /= 2
+                        explained_var_total /= 2
+                        advantage_total /= 2
+                        reward_total /= 2
+                        logprob_total /= 2
+                        valid_sample_count_total /= 2
+                        total_weight_norm_total /= 2
+                        total_bias_norm_total /= 2
+                        writer.add_scalar("losses/value_loss_total", v_loss_total, global_step)
+                        writer.add_scalar("losses/policy_loss_total", pg_loss_total, global_step)
+                        writer.add_scalar("losses/entropy_total", entropy_loss_total, global_step)
+                        writer.add_scalar("losses/old_approx_kl_total", old_approx_kl_total, global_step)
+                        writer.add_scalar("losses/approx_kl_total", approx_kl_total, global_step)
+                        writer.add_scalar("losses/clipfrac_total", np.mean(clipfracs_total), global_step)
+                        writer.add_scalar("losses/explained_variance_total", explained_var_total, global_step)
+                        writer.add_scalar("losses/advantage_total", advantage_total, global_step)
+                        writer.add_scalar("losses/return_total", reward_total, global_step)
+                        writer.add_scalar("losses/logprob_total", logprob_total, global_step)
+                        writer.add_scalar("losses/num_agents_total", valid_sample_count_total, global_step)
+                        writer.add_scalar("losses/weight_norm_total", total_weight_norm_total, global_step)
+                        writer.add_scalar("losses/bias_norm_total", total_bias_norm_total, global_step)
 
                 # free up memory
                 del b_obs
