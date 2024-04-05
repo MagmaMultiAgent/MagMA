@@ -16,6 +16,11 @@ class IceRewardParser(DenseRewardParser):
 
         final_reward = [np.zeros((self.max_entity_number,), dtype=np.float32) for _ in range(2)]
 
+        step_weight_later = 1 + (game_state[0].real_env_steps / 1000) * 0.1
+        step_weight_early = 1 + ((1000 - game_state[0].real_env_steps) / 1000) * 0.1
+
+        ice_norm = 1
+
         for team in [0, 1]:
             player = f"player_{team}"
             own_global_info = global_info[player]
@@ -39,13 +44,15 @@ class IceRewardParser(DenseRewardParser):
                 cargo_ice = unit["cargo_ice"]
                 last_cargo_ice = last_count_units[unit_name]['cargo_ice']
 
-                ice_increment = max(cargo_ice - last_cargo_ice, 0)
-                ice_decrement = max(last_cargo_ice - cargo_ice, 0)  # transfer to factory
+                ice_increment = max(cargo_ice - last_cargo_ice, 0) / 4
+                ice_decrement = max(last_cargo_ice - cargo_ice, 0) / 4  # transfer to factory, 4 ice = 1 water
 
-                unit_reward += ice_increment / 4 * 0.1
-                unit_reward += ice_decrement / 4  # 4 ice = 1 water
+                ice_increment_reward = ice_increment * 0.1 / ice_norm * step_weight_early
+                ice_decrement_reward = ice_decrement / ice_norm * step_weight_early
 
-                unit_reward /= 2
+                unit_reward += ice_increment_reward
+                unit_reward += ice_decrement_reward
+                unit_reward /= 2  # don't count it twice (onece with gent, once with factory)
 
                 group_id = unit["group_id"]
                 if group_id not in unit_groups:
@@ -58,8 +65,6 @@ class IceRewardParser(DenseRewardParser):
                 if factory_name not in last_count_factories:
                     continue
 
-                step_weight = game_state[0].real_env_steps / 1000
-
                 # lichen_count = factory["lichen_count"]
                 # lichen_reward = lichen_count / 20
                 # lichen_reward *= 0.1
@@ -68,11 +73,13 @@ class IceRewardParser(DenseRewardParser):
 
                 cargo_ice = factory["cargo_ice"]
                 last_cargo_ice = last_count_factories[factory_name]['cargo_ice']
-                ice_increment = max(cargo_ice - last_cargo_ice, 0)
+                ice_increment = max(cargo_ice - last_cargo_ice, 0) / 4  # 4 ice = 1 water
 
-                factory_reward += ice_increment / 4  # 4 ice = 1 water
+                ice_increment_reward = ice_increment / ice_norm * step_weight_early
 
-                factory_reward /= 2
+                factory_reward += ice_increment_reward
+
+                factory_reward /= 2  # don't count it twice (onece with gent, once with factory)
 
                 group_id = factory["group_id"]
                 if group_id not in unit_groups:
