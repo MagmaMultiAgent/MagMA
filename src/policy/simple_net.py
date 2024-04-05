@@ -108,7 +108,15 @@ class SimpleNet(nn.Module):
             get_norm2d(self.embedding_dims),
             activation_function(),
 
-            SEResidual(4, self.embedding_dims)
+            SEResidual(2, self.embedding_dims)
+        )
+
+        # COMBINED
+
+        self.combined_net = nn.Sequential(
+            init_leaky_relu_(conv_norm_(nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding="same", bias=False))),
+            nn.BatchNorm2d(self.embedding_dims),
+            activation_function(),
         )
 
         # FINAL
@@ -157,6 +165,7 @@ class SimpleNet(nn.Module):
         global_feature = global_feature[..., None, None].expand(-1, -1, H, W)
         all_features = torch.cat([global_feature, factory_feature, unit_feature, map_feature], dim=1)
         features_embedded = self.embedding_basic(all_features)
+        features_embedded = self.combined_net(features_embedded)
 
         # Valid actions
         unit_act_type_va = torch.stack(
