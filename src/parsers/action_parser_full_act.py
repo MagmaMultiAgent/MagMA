@@ -327,7 +327,7 @@ class ActionParser():
                     factory_va[FactoryActType.WATER, x, y] = False
 
             # can't do nothing if heavy building is possible
-            factory_va[FactoryActType.DO_NOTHING, x, y] = ~factory_va[FactoryActType.BUILD_HEAVY, x, y] & ~factory_va[FactoryActType.BUILD_LIGHT, x, y]
+            factory_va[FactoryActType.DO_NOTHING, x, y] = ~factory_va[FactoryActType.BUILD_HEAVY, x, y]
 
         # unit actions
         unit_move_targets = set()
@@ -338,7 +338,7 @@ class ActionParser():
             action_queue_cost = unit.action_queue_cost(game_state)
 
             battery_capacity = unit.unit_cfg.BATTERY_CAPACITY
-            low_power = battery_capacity * 0.2
+            low_power = battery_capacity * 0.1
 
             # Power masking
             if unit.power >= action_queue_cost:
@@ -454,8 +454,8 @@ class ActionParser():
                             valid_actions["unit_act"]["act_type"][UnitActType.TRANSFER, x, y] = True
 
             if True:
-                # if low power, force agent to move to factory
-                if unit.power < low_power and can_move_to_factory:
+                # if low power or holding cargo, disable agent from moving away from factory
+                if (unit.power < low_power or not cargo_empty) and can_move_to_factory:
                     for direction in non_factory_moves:
                         valid_actions["unit_act"]["move"]["direction"][direction, x, y] = False
                     # disable recharge

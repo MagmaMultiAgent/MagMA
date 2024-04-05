@@ -78,16 +78,20 @@ def get_observation_space(map_size):
 def get_single_observation_space(map_size):
     global_feature_names = [
                             'env_step',                 # 1000+10
-                            # 'cycle',                    # 20
-                            # 'hour',                     # 50
-                            'daytime_or_night'          # 2
+                            # 'cycle',                  # 20
+                            # 'hour',                   # 50
+                            'daytime_or_night',         # 2
+                            # 'num_factory_own',          # 5
+                            # 'num_factory_enm'           # 5
                         ]
 
     global_feature_space = [
         9999, 
         # 20, 
         # 50, 
-        2
+        2,
+        # 9999,
+        # 9999
     ]
     global_feature_space = spaces.MultiDiscrete(np.array(global_feature_space), dtype=np.float64)
 

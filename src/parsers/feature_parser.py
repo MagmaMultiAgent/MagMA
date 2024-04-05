@@ -402,6 +402,9 @@ class FeatureParser():
         hour = obs.real_env_steps % env_cfg.CYCLE_LENGTH
         global_feature['daytime_or_night'] = hour < 30
 
+        # global_feature['num_factory_own'] = (len(obs.factories[player]) - 0) / (env_cfg.MAX_FACTORIES - 0) * 2 - 1
+        # global_feature['num_factory_enm'] = (len(obs.factories[other_player]) - 0) / (env_cfg.MAX_FACTORIES - 0) * 2 - 1
+
         # Map
 
         map_feature = {name: np.zeros_like(obs.board.ice, dtype=np.float32) for name in self.map_featrue_names}
