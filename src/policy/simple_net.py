@@ -170,7 +170,13 @@ class SimpleNet(nn.Module):
             activation_function(),
             init_leaky_relu_(conv_norm_(nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=3, stride=1, padding="same", bias=True))),
             activation_function(),
-
+            SELayer(self.embedding_dims, reduction=4)
+        )
+        self.embedding_res2 = nn.Sequential(
+            init_leaky_relu_(nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=3, stride=1, padding="same", bias=True)),
+            activation_function(),
+            init_leaky_relu_(conv_norm_(nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=3, stride=1, padding="same", bias=True))),
+            activation_function(),
             SELayer(self.embedding_dims, reduction=4)
         )
 
@@ -184,6 +190,8 @@ class SimpleNet(nn.Module):
         all_features = torch.cat([global_feature, factory_feature, unit_feature, map_feature], dim=1)
         features_embedded = self.embedding_basic(all_features)
         _features_embedded = self.embedding_res(features_embedded)
+        features_embedded = features_embedded + _features_embedded
+        _features_embedded = self.embedding_res2(features_embedded)
         features_embedded = features_embedded + _features_embedded
         del _features_embedded
 
