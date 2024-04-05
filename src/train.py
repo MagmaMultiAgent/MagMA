@@ -405,7 +405,7 @@ def optimize_for_player(player: str,
 
         loss, pg_loss, entropy_loss, v_loss = calculate_loss(mb_advantages, mb_returns, mb_values, newvalue, entropy, ratio, max_entity_number, clip_vloss, clip_coef, ent_coef, vf_coef, valid_samples)
 
-        optimizer.zero_grad()
+        optimizer.zero_grad(set_to_none=True)
         loss.backward()
         nn.utils.clip_grad_norm_(agent.parameters(), max_grad_norm)
         optimizer.step()
@@ -661,7 +661,7 @@ def main(args, model_device, store_device):
                         y_pred, y_true = b_values[player].cpu().numpy(), b_returns[player].cpu().numpy()
                         var_y = np.var(y_true)
                         explained_var = np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
-                        
+
                         explained_var_total += explained_var
 
                         valid_samples = torch.where(b_logprobs[player] != 0)
