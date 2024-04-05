@@ -22,19 +22,24 @@ class SimpleNet(nn.Module):
 
         self.max_entity_number = max_entity_number
 
-        activation_function = nn.LeakyReLU
-
         # LAYER INIT
         init_leaky_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('leaky_relu'))
         init_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('relu'))
         init_sigmoid_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('sigmoid'))
         init_regression_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 1.0)
         init_actor_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 0.01)
-        # init_leaky_relu_ = lambda m: m
-        # init_regression_ = lambda m: m
-        # init_actor_ = lambda m: m
 
+        activation_function = nn.LeakyReLU
         conv_norm_ = nn.utils.spectral_norm
+
+        def get_conv2d(in_channels, out_channels, kernel_size, stride, padding, bias, dilation=1):
+            return init_leaky_relu_(conv_norm_(nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias, dilation=dilation)))
+        
+        def get_norm1d(dim):
+            return nn.BatchNorm1d(dim)
+
+        def get_norm2d(dim):
+            return nn.BatchNorm2d(dim)
 
         class SELayer(nn.Module):
 
@@ -53,6 +58,28 @@ class SimpleNet(nn.Module):
                 y = self.avg_pool(x).view(b, c)
                 y = self.fc(y).view(b, c, 1, 1)
                 return x * y.expand_as(x)
+            
+        class SEResidual(nn.Module):
+            def __init__(self, layers, channel, reduction=16):
+                super(SEResidual, self).__init__()
+                self.layers = nn.ModuleList()
+                for _ in range(layers):
+                    self.layers.append(nn.Sequential(
+                        get_conv2d(channel, channel, kernel_size=3, stride=1, padding="same", bias=True),
+                        get_norm2d(channel),
+                        activation_function(),
+                        get_conv2d(channel, channel, kernel_size=3, stride=1, padding="same", bias=True),
+                        get_norm2d(channel),
+                        activation_function(),
+                        SELayer(channel, reduction=4)
+                    ))
+
+            def forward(self, x):
+                for layer in self.layers:
+                    _x = x
+                    x = layer(x)
+                    x = x + _x
+                return x
 
         # EMBEDDINGS
         """
@@ -73,79 +100,36 @@ class SimpleNet(nn.Module):
         self.embedding_feature_count = sum(self.embedding_feature_counts.values())
 
         self.embedding_basic = nn.Sequential(
-            init_leaky_relu_(conv_norm_(nn.Conv2d(self.embedding_feature_count, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=False))),
-            nn.BatchNorm2d(self.embedding_dims),
+            get_conv2d(self.embedding_feature_count, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=False),
+            get_norm2d(self.embedding_dims),
             activation_function(),
 
-            init_leaky_relu_(conv_norm_(nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=False))),
-            nn.BatchNorm2d(self.embedding_dims),
-            activation_function()
-        )
-            
-
-        # SPATIAL INFORMATION
-
-        self.spatial_embedding_feature_count = self.embedding_dims
-        self.spatial_embedding_dim = 4
-
-        # close distance
-        """
-        Units should be able to see close objects.
-        """
-        self.small_distance_feature_count = self.spatial_embedding_feature_count
-        self.small_distance_dim = self.spatial_embedding_dim
-        self.small_distance_net = nn.Sequential(
-            # can see 1 distance away
-            init_leaky_relu_(conv_norm_(nn.Conv2d(self.small_distance_feature_count, self.small_distance_dim, kernel_size=3, stride=1, padding="same", bias=False))),
-            nn.BatchNorm2d(self.small_distance_dim),
+            get_conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=False),
+            get_norm2d(self.embedding_dims),
             activation_function(),
+
+            SEResidual(4, self.embedding_dims)
         )
-
-        # large distance
-        """
-        Units should be able to see far away objects.
-        """
-
-        self.large_distance_feature_count = self.spatial_embedding_feature_count
-        self.large_distance_dim = self.spatial_embedding_dim
-        self.large_distance_net = nn.Sequential(
-            # can see 5 distance away
-            nn.AvgPool2d(kernel_size=3, stride=1, padding=1),  # +1 distance
-            init_leaky_relu_(conv_norm_(nn.Conv2d(self.large_distance_feature_count, self.large_distance_dim, kernel_size=5, stride=1, padding="same", bias=False, dilation=2))),  # +2*(5//2) distance
-            nn.BatchNorm2d(self.large_distance_dim),
-            activation_function(),
-        )
-
-
-        # COMBINED
-
-        self.combined_feature_count = self.embedding_dims + self.spatial_embedding_dim
-        self.combined_feature_dim = 16
-        self.combined_net = nn.Sequential(
-            init_leaky_relu_(conv_norm_(nn.Conv2d(self.combined_feature_count, self.combined_feature_dim, kernel_size=1, stride=1, padding="same", bias=False))),
-            nn.BatchNorm2d(self.combined_feature_dim),
-            activation_function(),
-        )
-
 
         # FINAL
 
         # critic
-        self.critic_feature_count = self.combined_feature_dim
+        self.critic_feature_count = self.embedding_dims
         self.critic_dim = 4
         self.critic_head = nn.Sequential(
-            init_leaky_relu_(conv_norm_(nn.Conv2d(self.critic_feature_count, self.critic_dim, kernel_size=1, stride=1, padding=0, bias=True))),
+            get_conv2d(self.critic_feature_count, self.critic_dim, kernel_size=1, stride=1, padding=0, bias=True),
+            get_norm2d(self.critic_dim),
             activation_function(),
-            init_regression_(nn.Conv2d(self.critic_dim, 1, kernel_size=1, stride=1, padding=0, bias=True)),
+            init_regression_(nn.Conv2d(self.critic_dim, 2, kernel_size=1, stride=1, padding=0, bias=True)),  # 0 for unit, 1 for factory
         )
 
         # factory
-        self.factory_feature_count = self.combined_feature_dim
+        self.factory_feature_count = self.embedding_dims
         self.factory_head = nn.Sequential(
             init_actor_(nn.Linear(self.factory_feature_count, ActDims.factory_act, bias=True)),
         )
 
-        self.unit_feature_count = self.combined_feature_dim
+        self.unit_feature_count = self.embedding_dims
         self.unit_emb_dim = self.unit_feature_count
 
         # act type
@@ -164,22 +148,6 @@ class SimpleNet(nn.Module):
             }) for unit_act_type in UnitActType
         })
 
-        # EMBEDDING RESIDUAL SE
-        self.embedding_res = nn.Sequential(
-            init_leaky_relu_(nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=3, stride=1, padding="same", bias=True)),
-            activation_function(),
-            init_leaky_relu_(conv_norm_(nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=3, stride=1, padding="same", bias=True))),
-            activation_function(),
-            SELayer(self.embedding_dims, reduction=4)
-        )
-        self.embedding_res2 = nn.Sequential(
-            init_leaky_relu_(nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=3, stride=1, padding="same", bias=True)),
-            activation_function(),
-            init_leaky_relu_(conv_norm_(nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=3, stride=1, padding="same", bias=True))),
-            activation_function(),
-            SELayer(self.embedding_dims, reduction=4)
-        )
-
 
     def forward(self, global_feature, map_feature, factory_feature, unit_feature, location_feature, va, action=None, is_deterministic=False):
         B, _, H, W = map_feature.shape
@@ -189,19 +157,6 @@ class SimpleNet(nn.Module):
         global_feature = global_feature[..., None, None].expand(-1, -1, H, W)
         all_features = torch.cat([global_feature, factory_feature, unit_feature, map_feature], dim=1)
         features_embedded = self.embedding_basic(all_features)
-        _features_embedded = self.embedding_res(features_embedded)
-        features_embedded = features_embedded + _features_embedded
-        _features_embedded = self.embedding_res2(features_embedded)
-        features_embedded = features_embedded + _features_embedded
-        del _features_embedded
-
-        small_distance = self.small_distance_net(features_embedded)
-        large_distance = self.large_distance_net(features_embedded)
-        aggregated_distance = (small_distance + large_distance) / 2
-
-        # Combined
-        combined_feature = torch.cat([features_embedded, aggregated_distance], dim=1)
-        combined_feature = self.combined_net(combined_feature)
 
         # Valid actions
         unit_act_type_va = torch.stack(
@@ -231,34 +186,34 @@ class SimpleNet(nn.Module):
         factory_indices = factory_pos[0] * max_group_count + factory_ids
 
         # Critic
-        critic_value = torch.zeros((B, max_group_count), device=combined_feature.device)
+        critic_value = torch.zeros((B, max_group_count), device=features_embedded.device)
         critic_value = critic_value.view(-1)
 
-        _critic_value = self.critic(combined_feature)
-        _critic_value_unit = _gather_from_map(_critic_value, unit_pos)
+        _critic_value = self.critic(features_embedded)
+        _critic_value_unit = _gather_from_map(_critic_value[:, 0], unit_pos)
         if len(unit_indices) > 0:
             critic_value.scatter_add_(0, unit_indices, _critic_value_unit)
-        _critic_value_factory = _gather_from_map(_critic_value, factory_pos)
+        _critic_value_factory = _gather_from_map(_critic_value[:, 1], factory_pos)
         if len(factory_indices) > 0:
             critic_value.scatter_add_(0, factory_indices, _critic_value_factory)
 
         critic_value = critic_value.view(B, max_group_count)
 
         # Actor
-        logp, action, entropy = self.actor(combined_feature, va, factory_pos, unit_act_type_va, unit_pos, factory_ids, max_group_count, unit_indices, factory_indices, action, is_deterministic)
+        logp, action, entropy = self.actor(features_embedded, va, factory_pos, unit_act_type_va, unit_pos, factory_ids, max_group_count, unit_indices, factory_indices, action, is_deterministic)
 
         return logp, critic_value, action, entropy
 
-    def critic(self, combined_feature):
-        critic_value = self.critic_head(combined_feature)[:, 0]
+    def critic(self, x):
+        critic_value = self.critic_head(x)
         return critic_value
 
-    def actor(self, combined_feature, va, factory_pos, unit_act_type_va, unit_pos, factory_ids, max_group_count, unit_indices, factory_indices, action=None, is_deterministic=False):
-        B, _, H, W = combined_feature.shape
+    def actor(self, x, va, factory_pos, unit_act_type_va, unit_pos, factory_ids, max_group_count, unit_indices, factory_indices, action=None, is_deterministic=False):
+        B, _, H, W = x.shape
 
-        logp = torch.zeros((B, max_group_count), device=combined_feature.device)
+        logp = torch.zeros((B, max_group_count), device=x.device)
         logp = logp.view(-1)
-        entropy = torch.zeros((B, max_group_count), device=combined_feature.device)
+        entropy = torch.zeros((B, max_group_count), device=x.device)
         entropy = entropy.view(-1)
         output_action = {}
 
@@ -272,7 +227,7 @@ class SimpleNet(nn.Module):
             return map
 
         # factory actor
-        factory_emb = _gather_from_map(combined_feature, factory_pos)
+        factory_emb = _gather_from_map(x, factory_pos)
 
         factory_va = _gather_from_map(va['factory_act'], factory_pos)
         factory_action = action and _gather_from_map(action['factory_act'], factory_pos)
@@ -290,7 +245,7 @@ class SimpleNet(nn.Module):
         output_action['factory_act'] = _put_into_map(factory_action, factory_pos)
 
         # unit actor
-        unit_emb = _gather_from_map(combined_feature, unit_pos)
+        unit_emb = _gather_from_map(x, unit_pos)
         
         unit_va = {
             'act_type': _gather_from_map(unit_act_type_va, unit_pos),
