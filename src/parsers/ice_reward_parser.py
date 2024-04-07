@@ -19,6 +19,8 @@ class IceRewardParser(DenseRewardParser):
         step_weight_later = 1 + (game_state[0].real_env_steps / 1000) * 0.1
         step_weight_early = 1 + ((1000 - game_state[0].real_env_steps) / 1000) * 0.1
 
+        reward_scale = 0.01
+
         ice_norm = 1
 
         for team in [0, 1]:
@@ -54,6 +56,8 @@ class IceRewardParser(DenseRewardParser):
                 unit_reward += ice_decrement_reward
                 unit_reward /= 2  # don't count it twice (onece with gent, once with factory)
 
+                unit_reward *= reward_scale
+
                 group_id = unit["group_id"]
                 if group_id not in unit_groups:
                     unit_groups[group_id] = 0
@@ -80,6 +84,8 @@ class IceRewardParser(DenseRewardParser):
                 factory_reward += ice_increment_reward
 
                 factory_reward /= 2  # don't count it twice (onece with gent, once with factory)
+
+                factory_reward *= reward_scale
 
                 group_id = factory["group_id"]
                 if group_id not in unit_groups:
