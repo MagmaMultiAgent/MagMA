@@ -25,3 +25,9 @@ replay.html
 /kits/java/localrun/*.jar
 
 /logs
+
+*.pth
+*.Identifier
+*_test.py
+*.html
+results/
