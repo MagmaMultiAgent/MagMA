@@ -20,6 +20,44 @@ import torch
 from gymnasium.vector.utils import concatenate, create_empty_array
 from copy import deepcopy
 
+log_from_global_info = [
+    'factory_count',
+    'unit_count',
+    'light_count',
+    'heavy_count',
+    'unit_ice',
+    'unit_ore',
+    'unit_water',
+    'unit_metal',
+    'unit_power',
+    'factory_ice',
+    'factory_ore',
+    'factory_water',
+    'factory_metal',
+    'factory_power',
+    'total_ice',
+    'total_ore',
+    'total_water',
+    'total_metal',
+    'total_power',
+    'lichen_count',
+    'units_on_ice',
+    'avg_distance_from_ice',
+    'rubble_on_ice',
+
+    'ice_transfered',
+    'ore_transfered',
+    'ice_mined',
+    'ore_mined',
+    'lichen_grown',
+    'unit_created',
+    'light_created',
+    'heavy_created',
+    'unit_destroyed',
+    'light_destroyed',
+    'heavy_destroyed',
+]
+
 def torch2np(x):
     if isinstance(x, torch.Tensor):
         return x[0].detach().cpu().numpy()
@@ -327,7 +365,7 @@ class LuxEnv(gym.Env):
     
     def eval(self, own_policy, enemy_policy):
         np2torch = lambda x, dtype: torch.tensor(np.array(x)).type(dtype).to(self.device)
-        own_id = random.randint(0, 1)
+        own_id = 0
         enemy_id = 1 - own_id
 
         obs_list, _ = self.reset()
@@ -336,20 +374,24 @@ class LuxEnv(gym.Env):
         return_own = 0
         return_enemy = 0
         i = 0
+
+        info_sum_own = {}
+        info_sum_enemy = {}
         while not done:
 
             actions = {}
             for id, policy in zip([own_id, enemy_id], [own_policy, enemy_policy]):
                 valid_action = self.get_valid_actions(id)
-                _, _, raw_action, _ = policy(
-                    np2torch([obs_list[f'player_{id}']['global_feature']], torch.float32),
-                    np2torch([obs_list[f'player_{id}']['map_feature']], torch.float32),
-                    np2torch([obs_list[f'player_{id}']['factory_feature']], torch.float32),
-                    np2torch([obs_list[f'player_{id}']['unit_feature']], torch.float32),
-                    np2torch([obs_list[f'player_{id}']['location_feature']], torch.int32),
-                    tree.map_structure(lambda x: np2torch([x], torch.bool), valid_action),
-                    is_deterministic=True
-                )
+                with torch.no_grad():
+                    _, _, raw_action, _ = policy(
+                        np2torch([obs_list[f'player_{id}']['global_feature']], torch.float32),
+                        np2torch([obs_list[f'player_{id}']['map_feature']], torch.float32),
+                        np2torch([obs_list[f'player_{id}']['factory_feature']], torch.float32),
+                        np2torch([obs_list[f'player_{id}']['unit_feature']], torch.float32),
+                        np2torch([obs_list[f'player_{id}']['location_feature']], torch.int32),
+                        tree.map_structure(lambda x: np2torch([x], torch.bool), valid_action),
+                        is_deterministic=False
+                    )
                 actions[id] = raw_action
             actions = tree.map_structure(lambda x: torch2np(x), actions)                
             obs_list, reward, terminated, truncation, info = self.step(actions)
@@ -357,8 +399,22 @@ class LuxEnv(gym.Env):
             return_own += reward[own_id].sum()
             return_enemy += reward[enemy_id].sum()
             episode_length += 1
+
+            for info_key in log_from_global_info:
+                write_key = f"sum_{info_key}"
+                if info_key in info[f'player_{own_id}']:
+                    if write_key not in info_sum_own:
+                        info_sum_own[write_key] = info[f'player_{own_id}'][info_key]
+                    else:
+                        info_sum_own[write_key] += info[f'player_{own_id}'][info_key]
+                if info_key in info[f'player_{enemy_id}']:
+                    if write_key not in info_sum_enemy:
+                        info_sum_enemy[write_key] = info[f'player_{enemy_id}'][info_key]
+                    else:
+                        info_sum_enemy[write_key] += info[f'player_{enemy_id}'][info_key]
+            
             i += 1
-        return episode_length, return_own, return_enemy
+        return episode_length, return_own, return_enemy, info_sum_own, info_sum_enemy
 
     def get_valid_actions(self, player_id):
         return self.action_parser.get_valid_actions(self.game_state[player_id], player_id)
@@ -456,8 +512,13 @@ def lux_worker(index, env_fn, pipe, parent_pipe, shared_memory, error_queue):
                 )
             )
         elif command == "eval":
-            episode_length, r_own, r_enemy = env.eval(data[0], data[1])
-            pipe.send((episode_length, r_own, r_enemy))
+            eval_policy = data[0]
+            enemy_policy = data[1]
+            eval_policy = torch.load("eval_policy.pt")
+            enemy_policy = torch.load("enemy_policy.pt")
+
+            episode_length, r_own, r_enemy, i_own, i_enemy = env.eval(eval_policy, enemy_policy)
+            pipe.send((episode_length, r_own, r_enemy, i_own, i_enemy))
         else:
             raise RuntimeError(
                 f"Received unknown command `{command}`. Must "
@@ -554,8 +615,13 @@ class LuxSyncVectorEnv(gym.vector.AsyncVectorEnv):
     
     def eval(self, eval_policy, enemy_policy=None):
         self._assert_is_running()
+
         if enemy_policy is None:
             enemy_policy = eval_policy
+
+        eval_policy = torch.save(eval_policy, "eval_policy.pt")
+        enemy_policy = torch.save(enemy_policy, "enemy_policy.pt")
+
         for pipe in self.parent_pipes:
             pipe.send(("eval", (eval_policy, enemy_policy)))
         results = [pipe.recv() for pipe in self.parent_pipes]
@@ -569,17 +635,41 @@ class LuxSyncVectorEnv(gym.vector.AsyncVectorEnv):
             results = {
                 "avg_episode_length": results[0][0], 
                 "avg_return_own": results[0][1], 
-                "avg_return_enemy": results[0][2]
+                "avg_return_enemy": results[0][2],
+                "avg_return_total": (results[0][1] + results[0][2]) / 2,
+                "info_own": results[0][3],
+                "info_enemy": results[0][4],
+                "info_total": {
+                    key: (results[0][3][key] + results[0][4][key]) / 2 for key in results[0][3].keys()
+                }
             }
         else:
             results = np.array(results)
             episode_length, return_own, return_enemy = results[:, 0], results[:, 1], results[:, 2]
+            return_total = np.array(return_own.tolist() + return_enemy.tolist())
+            info_own, info_enemy = results[:, 3], results[:, 4]
+            env_ids = np.arange(self.num_envs)
             results = {
                 "avg_episode_length": np.mean(episode_length), 
                 "std_episode_length": np.std(episode_length), 
+                "avg_return_total": np.mean(return_total),
+                "std_return_total": np.std(return_total),
                 "avg_return_own": np.mean(return_own), 
                 "std_return_own": np.std(return_own), 
                 "avg_return_enemy": np.mean(return_enemy), 
-                "std_return_enemy": np.std(return_enemy)
+                "std_return_enemy": np.std(return_enemy),
+                "avg_info_own": {key: np.mean([info[key] for info in info_own]) for key in info_own[0].keys()},
+                "avg_info_enemy": {key: np.mean([info[key] for info in info_enemy]) for key in info_enemy[0].keys()},
+                "avg_info_total": {key: np.mean([info[key] for info in info_own] + [info[key] for info in info_enemy]) for key in info_own[0].keys()},
+                "per_env": {
+                    env_id: {
+                        "episode_length": episode_length[i],
+                        "return_own": return_own[i],
+                        "return_enemy": return_enemy[i],
+                        "info_own": info_own[i],
+                        "info_enemy": info_enemy[i],
+                        "info_total": {key: (info_own[i][key] + info_enemy[i][key]) / 2 for key in info_own[i].keys()}
+                    } for i, env_id in enumerate(env_ids)
+                }
             }
         return results

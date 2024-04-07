@@ -19,6 +19,7 @@ from luxenv import LuxSyncVectorEnv
 import tree
 from utils import save_args, save_model, cal_mean_return, make_env
 import gc
+from pprint import pprint
 
 import seeding
 
@@ -137,6 +138,10 @@ def parse_args():
         help="path for pretrained model loading")
     parser.add_argument("--replay-dir", type=str, default=None,
         help="replay dirs to reset state")
+    parser.add_argument("--evaluate-interval", type=int, default=4096,
+        help="evaluation steps")
+    parser.add_argument("--evaluate-num", type=int, default=8,
+        help="evaluation numbers")
 
     args = parser.parse_args()
 
@@ -150,6 +155,7 @@ def parse_args():
         args.train_num_collect = args.num_envs*args.num_steps
         args.evaluate_interval = None
         args.save_interval = None
+        args.evaluate_num = 2
 
     # Reward per entity
     args.max_entity_number = 1000
@@ -415,6 +421,34 @@ def optimize_for_player(player: str,
         return v_loss, pg_loss, entropy_loss, approx_kl, old_approx_kl, clipfracs
 
 
+def write(writer, prefix, results, step):
+    for key, value in results.items():
+        new_prefix = f"{prefix}/{key}"
+        if isinstance(value, dict):
+            write(writer, new_prefix, value, step)
+        else:
+            writer.add_scalar(new_prefix, value, step)
+
+def eval(agent: torch.nn.Module, writer, seed: int = 0, num_envs: int = 8, device: Union[torch.device, str] = "cpu", step: int = 0) -> dict:
+    print("Evaluating")
+    with torch.no_grad():
+        eval_results = []
+        eval_seed = seed
+        eval_envs = LuxSyncVectorEnv(
+            [make_env(i, eval_seed + i, None, device=device) for i in range(num_envs)],
+            device=device
+        )
+        eval_results = eval_envs.eval(agent)
+        if writer:
+            write(writer, "eval", eval_results, step)
+        pprint({
+            "avg_return_total": eval_results["avg_return_total"],
+            "avg_episode_length": eval_results["avg_episode_length"],
+            "total_ice_transfered": eval_results["avg_info_total"]["sum_ice_transfered"],
+            "total_ice_mined": eval_results["avg_info_total"]["sum_ice_mined"],
+        })
+
+
 def main(args, model_device, store_device):
     player_id = 0
     enemy_id = 1 - player_id
@@ -450,9 +484,13 @@ def main(args, model_device, store_device):
 
     # Start the game
     global_step = 0
+    last_eval_step = 0
     last_save_model_step = 0
     start_time = time.time()
     num_updates = args.total_timesteps // args.batch_size
+
+    # Evaluate initially
+    eval(agent, writer, seed=0, num_envs=args.evaluate_num, device=model_device, step=global_step)
 
     # Init value stores for PPO
     # Store the value on 'store_device' (cpu)
@@ -472,6 +510,7 @@ def main(args, model_device, store_device):
         new_seed = np.random.SeedSequence(last_seed).generate_state(2)
         last_seed = new_seed[0].item()
         new_seed = new_seed[1].item()
+        seeding.set_seed(new_seed)
 
         # Reset envs, get obs
         next_obs, _ = envs.reset(seed=new_seed)
@@ -753,6 +792,11 @@ def main(args, model_device, store_device):
                     values[player][:] = 0
 
                 train_step = -1
+
+            # Evaluate initially
+            if args.evaluate_interval and (global_step - last_eval_step) >= args.evaluate_interval:
+                eval(agent, writer, seed=0, num_envs=args.evaluate_num, device=model_device, step=global_step)
+                last_eval_step = global_step
 
             # Save model
             if args.save_interval and (global_step - last_save_model_step) >= args.save_interval:

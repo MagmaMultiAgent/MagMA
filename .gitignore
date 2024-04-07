@@ -31,3 +31,4 @@ replay.html
 *_test.py
 *.html
 results/
+*.pt
