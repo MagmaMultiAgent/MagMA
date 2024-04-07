@@ -24,8 +24,7 @@ class Player():
 
         if step == 0:
             # bid 0 to not waste resources bidding and declare as the default faction
-            bid_choice = [-2, 0, 2]
-            bid_num = np.random.choice(bid_choice)
+            bid_num = 0
             return dict(faction="AlphaStrike", bid=bid_num)
         else:
             game_state = obs_to_game_state(step, self.env_cfg, obs)
@@ -128,12 +127,8 @@ class Player():
                     -np.log(factory_occupancy_map + 0.001) * occupancy_weight,
                     np.log(valid_spawns_mask + np.finfo(np.float64).tiny) * 1000,
                 ])
-                # get top k scores and coordinates
-                topk_idx = np.argsort(score.flat)[-k:]
-                topk_score = score.flat[topk_idx]
-                pi = scipy.special.softmax(topk_score)
-                idx = np.random.choice(topk_idx, p=pi)
-                spawn_loc = [idx // W, idx % W]
+
+                spawn_loc = np.unravel_index(np.argmax(score), score.shape)
                 while True:
                     i, j = spawn_loc
                     cur_score = score[i, j]
