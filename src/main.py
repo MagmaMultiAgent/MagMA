@@ -23,7 +23,7 @@ import torch
 import numpy as np
 from player import Player
 ### The model path
-PATH = 'standard_icein_allemb16x2_small1x1_large5x5d2_agr4_comb16_val41_noun_perunit_rub_8k_fp_e001_am_model_753664.pth'
+PATH = 'mt_standard_icein_allemb16x2_comb_res2_val42_model_262144.pth'
 ### DO NOT REMOVE THE FOLLOWING CODE ###
 agent_dict = (
     dict()
@@ -44,7 +44,7 @@ def agent_fn(observation, configurations, i):
     remainingOverageTime = observation.remainingOverageTime
     if step == 0:
         env_cfg = EnvConfig.from_dict(configurations["env_cfg"])
-        agent_dict[player] = SimpleNet()
+        agent_dict[player] = SimpleNet(500)
         agent_prev_obs[player] = dict()
         agent = agent_dict[player]
         agent.load_state_dict(torch.load(PATH,map_location=torch.device('cpu')))
@@ -74,7 +74,7 @@ def agent_fn(observation, configurations, i):
                                      torch.tensor(obs['unit_feature'],dtype=torch.float).unsqueeze(0),\
                                      torch.tensor(obs['location_feature'],dtype=torch.float).unsqueeze(0),\
                                 tree.map_structure(lambda x: np2torch(x, torch.bool), valid_action,),\
-                                    is_deterministic=True
+                                    is_deterministic=False
                                             )
             actions = tree.map_structure(lambda x: torch2np(x), actions)
             action = ActionParser().parse2(game_state, actions, player)
