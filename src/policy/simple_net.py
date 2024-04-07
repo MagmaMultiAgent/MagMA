@@ -107,13 +107,17 @@ class SimpleNet(nn.Module):
             get_norm2d(self.embedding_dims),
             activation_function(),
 
+            SEResidual(2, self.embedding_dims),
+
             get_conv1x1(self.embedding_dims, self.embedding_dims, bias=False),
             get_norm2d(self.embedding_dims),
             activation_function(),
 
             SEResidual(2, self.embedding_dims),
 
-            get_conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=False),
+            get_conv1x1(self.embedding_dims, self.embedding_dims, bias=False),
+            get_norm2d(self.embedding_dims),
+            activation_function(),
         )
 
         # HEADS
