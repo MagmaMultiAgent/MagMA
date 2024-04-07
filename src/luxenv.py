@@ -12,6 +12,7 @@ from kit.kit import obs_to_game_state
 from replay import random_init
 from player import Player
 import sys
+import seeding
 
 from torch import Tensor
 import torch
@@ -216,9 +217,12 @@ class LuxEnv(gym.Env):
     def reset_proxy(self, seed=None, options=None):
         assert not ((EnvParam.init_from_replay_ratio != 0.) and (EnvParam.map_size != EnvConfig.map_size))
 
-        seed = seed if seed is not None else self.current_seed
-        seed =  np.random.SeedSequence(seed).generate_state(1)
-        self.current_seed = seed
+        if seed is None:
+            seed = self.current_seed
+            seed = np.random.SeedSequence(seed).generate_state(1)
+            self.current_seed = seed
+        else:
+            self.seed(seed)
 
         if self.kaggle_replays and EnvParam.init_from_replay_ratio != 0:
             if np.random.rand() < EnvParam.init_from_replay_ratio:
@@ -248,6 +252,7 @@ class LuxEnv(gym.Env):
     def seed(self, seed):
         self.proxy.seed(seed)
         self.current_seed = seed
+        seeding.set_seed(seed)
 
     def reset(self, seed=None, options=None) -> tuple[dict[str, dict[str, np.ndarray]], dict[str, Any]]:
         obs = self.reset_proxy(seed=seed, options=options)
@@ -420,7 +425,11 @@ def lux_worker(index, env_fn, pipe, parent_pipe, shared_memory, error_queue):
     while True:
         command, data = pipe.recv()
         if command == "reset":
-            observation = env.reset()
+            if data is None:
+                data = {}
+            seed = data.get("seed", None)
+            options = data.get("options", None)
+            observation = env.reset(seed=seed, options=options)
             pipe.send((observation, True))
         elif command == "step":
             observation, reward, termination, truncation, info = env.step(data)

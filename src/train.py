@@ -20,6 +20,8 @@ import tree
 from utils import save_args, save_model, cal_mean_return, make_env
 import gc
 
+import seeding
+
 import logging
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(levelname)s %(module)s %(funcName)s %(message)s',
@@ -143,8 +145,8 @@ def parse_args():
 
     # Test arguments
     if True:
-        args.num_steps = 100
-        args.num_envs = 1
+        args.num_steps = 200
+        args.num_envs = 4
         args.train_num_collect = args.num_envs*args.num_steps
         args.evaluate_interval = None
         args.save_interval = None
@@ -433,22 +435,12 @@ def main(args, model_device, store_device):
     save_args(args, save_path+'args.json')
 
     # TRY NOT TO MODIFY: seeding
-    random.seed(args.seed)
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
-    torch.cuda.manual_seed(args.seed)
-    torch.backends.cudnn.benchmark = True
-    torch.backends.cudnn.deterministic = args.torch_deterministic
-    os.environ["PYTHONHASHSEED"] = str(args.seed)
-    torch.use_deterministic_algorithms(False)
+    seeding.set_seed(args.seed)
 
     # Create model
     agent, optimizer = create_model(model_device, args.load_model_path, args.learning_rate, args.max_entity_number)
     # reset seed after model creation
-    random.seed(args.seed)
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
-    torch.cuda.manual_seed(args.seed)
+    seeding.set_seed(args.seed)
 
     # env setup
     envs = LuxSyncVectorEnv(
@@ -478,7 +470,7 @@ def main(args, model_device, store_device):
         logger.info(f"Update {update} / {num_updates}")
 
         # Reset envs, get obs
-        next_obs, _ = envs.reset()
+        next_obs, _ = envs.reset(seed=(args.seed + (update - 1) * args.num_envs))
         next_obs = tree.map_structure(lambda x: np2torch(x, torch.float32), next_obs)
         next_done = torch.zeros((args.num_envs, 2, args.max_entity_number), device=store_device, dtype=torch.bool)
 
@@ -574,7 +566,6 @@ def main(args, model_device, store_device):
             if _done.any():
                 done_envs_all = [d.item() for d in np.where(_done==True)[0]]
                 done_envs = [d.item() for d in np.where((_done==True) & (first_episode==True))[0]]
-                print(f"Finished envs at step {step}: {done_envs_all} with steps {step_counts[done_envs_all]}, finished envs with first episode: {done_envs}")
                 for env_ind in done_envs:
                     episode_return_list.append(episode_return[env_ind])
                     episode_lengths.append(step_counts[env_ind])

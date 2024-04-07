@@ -22,8 +22,12 @@ with contextlib.redirect_stdout(None):
 import torch
 import numpy as np
 from player import Player
+import random
+import os
+import seeding
+
 ### The model path
-PATH = 'mt_standard_icein_allemb16x2_comb_res2_val42_model_262144.pth'
+PATH = 'mt_standard_scaledicein_116_116_res2_116_v4s_f_a_p_bs_model_196608.pth'
 ### DO NOT REMOVE THE FOLLOWING CODE ###
 agent_dict = (
     dict()
@@ -32,6 +36,7 @@ agent_prev_obs = dict()
     
 np.set_printoptions(threshold=sys.maxsize)
 
+seeding.set_seed(42)
 
 def agent_fn(observation, configurations, i):
     """
@@ -47,7 +52,7 @@ def agent_fn(observation, configurations, i):
         agent_dict[player] = SimpleNet(500)
         agent_prev_obs[player] = dict()
         agent = agent_dict[player]
-        # agent.load_state_dict(torch.load(PATH,map_location=torch.device('cpu')))
+        agent.load_state_dict(torch.load(PATH,map_location=torch.device('cpu')))
     
     agent = agent_dict[player]
     obs = process_obs(player, agent_prev_obs[player], step, json.loads(observation.obs))
