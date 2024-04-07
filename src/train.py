@@ -465,12 +465,16 @@ def main(args, model_device, store_device):
     values = dict(player_0=torch.zeros((args.max_train_step, args.num_envs, args.max_entity_number), device=store_device), player_1=torch.zeros((args.max_train_step, args.num_envs, args.max_entity_number), device=store_device))
 
     logger.info("Starting train")
+    last_seed = args.seed
     for update in range(1, num_updates + 1):
-
+        
         logger.info(f"Update {update} / {num_updates}")
+        new_seed = np.random.SeedSequence(last_seed).generate_state(2)
+        last_seed = new_seed[0].item()
+        new_seed = new_seed[1].item()
 
         # Reset envs, get obs
-        next_obs, _ = envs.reset(seed=(args.seed + (update - 1) * args.num_envs))
+        next_obs, _ = envs.reset(seed=new_seed)
         next_obs = tree.map_structure(lambda x: np2torch(x, torch.float32), next_obs)
         next_done = torch.zeros((args.num_envs, 2, args.max_entity_number), device=store_device, dtype=torch.bool)
 
