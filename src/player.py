@@ -15,10 +15,11 @@ class Player():
 
     def early_setup(self, step: int, obs, remainingOverageTime: int = 60):
         k = 200
-        ice_nearby_log_weight = 2.0
+        ice_nearby_log_weight = 30.0
         ice_log_weight = 0.1
         ore_log_weight = 0.01
         rubble_weight = 0.1
+        occupancy_weight = 1.0
         sigma = 3
 
         if step == 0:
@@ -72,6 +73,7 @@ class Player():
                 valid_spawns_mask = valid_spawns_mask & (nearby_ice_count > 0)
 
                 if np.sum(valid_spawns_mask) == 0:
+                    print("No valid spawns, using original valid spawns mask.", file=sys.stderr)
                     valid_spawns_mask = orig_valid_spawns_mask
 
                 kernal = np.ones((9, 9))
@@ -99,7 +101,7 @@ class Player():
                     np.log(ice_sum + 0.2) * ice_log_weight,
                     np.log(ore_sum + 0.2) * ore_log_weight,
                     -np.log(rubble_sum + 1) * rubble_weight,
-                    -np.log(factory_occupancy_map + 0.2),
+                    -np.log(factory_occupancy_map + 0.2) * occupancy_weight,
                     np.log(valid_spawns_mask + np.finfo(np.float64).tiny),
                 ])
                 # get top k scores and coordinates
