@@ -47,7 +47,7 @@ def agent_fn(observation, configurations, i):
         agent_dict[player] = SimpleNet(500)
         agent_prev_obs[player] = dict()
         agent = agent_dict[player]
-        agent.load_state_dict(torch.load(PATH,map_location=torch.device('cpu')))
+        # agent.load_state_dict(torch.load(PATH,map_location=torch.device('cpu')))
     
     agent = agent_dict[player]
     obs = process_obs(player, agent_prev_obs[player], step, json.loads(observation.obs))
@@ -113,7 +113,7 @@ if __name__ == "__main__":
         )
         if i==0:
             configurations = obs["info"]["env_cfg"]
-            print(configurations, file=sys.stderr)
+            # print(configurations, file=sys.stderr)
         i += 1
         actions = agent_fn(observation, dict(env_cfg=configurations), i)
         # send actions to engine
