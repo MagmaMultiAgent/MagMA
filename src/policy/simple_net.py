@@ -35,12 +35,15 @@ class SimpleNet(nn.Module):
         def get_conv2d(in_channels, out_channels, kernel_size, stride, padding, bias, dilation=1):
             return init_leaky_relu_(conv_norm_(nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias, dilation=dilation)))
         
+        def get_conv1x1(in_channels, out_channels, bias=True):
+            return get_conv2d(in_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=bias)
+        
         def get_norm1d(dim):
             return nn.BatchNorm1d(dim)
 
         def get_norm2d(dim):
             return nn.BatchNorm2d(dim)
-
+        
         class SELayer(nn.Module):
 
             def __init__(self, channel, reduction=16):
@@ -100,26 +103,20 @@ class SimpleNet(nn.Module):
         self.embedding_feature_count = sum(self.embedding_feature_counts.values())
 
         self.embedding_basic = nn.Sequential(
-            get_conv2d(self.embedding_feature_count, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=False),
+            get_conv1x1(self.embedding_feature_count, self.embedding_dims, bias=False),
             get_norm2d(self.embedding_dims),
             activation_function(),
+
+            get_conv1x1(self.embedding_dims, self.embedding_dims, bias=False),
+            get_norm2d(self.embedding_dims),
+            activation_function(),
+
+            SEResidual(2, self.embedding_dims),
 
             get_conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding=0, bias=False),
-            get_norm2d(self.embedding_dims),
-            activation_function(),
-
-            SEResidual(2, self.embedding_dims)
         )
 
-        # COMBINED
-
-        self.combined_net = nn.Sequential(
-            init_leaky_relu_(conv_norm_(nn.Conv2d(self.embedding_dims, self.embedding_dims, kernel_size=1, stride=1, padding="same", bias=False))),
-            nn.BatchNorm2d(self.embedding_dims),
-            activation_function(),
-        )
-
-        # FINAL
+        # HEADS
 
         # critic
         self.critic_feature_count = self.embedding_dims
@@ -165,7 +162,6 @@ class SimpleNet(nn.Module):
         global_feature = global_feature[..., None, None].expand(-1, -1, H, W)
         all_features = torch.cat([global_feature, factory_feature, unit_feature, map_feature], dim=1)
         features_embedded = self.embedding_basic(all_features)
-        features_embedded = self.combined_net(features_embedded)
 
         # Valid actions
         unit_act_type_va = torch.stack(

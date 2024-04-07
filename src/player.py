@@ -73,7 +73,7 @@ class Player():
                 valid_spawns_mask = valid_spawns_mask & (nearby_ice_count > 0)
 
                 if np.sum(valid_spawns_mask) == 0:
-                    print("No valid spawns, using original valid spawns mask.", file=sys.stderr)
+                    # print("No valid spawns, using original valid spawns mask.", file=sys.stderr)
                     valid_spawns_mask = orig_valid_spawns_mask
 
                 kernal = np.ones((9, 9))
