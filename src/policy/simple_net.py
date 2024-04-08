@@ -27,8 +27,8 @@ class SimpleNet(nn.Module):
         init_leaky_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('leaky_relu'))
         init_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('relu'))
         init_sigmoid_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('sigmoid'))
-        init_regression_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 0.01)
-        init_actor_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 0.01, 1.0)
+        init_regression_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 0.01, 0.01)
+        init_actor_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 0.01, 0.01)
 
         activation_function = nn.LeakyReLU
         conv_norm_ = nn.utils.spectral_norm
