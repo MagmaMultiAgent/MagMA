@@ -8,9 +8,10 @@ from .actor_head import sample_from_categorical
 import sys
 
 
-def init_orthogonal(module, weight_init, bias_init, gain=1):
+def init_orthogonal(module, weight_init, bias_init, gain=1, scaling=1.0):
     """Helper to initialize a layer weight and bias."""
     weight_init(module.weight.data, gain=gain)
+    module.weight.data *= scaling
     if module.bias is not None:
         bias_init(module.bias.data)
     return module
@@ -27,7 +28,7 @@ class SimpleNet(nn.Module):
         init_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('relu'))
         init_sigmoid_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('sigmoid'))
         init_regression_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 1.0)
-        init_actor_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 0.01)
+        init_actor_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 0.01, 0.01)
 
         activation_function = nn.LeakyReLU
         conv_norm_ = nn.utils.spectral_norm
@@ -123,6 +124,7 @@ class SimpleNet(nn.Module):
         # disable bias in embedding_basic if it is conv
         for m in self.embedding_basic.modules():
             if isinstance(m, nn.Conv2d):
+                print("SETTING BIAS TO NONE")
                 m.bias = None
 
         # HEADS
