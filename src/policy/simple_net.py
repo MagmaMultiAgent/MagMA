@@ -15,73 +15,74 @@ def init_orthogonal(module, weight_init, bias_init, gain=1):
         bias_init(module.bias.data)
     return module
 
-init_leaky_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('leaky_relu'))
-init_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('relu'))
-init_sigmoid_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('sigmoid'))
-init_regression_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 1.0)
-init_actor_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 0.01)
-
-activation_function = nn.LeakyReLU
-conv_norm_ = nn.utils.spectral_norm
-
-def get_conv2d(in_channels, out_channels, kernel_size, stride, padding, bias, dilation=1):
-    return init_leaky_relu_(conv_norm_(nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias, dilation=dilation)))
-
-def get_conv1x1(in_channels, out_channels, bias=True):
-    return get_conv2d(in_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=bias)
-
-def get_norm1d(dim):
-    return nn.BatchNorm1d(dim)
-
-def get_norm2d(dim):
-    return nn.BatchNorm2d(dim)
-
-class SELayer(nn.Module):
-
-    def __init__(self, channel, reduction=16):
-        super(SELayer, self).__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.fc = nn.Sequential(
-            init_relu_(nn.Linear(channel, channel // reduction, bias=True)),
-            nn.ReLU(inplace=True),
-            init_sigmoid_(nn.Linear(channel // reduction, channel, bias=True)),
-            nn.Sigmoid()
-        )
-
-    def forward(self, x):
-        b, c, _, _ = x.size()
-        y = self.avg_pool(x).view(b, c)
-        y = self.fc(y).view(b, c, 1, 1)
-        return x * y.expand_as(x)
-    
-class SEResidual(nn.Module):
-    def __init__(self, layers, channel, reduction=16):
-        super(SEResidual, self).__init__()
-        self.layers = nn.ModuleList()
-        for _ in range(layers):
-            self.layers.append(nn.Sequential(
-                get_conv2d(channel, channel, kernel_size=3, stride=1, padding="same", bias=True),
-                get_norm2d(channel),
-                activation_function(),
-                get_conv2d(channel, channel, kernel_size=3, stride=1, padding="same", bias=True),
-                get_norm2d(channel),
-                activation_function(),
-                SELayer(channel, reduction=reduction)
-            ))
-
-    def forward(self, x):
-        for layer in self.layers:
-            _x = x
-            x = layer(x)
-            x = x + _x
-        return x
-
 class SimpleNet(nn.Module):
 
     def __init__(self, max_entity_number: int):
         super(SimpleNet, self).__init__()
 
         self.max_entity_number = max_entity_number
+
+        # LAYER INIT
+        init_leaky_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('leaky_relu'))
+        init_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('relu'))
+        init_sigmoid_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('sigmoid'))
+        init_regression_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 1.0)
+        init_actor_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 0.01)
+
+        activation_function = nn.LeakyReLU
+        conv_norm_ = nn.utils.spectral_norm
+
+        def get_conv2d(in_channels, out_channels, kernel_size, stride, padding, bias, dilation=1):
+            return init_leaky_relu_(conv_norm_(nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias, dilation=dilation)))
+        
+        def get_conv1x1(in_channels, out_channels, bias=True):
+            return get_conv2d(in_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=bias)
+        
+        def get_norm1d(dim):
+            return nn.BatchNorm1d(dim)
+
+        def get_norm2d(dim):
+            return nn.BatchNorm2d(dim)
+        
+        class SELayer(nn.Module):
+
+            def __init__(self, channel, reduction=16):
+                super(SELayer, self).__init__()
+                self.avg_pool = nn.AdaptiveAvgPool2d(1)
+                self.fc = nn.Sequential(
+                    init_relu_(nn.Linear(channel, channel // reduction, bias=True)),
+                    nn.ReLU(inplace=True),
+                    init_sigmoid_(nn.Linear(channel // reduction, channel, bias=True)),
+                    nn.Sigmoid()
+                )
+
+            def forward(self, x):
+                b, c, _, _ = x.size()
+                y = self.avg_pool(x).view(b, c)
+                y = self.fc(y).view(b, c, 1, 1)
+                return x * y.expand_as(x)
+            
+        class SEResidual(nn.Module):
+            def __init__(self, layers, channel, reduction=16):
+                super(SEResidual, self).__init__()
+                self.layers = nn.ModuleList()
+                for _ in range(layers):
+                    self.layers.append(nn.Sequential(
+                        get_conv2d(channel, channel, kernel_size=3, stride=1, padding="same", bias=True),
+                        get_norm2d(channel),
+                        activation_function(),
+                        get_conv2d(channel, channel, kernel_size=3, stride=1, padding="same", bias=True),
+                        get_norm2d(channel),
+                        activation_function(),
+                        SELayer(channel, reduction=4)
+                    ))
+
+            def forward(self, x):
+                for layer in self.layers:
+                    _x = x
+                    x = layer(x)
+                    x = x + _x
+                return x
 
         # EMBEDDINGS
         """
@@ -90,6 +91,8 @@ class SimpleNet(nn.Module):
 
         self.embedding_dims = 16
         self.embedding_layers = 1
+        self.embedding_is_residual = False
+        self.embedding_use_se = False
 
         self.embedding_feature_counts = {
             "global": 2,
@@ -100,19 +103,19 @@ class SimpleNet(nn.Module):
         self.embedding_feature_count = sum(self.embedding_feature_counts.values())
 
         self.embedding_basic = nn.Sequential(
-            get_conv1x1(self.embedding_feature_count, self.embedding_dims, bias=True),
+            get_conv1x1(self.embedding_feature_count, self.embedding_dims, bias=False),
             get_norm2d(self.embedding_dims),
             activation_function(),
 
-            SEResidual(2, self.embedding_dims, reduction=4),
+            SEResidual(2, self.embedding_dims),
 
-            get_conv1x1(self.embedding_dims, self.embedding_dims, bias=True),
+            get_conv1x1(self.embedding_dims, self.embedding_dims, bias=False),
             get_norm2d(self.embedding_dims),
             activation_function(),
 
-            SEResidual(2, self.embedding_dims, reduction=4),
+            SEResidual(2, self.embedding_dims),
 
-            get_conv1x1(self.embedding_dims, self.embedding_dims, bias=True),
+            get_conv1x1(self.embedding_dims, self.embedding_dims, bias=False),
             get_norm2d(self.embedding_dims),
             activation_function(),
         )
