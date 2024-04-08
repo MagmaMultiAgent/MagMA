@@ -103,22 +103,27 @@ class SimpleNet(nn.Module):
         self.embedding_feature_count = sum(self.embedding_feature_counts.values())
 
         self.embedding_basic = nn.Sequential(
-            get_conv1x1(self.embedding_feature_count, self.embedding_dims, bias=False),
+            get_conv1x1(self.embedding_feature_count, self.embedding_dims, bias=True),
             get_norm2d(self.embedding_dims),
             activation_function(),
 
             SEResidual(2, self.embedding_dims),
 
-            get_conv1x1(self.embedding_dims, self.embedding_dims, bias=False),
+            get_conv1x1(self.embedding_dims, self.embedding_dims, bias=True),
             get_norm2d(self.embedding_dims),
             activation_function(),
 
             SEResidual(2, self.embedding_dims),
 
-            get_conv1x1(self.embedding_dims, self.embedding_dims, bias=False),
+            get_conv1x1(self.embedding_dims, self.embedding_dims, bias=True),
             get_norm2d(self.embedding_dims),
             activation_function(),
         )
+
+        # disable bias in embedding_basic if it is conv
+        for m in self.embedding_basic.modules():
+            if isinstance(m, nn.Conv2d):
+                m.bias = None
 
         # HEADS
 
