@@ -6,6 +6,43 @@ import numpy as np
 from impl_config import ActDims, UnitActChannel, UnitActType, EnvParam
 from .actor_head import sample_from_categorical
 import sys
+import time
+
+used_names = set()
+
+
+def myHash(text: str):
+    hash=0
+    for ch in text:
+        hash = ( hash*281  ^ ord(ch)*997) & 0xFFFFFFFF
+    return hash
+
+
+def seed_init(seed: int, name: str, salt: str = ""):
+    name = name + salt
+    print(f"Setting seed for '{name}'")
+    if name in used_names:
+        raise ValueError(f"Name {name} already used")
+    else:
+        used_names.add(name)
+    
+    seed = seed + myHash(name)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+
+
+def get_activation(activation):
+    if activation == "relu":
+        activation = nn.ReLU()
+    elif activation == "leaky_relu":
+        activation = nn.LeakyReLU()
+    elif activation == "sigmoid":
+        activation = nn.Sigmoid()
+    elif activation == "tanh":
+        activation = nn.Tanh()
+    else:
+        activation = None
+    return activation
 
 
 def init_orthogonal(module, weight_init, bias_init, gain=1, scaling=1.0):
@@ -16,74 +53,141 @@ def init_orthogonal(module, weight_init, bias_init, gain=1, scaling=1.0):
         bias_init(module.bias.data)
     return module
 
+
+init_leaky_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('leaky_relu'))
+init_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('relu'))
+init_sigmoid_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('sigmoid'))
+init_value_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 0.01, 0.01)
+init_actor_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 0.01, 0.01)
+
+
+def MyConv2d(name, in_channels, out_channels, kernel_size=1, stride=1, padding="same", bias=True, dilation=1, spectral_norm=False, batch_norm=False, layer_norm=False, activation="leaky_relu", init_fn=None, seed=None):
+    if seed is None:
+        print(f"No seed provided for {name}")
+        seed = int(time.time())
+
+    name = name + "_conv2d"
+
+    activation = get_activation(activation)
+
+    seed_init(seed, name)
+    layer = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias, dilation=dilation)
+
+    if spectral_norm:
+        layer = nn.utils.spectral_norm(layer)
+
+    if init_fn is not None:
+        seed_init(seed, name, "_init")
+        layer = init_fn(layer)
+    
+    if batch_norm:
+        seed_init(seed, name, "_batch_norm")
+        layer = nn.Sequential(layer, nn.BatchNorm2d(out_channels))
+    
+    if layer_norm:
+        seed_init(seed, name, "_layer_norm")
+        layer = nn.Sequential(layer, nn.LayerNorm(out_channels))
+
+    if activation is not None:
+        layer = nn.Sequential(layer, activation)
+
+    return layer
+
+
+def MyLinear(name, in_features, out_features, bias=True, spectral_norm=False, batch_norm=False, layer_norm=False, activation="leaky_relu", init_fn=None, seed=None):
+    if seed is None:
+        print(f"No seed provided for {name}")
+        seed = int(time.time())
+
+    name = name + "_linear"
+
+    activation = get_activation(activation)
+
+    seed_init(seed, name)
+    layer = nn.Linear(in_features, out_features, bias=bias)
+
+    if spectral_norm:
+        layer = nn.utils.spectral_norm(layer)
+
+    if init_fn is not None:
+        seed_init(seed, name, "_init")
+        layer = init_fn(layer)
+    
+    if batch_norm:
+        seed_init(seed, name, "_batch_norm")
+        layer = nn.Sequential(layer, nn.BatchNorm1d(out_features))
+    
+    if layer_norm:
+        seed_init(seed, name, "_layer_norm")
+        layer = nn.Sequential(layer, nn.LayerNorm(out_features))
+
+    if activation is not None:
+        layer = nn.Sequential(layer, activation)
+
+    return layer
+
+
+def Conv1x1(name, in_channels, out_channels, bias=True, spectral_norm=False, batch_norm=False, layer_norm=False, activation="leaky_relu", init_fn=None, seed=None):
+    return MyConv2d(name, in_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=bias, spectral_norm=spectral_norm, batch_norm=batch_norm, layer_norm=layer_norm, activation=activation, init_fn=init_fn, seed=seed)
+
+def Conv3x3(name, in_channels, out_channels, bias=True, spectral_norm=False, batch_norm=False, layer_norm=False, activation="leaky_relu", init_fn=None, seed=None):
+    return MyConv2d(name, in_channels, out_channels, kernel_size=3, stride=1, padding="same", bias=bias, spectral_norm=spectral_norm, batch_norm=batch_norm, layer_norm=layer_norm, activation=activation, init_fn=init_fn, seed=seed)
+
+def Conv5x5(name, in_channels, out_channels, bias=True, spectral_norm=False, batch_norm=False, layer_norm=False, activation="leaky_relu", init_fn=None, seed=None):
+    return MyConv2d(name, in_channels, out_channels, kernel_size=5, stride=1, padding="same", bias=bias, spectral_norm=spectral_norm, batch_norm=batch_norm, layer_norm=layer_norm, activation=activation, init_fn=init_fn, seed=seed)
+
+
+def EmbeddingConv(name, in_channels, out_channels, seed=None):
+    return Conv1x1(name, in_channels, out_channels, bias=False, spectral_norm=True, batch_norm=True, layer_norm=False, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed)
+
+def Critic(name, in_channels, out_channels, seed=None):
+    return Conv1x1(name, in_channels, out_channels, bias=True, spectral_norm=False, batch_norm=False, layer_norm=False, activation=None, init_fn=init_value_, seed=seed)
+
+def Actor(name, in_features, out_features, seed=None):
+    return MyLinear(name, in_features, out_features, bias=True, spectral_norm=False, batch_norm=False, layer_norm=False, activation=None, init_fn=init_actor_, seed=seed)
+
+
+class SELayer(nn.Module):
+
+    def __init__(self, name, channel, reduction=16, seed=None):
+        super(SELayer, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Sequential(
+            MyLinear(name + "_se_fc", channel, channel // reduction, bias=True, spectral_norm=False, batch_norm=False, layer_norm=False, activation="relu", init_fn=init_relu_, seed=seed),
+            MyLinear(name + "_se_fc2", channel // reduction, channel, bias=True, spectral_norm=False, batch_norm=False, layer_norm=False, activation="sigmoid", init_fn=init_sigmoid_, seed=seed),
+        )
+
+    def forward(self, x):
+        b, c, _, _ = x.size()
+        y = self.avg_pool(x).view(b, c)
+        y = self.fc(y).view(b, c, 1, 1)
+        return x * y.expand_as(x)
+
+
+class SEResidual(nn.Module):
+    def __init__(self, name, layers, channel, reduction=4, seed=None):
+        super(SEResidual, self).__init__()
+        self.layers = nn.ModuleList()
+        for I in range(layers):
+            self.layers.append(nn.Sequential(
+                Conv3x3(name + F"_residual_conv_{I}", channel, channel, bias=True, spectral_norm=True, batch_norm=True, layer_norm=False, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed),
+                SELayer(name + f"_residual_se_{I}", channel, reduction=reduction, seed=seed),
+            ))
+
+    def forward(self, x):
+        for layer in self.layers:
+            _x = x
+            x = layer(x)
+            x = x + _x
+        return x
+
+
 class SimpleNet(nn.Module):
 
-    def __init__(self, max_entity_number: int):
+    def __init__(self, max_entity_number: int, seed: int):
         super(SimpleNet, self).__init__()
 
         self.max_entity_number = max_entity_number
-
-        # LAYER INIT
-        init_leaky_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('leaky_relu'))
-        init_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('relu'))
-        init_sigmoid_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('sigmoid'))
-        init_regression_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 0.01, 0.01)
-        init_actor_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 0.01, 0.01)
-
-        activation_function = nn.LeakyReLU
-        conv_norm_ = nn.utils.spectral_norm
-
-        def get_conv2d(in_channels, out_channels, kernel_size, stride, padding, bias, dilation=1):
-            return init_leaky_relu_(conv_norm_(nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias, dilation=dilation)))
-        
-        def get_conv1x1(in_channels, out_channels, bias=True):
-            return get_conv2d(in_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=bias)
-        
-        def get_norm1d(dim):
-            return nn.BatchNorm1d(dim)
-
-        def get_norm2d(dim):
-            return nn.BatchNorm2d(dim)
-        
-        class SELayer(nn.Module):
-
-            def __init__(self, channel, reduction=16):
-                super(SELayer, self).__init__()
-                self.avg_pool = nn.AdaptiveAvgPool2d(1)
-                self.fc = nn.Sequential(
-                    init_relu_(nn.Linear(channel, channel // reduction, bias=True)),
-                    nn.ReLU(inplace=True),
-                    init_sigmoid_(nn.Linear(channel // reduction, channel, bias=True)),
-                    nn.Sigmoid()
-                )
-
-            def forward(self, x):
-                b, c, _, _ = x.size()
-                y = self.avg_pool(x).view(b, c)
-                y = self.fc(y).view(b, c, 1, 1)
-                return x * y.expand_as(x)
-            
-        class SEResidual(nn.Module):
-            def __init__(self, layers, channel, reduction=16):
-                super(SEResidual, self).__init__()
-                self.layers = nn.ModuleList()
-                for _ in range(layers):
-                    self.layers.append(nn.Sequential(
-                        get_conv2d(channel, channel, kernel_size=3, stride=1, padding="same", bias=True),
-                        get_norm2d(channel),
-                        activation_function(),
-                        get_conv2d(channel, channel, kernel_size=3, stride=1, padding="same", bias=True),
-                        get_norm2d(channel),
-                        activation_function(),
-                        SELayer(channel, reduction=4)
-                    ))
-
-            def forward(self, x):
-                for layer in self.layers:
-                    _x = x
-                    x = layer(x)
-                    x = x + _x
-                return x
 
         # EMBEDDINGS
         """
@@ -104,28 +208,16 @@ class SimpleNet(nn.Module):
         self.embedding_feature_count = sum(self.embedding_feature_counts.values())
 
         self.embedding_basic = nn.Sequential(
-            get_conv1x1(self.embedding_feature_count, self.embedding_dims, bias=True),
-            get_norm2d(self.embedding_dims),
-            activation_function(),
+            EmbeddingConv("hidden_conv_1", self.embedding_feature_count, self.embedding_dims, seed=seed),
 
-            SEResidual(2, self.embedding_dims),
+            SEResidual("se_residual_1", 2, self.embedding_dims, reduction=4, seed=seed),
 
-            get_conv1x1(self.embedding_dims, self.embedding_dims, bias=True),
-            get_norm2d(self.embedding_dims),
-            activation_function(),
+            EmbeddingConv("hidden_conv_2", self.embedding_dims, self.embedding_dims, seed=seed),
 
-            SEResidual(2, self.embedding_dims),
+            SEResidual("se_residual_2", 2, self.embedding_dims, reduction=4, seed=seed),
 
-            get_conv1x1(self.embedding_dims, self.embedding_dims, bias=True),
-            get_norm2d(self.embedding_dims),
-            activation_function(),
+            EmbeddingConv("hidden_conv_3", self.embedding_dims, self.embedding_dims, seed=seed),
         )
-
-        # disable bias in embedding_basic if it is conv
-        for m in self.embedding_basic.modules():
-            if isinstance(m, nn.Conv2d):
-                print("SETTING BIAS TO NONE")
-                m.bias = None
 
         # HEADS
 
@@ -133,16 +225,14 @@ class SimpleNet(nn.Module):
         self.critic_feature_count = self.embedding_dims
         self.critic_dim = 4
         self.critic_head = nn.Sequential(
-            get_conv2d(self.critic_feature_count, self.critic_dim, kernel_size=1, stride=1, padding=0, bias=True),
-            get_norm2d(self.critic_dim),
-            activation_function(),
-            init_regression_(nn.Conv2d(self.critic_dim, 2, kernel_size=1, stride=1, padding=0, bias=True)),  # 0 for unit, 1 for factory
+            Conv1x1("critic_1", self.critic_feature_count, self.critic_dim, bias=True, spectral_norm=True, batch_norm=True, layer_norm=False, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed),
+            Critic("critic_o", self.critic_dim, 2, seed=seed),  # 2 channels: 0 for unit, 1 for factory
         )
 
         # factory
         self.factory_feature_count = self.embedding_dims
         self.factory_head = nn.Sequential(
-            init_actor_(nn.Linear(self.factory_feature_count, ActDims.factory_act, bias=True)),
+            Actor("factory_act", self.factory_feature_count, ActDims.factory_act, seed=seed),
         )
 
         self.unit_feature_count = self.embedding_dims
@@ -151,16 +241,16 @@ class SimpleNet(nn.Module):
         # act type
         self.act_type_feature_count = self.unit_emb_dim
         self.unit_act_type_net = nn.Sequential(
-            init_actor_(nn.Linear(self.act_type_feature_count, len(UnitActType), bias=True)),
+            Actor("unit_act_type", self.act_type_feature_count, len(UnitActType), seed=seed),
         )
 
         # params
         self.param_heads = nn.ModuleDict({
             unit_act_type.name: nn.ModuleDict({
-                "direction": init_actor_(nn.Linear(self.unit_emb_dim, ActDims.direction, bias=True)),
-                "resource": init_actor_(nn.Linear(self.unit_emb_dim, ActDims.resource, bias=True)),
-                "amount": init_actor_(nn.Linear(self.unit_emb_dim, ActDims.amount, bias=True)),
-                "repeat": init_actor_(nn.Linear(self.unit_emb_dim, ActDims.repeat, bias=True)),
+                "direction": Actor(f"{unit_act_type}_direction", self.unit_emb_dim, ActDims.direction, seed=seed),
+                "resource": Actor(f"{unit_act_type}_resource", self.unit_emb_dim, ActDims.resource, seed=seed),
+                "amount": Actor(f"{unit_act_type}_amount", self.unit_emb_dim, ActDims.amount, seed=seed),
+                "repeat": Actor(f"{unit_act_type}_repeat", self.unit_emb_dim, ActDims.repeat, seed=seed),
             }) for unit_act_type in UnitActType
         })
 

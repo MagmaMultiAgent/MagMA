@@ -204,11 +204,11 @@ def reset_store(store: dict):
                 raise NotImplementedError(f"store[key].dtype={store[key].dtype}")
 
 
-def create_model(device: Union[torch.device, str], load_model_path: Union[str, None], learning_rate: float, max_entity_number: int):
+def create_model(device: Union[torch.device, str], load_model_path: Union[str, None], learning_rate: float, max_entity_number: int, seed: int):
     """
     Create the model
     """
-    agent = SimpleNet(max_entity_number).to(device)
+    agent = SimpleNet(max_entity_number, seed).to(device)
     if load_model_path is not None:
         agent.load_state_dict(torch.load(load_model_path))
         print('load successfully')
@@ -447,6 +447,8 @@ def eval(agent: torch.nn.Module, writer, seed: int = 0, num_envs: int = 8, devic
             "total_ice_transfered": eval_results["avg_info_total"]["sum_ice_transfered"],
             "total_ice_mined": eval_results["avg_info_total"]["sum_ice_mined"],
         })
+        eval_envs.close()
+        del eval_envs
 
 
 def main(args, model_device, store_device):
@@ -472,7 +474,7 @@ def main(args, model_device, store_device):
     seeding.set_seed(args.seed)
 
     # Create model
-    agent, optimizer = create_model(model_device, args.load_model_path, args.learning_rate, args.max_entity_number)
+    agent, optimizer = create_model(model_device, args.load_model_path, args.learning_rate, args.max_entity_number, args.seed)
     # reset seed after model creation
     seeding.set_seed(args.seed)
 

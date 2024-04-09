@@ -379,6 +379,9 @@ class LuxEnv(gym.Env):
         info_sum_enemy = {}
         while not done:
 
+            if ((i+1) % 100) == 0:
+                print(f"Episode Length: {episode_length}, Return Own: {round(return_own, 4)}, Return Enemy: {round(return_enemy, 4)}")
+
             actions = {}
             for id, policy in zip([own_id, enemy_id], [own_policy, enemy_policy]):
                 valid_action = self.get_valid_actions(id)
@@ -399,6 +402,7 @@ class LuxEnv(gym.Env):
             return_own += reward[own_id].sum()
             return_enemy += reward[enemy_id].sum()
             episode_length += 1
+            i += 1
 
             for info_key in log_from_global_info:
                 write_key = f"sum_{info_key}"
@@ -412,8 +416,15 @@ class LuxEnv(gym.Env):
                         info_sum_enemy[write_key] = info[f'player_{enemy_id}'][info_key]
                     else:
                         info_sum_enemy[write_key] += info[f'player_{enemy_id}'][info_key]
-            
-            i += 1
+
+        print(f"Episode Length: {episode_length}, Return Own: {round(return_own, 4)}, Return Enemy: {round(return_enemy, 4)}")
+
+        for info_sum in [info_sum_own, info_sum_enemy]:
+            for key in list(info_sum.keys()):
+                # add avg
+                write_key = f"avg_{key.replace('sum_', '')}"
+                info_sum[write_key] = info_sum[key] / episode_length
+
         return episode_length, return_own, return_enemy, info_sum_own, info_sum_enemy
 
     def get_valid_actions(self, player_id):
