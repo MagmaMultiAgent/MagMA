@@ -378,10 +378,6 @@ class LuxEnv(gym.Env):
         info_sum_own = {}
         info_sum_enemy = {}
         while not done:
-
-            if ((i+1) % 100) == 0:
-                print(f"Episode Length: {episode_length}, Return Own: {round(return_own, 4)}, Return Enemy: {round(return_enemy, 4)}")
-
             actions = {}
             for id, policy in zip([own_id, enemy_id], [own_policy, enemy_policy]):
                 valid_action = self.get_valid_actions(id)
@@ -417,13 +413,7 @@ class LuxEnv(gym.Env):
                     else:
                         info_sum_enemy[write_key] += info[f'player_{enemy_id}'][info_key]
 
-        print(f"Episode Length: {episode_length}, Return Own: {round(return_own, 4)}, Return Enemy: {round(return_enemy, 4)}")
-
-        for info_sum in [info_sum_own, info_sum_enemy]:
-            for key in list(info_sum.keys()):
-                # add avg
-                write_key = f"avg_{key.replace('sum_', '')}"
-                info_sum[write_key] = info_sum[key] / episode_length
+        print(f"Final Episode Length: {episode_length}, Return Own: {round(return_own, 4)}, Return Enemy: {round(return_enemy, 4)}")
 
         return episode_length, return_own, return_enemy, info_sum_own, info_sum_enemy
 
@@ -672,6 +662,30 @@ class LuxSyncVectorEnv(gym.vector.AsyncVectorEnv):
                 "avg_info_own": {key: np.mean([info[key] for info in info_own]) for key in info_own[0].keys()},
                 "avg_info_enemy": {key: np.mean([info[key] for info in info_enemy]) for key in info_enemy[0].keys()},
                 "avg_info_total": {key: np.mean([info[key] for info in info_own] + [info[key] for info in info_enemy]) for key in info_own[0].keys()},
+                "median_info_own": {key: np.median([info[key] for info in info_own]) for key in info_own[0].keys()},
+                "median_info_enemy": {key: np.median([info[key] for info in info_enemy]) for key in info_enemy[0].keys()},
+                "median_info_total": {key: np.median([info[key] for info in info_own] + [info[key] for info in info_enemy]) for key in info_own[0].keys()},
+                "std_info_own": {key: np.std([info[key] for info in info_own]) for key in info_own[0].keys()},
+                "std_info_enemy": {key: np.std([info[key] for info in info_enemy]) for key in info_enemy[0].keys()},
+                "std_info_total": {key: np.std([info[key] for info in info_own] + [info[key] for info in info_enemy]) for key in info_own[0].keys()},
+                "min_info_own": {key: np.min([info[key] for info in info_own]) for key in info_own[0].keys()},
+                "min_info_enemy": {key: np.min([info[key] for info in info_enemy]) for key in info_enemy[0].keys()},
+                "min_info_total": {key: np.min([info[key] for info in info_own] + [info[key] for info in info_enemy]) for key in info_own[0].keys()},
+                "max_info_own": {key: np.max([info[key] for info in info_own]) for key in info_own[0].keys()},
+                "max_info_enemy": {key: np.max([info[key] for info in info_enemy]) for key in info_enemy[0].keys()},
+                "max_info_total": {key: np.max([info[key] for info in info_own] + [info[key] for info in info_enemy]) for key in info_own[0].keys()},
+                "min_episode_length": np.min(episode_length),
+                "max_episode_length": np.max(episode_length),
+                "min_return_own": np.min(return_own),
+                "max_return_own": np.max(return_own),
+                "min_return_enemy": np.min(return_enemy),
+                "max_return_enemy": np.max(return_enemy),
+                "min_return_total": np.min(return_total),
+                "max_return_total": np.max(return_total),
+                "median_episode_length": np.median(episode_length),
+                "median_return_own": np.median(return_own),
+                "median_return_enemy": np.median(return_enemy),
+                "median_return_total": np.median(return_total),
                 "per_env": {
                     env_id: {
                         "episode_length": episode_length[i],
