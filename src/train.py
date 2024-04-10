@@ -432,7 +432,6 @@ def write(writer, prefix, results, step):
 def eval(agent: torch.nn.Module, writer, seed: int = 0, num_envs: int = 8, device: Union[torch.device, str] = "cpu", step: int = 0) -> dict:
     print("Evaluating")
     with torch.no_grad():
-        eval_results = []
         eval_seed = seed
         eval_envs = LuxSyncVectorEnv(
             [make_env(i, eval_seed + i, None, device=device) for i in range(num_envs)],
@@ -449,6 +448,113 @@ def eval(agent: torch.nn.Module, writer, seed: int = 0, num_envs: int = 8, devic
         })
         eval_envs.close()
         del eval_envs
+
+
+def eval2(agent: torch.nn.Module, writer, seed: int = 0, num_envs: int = 8, device: Union[torch.device, str] = "cpu", step: int = 0) -> dict:
+    print("Evaluating")
+    with torch.no_grad():
+        eval_seed = seed
+        envs = LuxSyncVectorEnv(
+            [make_env(i, eval_seed + i, None, device=device) for i in range(num_envs)],
+            device=device
+        )
+
+        own = 0
+        enemy = 1 - own
+
+        # Reset envs, get obs
+        next_obs, _ = envs.reset(seed=eval_seed)
+        next_obs = tree.map_structure(lambda x: np2torch(x, torch.float32), next_obs)
+
+        # Init stats
+        episode_return = np.zeros((num_envs, 2))
+        step_counts = np.zeros(num_envs)
+        global_info_save_own = {
+            i: {} for i in range(num_envs)
+        }
+        global_info_save_enemy = {
+            i: {} for i in range(num_envs)
+        }
+        first_episode = np.ones(num_envs, dtype=bool)
+
+        max_step = 1024
+        for step in range(0, max_step):
+
+            if (step+1) % (max_step / 8) == 0:
+                logger.info(f"Eval Step {step + 1} / {max_step}")
+
+            # Sample actions
+            action, _, _, _ = sample_actions_for_players(envs, agent, next_obs, device, device)
+
+            # Step environment
+            _action = {}
+            for player_id, player in enumerate(['player_0', 'player_1']):
+                _action[player_id] = action[player]
+            action = tree.map_structure(lambda x: torch2np(x, np.int32), _action)
+            del _action
+            next_obs, reward, terminated, truncation, info = envs.step(action)
+            next_obs = tree.map_structure(lambda x: np2torch(x, torch.float32), next_obs)
+
+            # reward is shape (env, player, group)
+            episode_return[np.where(first_episode), :] += np.sum(reward, axis=-1)[np.where(first_episode), :]
+            step_counts[np.where(first_episode)] += 1
+
+            # Save info
+            for key in log_from_global_info:
+                save_key = f"sum_{key}"
+                
+                for env_id in range(num_envs):
+                    if not first_episode[env_id]:
+                        continue
+
+                    if save_key not in global_info_save_own[env_id]:
+                        global_info_save_own[env_id][save_key] = 0
+                    if save_key not in global_info_save_enemy[env_id]:
+                        global_info_save_enemy[env_id][save_key] = 0
+                    
+                    global_info_save_own[env_id][save_key] += info[f"player_{own}"][env_id][key]
+                    global_info_save_enemy[env_id][save_key] += info[f"player_{enemy}"][env_id][key]
+
+            done = terminated | truncation
+            # all entities done for a player, at least one player is done
+            _done = done.all(axis=-1).any(-1)
+            first_episode = first_episode & ~_done
+
+        # Need a list of tuples where each tuple contains info about environment
+        # - episode_length
+        # - return_own
+        # - return_enemy
+        # - info_sum_own
+        # - info_sum_enemy
+        return_own = {
+            i: episode_return[i, 0] for i in range(num_envs)
+        }
+        return_enemy = {
+            i: episode_return[i, 1] for i in range(num_envs)
+        }
+        episode_length = {
+            i: step_counts[i] for i in range(num_envs)
+        }
+        info_sum_own = {
+            i: global_info_save_own[i] for i in range(num_envs)
+        }
+        info_sum_enemy = {
+            i: global_info_save_enemy[i] for i in range(num_envs)
+        }
+        results = [
+            (episode_length[i], return_own[i], return_enemy[i], info_sum_own[i], info_sum_enemy[i]) for i in range(num_envs)
+        ]
+        eval_results = envs.process_eval_results(results)
+        if writer:
+            write(writer, "eval", eval_results, step)
+        pprint({
+            "avg_return_total": eval_results["avg_return_total"],
+            "avg_episode_length": eval_results["avg_episode_length"],
+            "total_ice_transfered": eval_results["avg_info_total"]["sum_ice_transfered"],
+            "total_ice_mined": eval_results["avg_info_total"]["sum_ice_mined"],
+        })
+        envs.close()
+        del envs
 
 
 def main(args, model_device, store_device):
@@ -492,7 +598,7 @@ def main(args, model_device, store_device):
     num_updates = args.total_timesteps // args.batch_size
 
     # Evaluate initially
-    eval(agent, writer, seed=0, num_envs=args.evaluate_num, device=model_device, step=global_step)
+    eval2(agent, writer, seed=0, num_envs=args.evaluate_num, device=model_device, global_step=global_step)
 
     # Init value stores for PPO
     # Store the value on 'store_device' (cpu)
@@ -797,7 +903,7 @@ def main(args, model_device, store_device):
 
             # Evaluate initially
             if args.evaluate_interval and (global_step - last_eval_step) >= args.evaluate_interval:
-                eval(agent, writer, seed=0, num_envs=args.evaluate_num, device=model_device, step=global_step)
+                eval2(agent, writer, seed=0, num_envs=args.evaluate_num, device=model_device, global_step=global_step)
                 last_eval_step = global_step
 
             # Save model

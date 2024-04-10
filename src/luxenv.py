@@ -626,12 +626,12 @@ class LuxSyncVectorEnv(gym.vector.AsyncVectorEnv):
         for pipe in self.parent_pipes:
             pipe.send(("eval", (eval_policy, enemy_policy)))
         results = [pipe.recv() for pipe in self.parent_pipes]
-        results = self._process_eval_resluts(results)
+        results = self.process_eval_results(results)
 
         # return deepcopy(results)
         return results
     
-    def _process_eval_resluts(self, results):
+    def process_eval_results(self, results):
         if self.num_envs==1:
             results = {
                 "avg_episode_length": results[0][0], 
