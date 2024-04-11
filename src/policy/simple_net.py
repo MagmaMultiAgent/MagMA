@@ -167,18 +167,17 @@ class SELayer(nn.Module):
 class SEResidual(nn.Module):
     def __init__(self, name, layers, channel, reduction=4, seed=None):
         super(SEResidual, self).__init__()
-        self.layers = nn.ModuleList()
-        for I in range(layers):
-            self.layers.append(nn.Sequential(
-                Conv3x3(name + F"_residual_conv_{I}", channel, channel, bias=True, spectral_norm=True, batch_norm=True, layer_norm=False, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed),
-                SELayer(name + f"_residual_se_{I}", channel, reduction=reduction, seed=seed),
+        _layers = []
+        for i in range(layers):
+            _layers.append(nn.Sequential(
+                Conv3x3(name + F"_residual_conv_{i}", channel, channel, bias=False, spectral_norm=True, batch_norm=True, layer_norm=False, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed),
             ))
+        _layers.append(SELayer(name + f"_residual_se", channel, reduction=reduction, seed=seed))
+        self.layers = nn.Sequential(*_layers)
 
     def forward(self, x):
-        for layer in self.layers:
-            _x = x
-            x = layer(x)
-            x = x + _x
+        _x = self.layers(x)
+        x = x + _x
         return x
 
 
@@ -211,10 +210,12 @@ class SimpleNet(nn.Module):
             EmbeddingConv("hidden_conv_1", self.embedding_feature_count, self.embedding_dims, seed=seed),
 
             SEResidual("se_residual_1", 2, self.embedding_dims, reduction=4, seed=seed),
+            SEResidual("se_residual_2", 2, self.embedding_dims, reduction=4, seed=seed),
 
             EmbeddingConv("hidden_conv_2", self.embedding_dims, self.embedding_dims, seed=seed),
 
-            SEResidual("se_residual_2", 2, self.embedding_dims, reduction=4, seed=seed),
+            SEResidual("se_residual_3", 2, self.embedding_dims, reduction=4, seed=seed),
+            SEResidual("se_residual_4", 2, self.embedding_dims, reduction=4, seed=seed),
 
             EmbeddingConv("hidden_conv_3", self.embedding_dims, self.embedding_dims, seed=seed),
         )
