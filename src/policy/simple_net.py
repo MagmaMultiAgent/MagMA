@@ -53,12 +53,12 @@ def init_orthogonal(module, weight_init, bias_init, gain=1, scaling=1.0):
         bias_init(module.bias.data)
     return module
 
-
-init_leaky_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('leaky_relu'), 0.01)
-init_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('relu'), 0.01)
-init_sigmoid_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('sigmoid'), 0.01)
-init_value_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 0.01, 0.01)
-init_actor_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 0.01, 0.01)
+weight_scale = 0.001
+init_leaky_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('leaky_relu'), weight_scale)
+init_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('relu'), weight_scale)
+init_sigmoid_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('sigmoid'), weight_scale)
+init_value_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 0.01, weight_scale)
+init_actor_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 0.01, weight_scale)
 
 
 def MyConv2d(name, in_channels, out_channels, kernel_size=1, stride=1, padding="same", bias=True, dilation=1, spectral_norm=False, batch_norm=False, layer_norm=False, activation="leaky_relu", init_fn=None, seed=None):
