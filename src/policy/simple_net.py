@@ -226,10 +226,10 @@ class SimpleNet(nn.Module):
 
             EmbeddingConv("hidden_conv_2", self.embedding_dims, self.embedding_dims, seed=seed),
 
-            # SEResidual("se_residual_3", 2, self.embedding_dims, reduction=4, seed=seed),
-            # SEResidual("se_residual_4", 2, self.embedding_dims, reduction=4, seed=seed),
+            SEResidual("se_residual_3", 2, self.embedding_dims, reduction=4, seed=seed),
+            SEResidual("se_residual_4", 2, self.embedding_dims, reduction=4, seed=seed),
 
-            # EmbeddingConv("hidden_conv_3", self.embedding_dims, self.embedding_dims, seed=seed),
+            EmbeddingConv("hidden_conv_3", self.embedding_dims, self.embedding_dims, seed=seed),
         )
 
         # HEADS
