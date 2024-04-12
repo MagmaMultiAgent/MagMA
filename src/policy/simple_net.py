@@ -53,7 +53,7 @@ def init_orthogonal(module, weight_init, bias_init, gain=1, scaling=1.0):
         bias_init(module.bias.data)
     return module
 
-weight_scale = 0.001
+weight_scale = 0.01
 init_leaky_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('leaky_relu'), weight_scale)
 init_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('relu'), weight_scale)
 init_sigmoid_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('sigmoid'), weight_scale)
