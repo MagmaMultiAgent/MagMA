@@ -142,13 +142,11 @@ def EmbeddingConv(name, in_channels, out_channels, seed=None):
 
 def Critic(name, in_channels, out_channels, seed=None):
     return nn.Sequential(
-        ActivationNormalizer(),
         Conv1x1(name, in_channels, out_channels, bias=True, spectral_norm=False, batch_norm=False, layer_norm=False, activation=None, init_fn=init_value_, seed=seed),
     )
 
 def Actor(name, in_features, out_features, seed=None):
     return nn.Sequential(
-        ActivationNormalizer(),
         MyLinear(name, in_features, out_features, bias=True, spectral_norm=False, batch_norm=False, layer_norm=False, activation=None, init_fn=init_actor_, seed=seed),
     )
 
