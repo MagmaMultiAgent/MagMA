@@ -20,7 +20,7 @@ def myHash(text: str):
 
 def seed_init(seed: int, name: str, salt: str = ""):
     name = name + salt
-    print(f"Setting seed for '{name}'")
+    print(f"Setting seed for '{name}'", file=sys.stderr)
     if name in used_names:
         raise ValueError(f"Name {name} already used")
     else:
@@ -54,9 +54,9 @@ def init_orthogonal(module, weight_init, bias_init, gain=1, scaling=1.0):
     return module
 
 
-init_leaky_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('leaky_relu'))
-init_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('relu'))
-init_sigmoid_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('sigmoid'))
+init_leaky_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('leaky_relu'), 0.01)
+init_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('relu'), 0.01)
+init_sigmoid_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('sigmoid'), 0.01)
 init_value_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 0.01, 0.01)
 init_actor_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 0.01, 0.01)
 
@@ -96,7 +96,7 @@ def MyConv2d(name, in_channels, out_channels, kernel_size=1, stride=1, padding="
 
 def MyLinear(name, in_features, out_features, bias=True, spectral_norm=False, batch_norm=False, layer_norm=False, activation="leaky_relu", init_fn=None, seed=None):
     if seed is None:
-        print(f"No seed provided for {name}")
+        print(f"No seed provided for {name}", file=sys.stderr)
         seed = int(time.time())
 
     name = name + "_linear"
