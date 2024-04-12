@@ -205,7 +205,7 @@ class SimpleNet(nn.Module):
         Embeddings are used to convert the input features into a lower-dimensional space, and to extract relevant information from the input features.
         """
 
-        self.embedding_dims = 32
+        self.embedding_dims = 64
 
         self.embedding_feature_counts = {
             "global": 2,
