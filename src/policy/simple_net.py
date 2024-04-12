@@ -141,10 +141,16 @@ def EmbeddingConv(name, in_channels, out_channels, seed=None):
     return Conv1x1(name, in_channels, out_channels, bias=False, spectral_norm=True, batch_norm=True, layer_norm=False, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed)
 
 def Critic(name, in_channels, out_channels, seed=None):
-    return Conv1x1(name, in_channels, out_channels, bias=True, spectral_norm=False, batch_norm=False, layer_norm=False, activation=None, init_fn=init_value_, seed=seed)
+    return nn.Sequential(
+        ActivationNormalizer(),
+        Conv1x1(name, in_channels, out_channels, bias=True, spectral_norm=False, batch_norm=False, layer_norm=False, activation=None, init_fn=init_value_, seed=seed),
+    )
 
 def Actor(name, in_features, out_features, seed=None):
-    return MyLinear(name, in_features, out_features, bias=True, spectral_norm=False, batch_norm=False, layer_norm=False, activation=None, init_fn=init_actor_, seed=seed)
+    return nn.Sequential(
+        ActivationNormalizer(),
+        MyLinear(name, in_features, out_features, bias=True, spectral_norm=False, batch_norm=False, layer_norm=False, activation=None, init_fn=init_actor_, seed=seed),
+    )
 
 
 class SELayer(nn.Module):
@@ -182,7 +188,7 @@ class SEResidual(nn.Module):
 
 
 class ActivationNormalizer(nn.Module):
-    def __init__(self, name, channel, seed=None):
+    def __init__(self):
         super(ActivationNormalizer, self).__init__()
     
     def forward(self, x):
