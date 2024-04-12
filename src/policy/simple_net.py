@@ -205,7 +205,7 @@ class SimpleNet(nn.Module):
         Embeddings are used to convert the input features into a lower-dimensional space, and to extract relevant information from the input features.
         """
 
-        self.embedding_dims = 64
+        self.embedding_dims = 32
 
         self.embedding_feature_counts = {
             "global": 2,
@@ -219,14 +219,20 @@ class SimpleNet(nn.Module):
             EmbeddingConv("hidden_conv_1", self.embedding_feature_count, self.embedding_dims, seed=seed),
 
             SEResidual("se_residual_1", 2, self.embedding_dims, reduction=4, seed=seed),
-            SEResidual("se_residual_2", 2, self.embedding_dims, reduction=4, seed=seed),
 
             EmbeddingConv("hidden_conv_2", self.embedding_dims, self.embedding_dims, seed=seed),
 
-            SEResidual("se_residual_3", 2, self.embedding_dims, reduction=4, seed=seed),
-            SEResidual("se_residual_4", 2, self.embedding_dims, reduction=4, seed=seed),
+            SEResidual("se_residual_2", 2, self.embedding_dims, reduction=4, seed=seed),
 
             EmbeddingConv("hidden_conv_3", self.embedding_dims, self.embedding_dims, seed=seed),
+
+            SEResidual("se_residual_3", 2, self.embedding_dims, reduction=4, seed=seed),
+
+            EmbeddingConv("hidden_conv_4", self.embedding_dims, self.embedding_dims, seed=seed),
+
+            SEResidual("se_residual_4", 2, self.embedding_dims, reduction=4, seed=seed),
+
+            EmbeddingConv("hidden_conv_5", self.embedding_dims, self.embedding_dims, seed=seed),
         )
 
         # HEADS
