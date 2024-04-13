@@ -63,7 +63,7 @@ init_actor_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 
 
 
 USE_BATCH_NORM = True
-USE_LAYER_NORM = True
+USE_LAYER_NORM = False
 USE_SPECTRAL_NORM = True
 
 
@@ -221,7 +221,7 @@ class SimpleNet(nn.Module):
         }
         self.embedding_feature_count = sum(self.embedding_feature_counts.values())
 
-        self.embedding_basic = nn.Sequential(
+        self.embedding_basic_actor = nn.Sequential(
             EmbeddingConv("hidden_conv_1", self.embedding_feature_count, self.embedding_dims, seed=seed),
 
             SEResidual("se_residual_1", 2, self.embedding_dims, reduction=4, seed=seed),
@@ -235,6 +235,22 @@ class SimpleNet(nn.Module):
             SEResidual("se_residual_4", 2, self.embedding_dims, reduction=4, seed=seed),
 
             EmbeddingConv("hidden_conv_3", self.embedding_dims, self.embedding_dims, seed=seed),
+        )
+
+        self.embedding_basic_value = nn.Sequential(
+            EmbeddingConv("_hidden_conv_1", self.embedding_feature_count, self.embedding_dims, seed=seed),
+
+            SEResidual("_se_residual_1", 2, self.embedding_dims, reduction=4, seed=seed),
+
+            SEResidual("_se_residual_2", 2, self.embedding_dims, reduction=4, seed=seed),
+
+            EmbeddingConv("_hidden_conv_2", self.embedding_dims, self.embedding_dims, seed=seed),
+
+            SEResidual("_se_residual_3", 2, self.embedding_dims, reduction=4, seed=seed),
+
+            SEResidual("_se_residual_4", 2, self.embedding_dims, reduction=4, seed=seed),
+
+            EmbeddingConv("_hidden_conv_3", self.embedding_dims, self.embedding_dims, seed=seed),
         )
 
         # HEADS
@@ -280,7 +296,8 @@ class SimpleNet(nn.Module):
         # Embeddings
         global_feature = global_feature[..., None, None].expand(-1, -1, H, W)
         all_features = torch.cat([global_feature, factory_feature, unit_feature, map_feature], dim=1)
-        features_embedded = self.embedding_basic(all_features)
+        features_embedded_actor = self.embedding_basic_actor(all_features)
+        features_embedded_value = self.embedding_basic_value(all_features)
 
         # Valid actions
         unit_act_type_va = torch.stack(
@@ -310,10 +327,10 @@ class SimpleNet(nn.Module):
         factory_indices = factory_pos[0] * max_group_count + factory_ids
 
         # Critic
-        critic_value = torch.zeros((B, max_group_count), device=features_embedded.device)
+        critic_value = torch.zeros((B, max_group_count), device=features_embedded_value.device)
         critic_value = critic_value.view(-1)
 
-        _critic_value = self.critic(features_embedded)
+        _critic_value = self.critic(features_embedded_value)
         _critic_value_unit = _gather_from_map(_critic_value[:, 0], unit_pos)
         if len(unit_indices) > 0:
             critic_value.scatter_add_(0, unit_indices, _critic_value_unit)
@@ -324,7 +341,7 @@ class SimpleNet(nn.Module):
         critic_value = critic_value.view(B, max_group_count)
 
         # Actor
-        logp, action, entropy = self.actor(features_embedded, va, factory_pos, unit_act_type_va, unit_pos, factory_ids, max_group_count, unit_indices, factory_indices, action, is_deterministic)
+        logp, action, entropy = self.actor(features_embedded_actor, va, factory_pos, unit_act_type_va, unit_pos, factory_ids, max_group_count, unit_indices, factory_indices, action, is_deterministic)
 
         return logp, critic_value, action, entropy
 
