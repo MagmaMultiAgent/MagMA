@@ -7,15 +7,16 @@ from impl_config import ActDims, UnitActChannel, UnitActType, EnvParam
 from .actor_head import sample_from_categorical
 import sys
 import time
+import hashlib
 
 used_names = set()
 
 
-def myHash(text: str):
-    hash=0
-    for ch in text:
-        hash = ( hash*281  ^ ord(ch)*997) & 0xFFFFFFFF
-    return hash
+def myHash(text: str) -> int:
+    text_bytes = text.encode('utf-8')
+    hash_str = hashlib.md5(text_bytes).hexdigest()
+    hash_int = int(hash_str, 16) % (10 ** 8)
+    return hash_int
 
 
 def seed_init(seed: int, name: str, salt: str = ""):
@@ -26,7 +27,7 @@ def seed_init(seed: int, name: str, salt: str = ""):
     else:
         used_names.add(name)
     
-    seed = seed + myHash(name)
+    seed = myHash(f"seed{seed}_{name}")
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
 
