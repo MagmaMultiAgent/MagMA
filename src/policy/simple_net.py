@@ -176,13 +176,12 @@ class SEResidual(nn.Module):
             _layers.append(nn.Sequential(
                 Conv3x3(name + F"_residual_conv_{i}", channel, channel, bias=False, spectral_norm=True, batch_norm=True, layer_norm=False, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed),
             ))
-        # _layers.append(SELayer(name + f"_residual_se", channel, reduction=reduction, seed=seed))
+        _layers.append(SELayer(name + f"_residual_se", channel, reduction=reduction, seed=seed))
         self.layers = nn.Sequential(*_layers)
 
     def forward(self, x):
         _x = self.layers(x)
-        # x = x + _x
-        x = _x
+        x = x + _x
         return x
 
 
