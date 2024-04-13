@@ -61,6 +61,9 @@ init_value_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 
 init_actor_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 0.01, weight_scale)
 
 
+USE_BATCH_NORM = True
+
+
 def MyConv2d(name, in_channels, out_channels, kernel_size=1, stride=1, padding="same", bias=True, dilation=1, spectral_norm=False, batch_norm=False, layer_norm=False, activation="leaky_relu", init_fn=None, seed=None):
     if seed is None:
         print(f"No seed provided for {name}")
@@ -138,7 +141,7 @@ def Conv5x5(name, in_channels, out_channels, bias=True, spectral_norm=False, bat
 
 
 def EmbeddingConv(name, in_channels, out_channels, seed=None):
-    return Conv1x1(name, in_channels, out_channels, bias=False, spectral_norm=True, batch_norm=True, layer_norm=False, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed)
+    return Conv1x1(name, in_channels, out_channels, bias=(not USE_BATCH_NORM), spectral_norm=True, batch_norm=USE_BATCH_NORM, layer_norm=False, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed)
 
 def Critic(name, in_channels, out_channels, seed=None):
     return nn.Sequential(
@@ -174,9 +177,9 @@ class SEResidual(nn.Module):
         _layers = []
         for i in range(layers):
             _layers.append(nn.Sequential(
-                Conv3x3(name + F"_residual_conv_{i}", channel, channel, bias=False, spectral_norm=True, batch_norm=True, layer_norm=False, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed),
+                Conv3x3(name + F"_residual_conv_{i}", channel, channel, bias=(not USE_BATCH_NORM), spectral_norm=True, batch_norm=USE_BATCH_NORM, layer_norm=False, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed),
             ))
-        _layers.append(SELayer(name + f"_residual_se", channel, reduction=reduction, seed=seed))
+            _layers.append(SELayer(name + f"_residual_se_{i}", channel, reduction=reduction, seed=seed))
         self.layers = nn.Sequential(*_layers)
 
     def forward(self, x):
