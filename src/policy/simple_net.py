@@ -181,7 +181,8 @@ class SEResidual(nn.Module):
 
     def forward(self, x):
         _x = self.layers(x)
-        x = x + _x
+        # x = x + _x
+        x = _x
         return x
 
 
