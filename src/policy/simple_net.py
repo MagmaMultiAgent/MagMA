@@ -179,7 +179,7 @@ class SEResidual(nn.Module):
             _layers.append(nn.Sequential(
                 Conv3x3(name + F"_residual_conv_{i}", channel, channel, bias=(not USE_BATCH_NORM), spectral_norm=True, batch_norm=USE_BATCH_NORM, layer_norm=False, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed),
             ))
-            _layers.append(SELayer(name + f"_residual_se_{i}", channel, reduction=reduction, seed=seed))
+        _layers.append(SELayer(name + f"_residual_se", channel, reduction=reduction, seed=seed))
         self.layers = nn.Sequential(*_layers)
 
     def forward(self, x):
@@ -221,15 +221,15 @@ class SimpleNet(nn.Module):
         self.embedding_basic = nn.Sequential(
             EmbeddingConv("hidden_conv_1", self.embedding_feature_count, self.embedding_dims, seed=seed),
 
-            SEResidual("se_residual_1", 2, self.embedding_dims, reduction=4, seed=seed),
+            SEResidual("se_residual_1", 4, self.embedding_dims, reduction=4, seed=seed),
 
-            SEResidual("se_residual_2", 2, self.embedding_dims, reduction=4, seed=seed),
+            SEResidual("se_residual_2", 4, self.embedding_dims, reduction=4, seed=seed),
 
             EmbeddingConv("hidden_conv_2", self.embedding_dims, self.embedding_dims, seed=seed),
 
-            SEResidual("se_residual_3", 2, self.embedding_dims, reduction=4, seed=seed),
+            SEResidual("se_residual_3", 4, self.embedding_dims, reduction=4, seed=seed),
 
-            SEResidual("se_residual_4", 2, self.embedding_dims, reduction=4, seed=seed),
+            SEResidual("se_residual_4", 4, self.embedding_dims, reduction=4, seed=seed),
 
             EmbeddingConv("hidden_conv_3", self.embedding_dims, self.embedding_dims, seed=seed),
         )
