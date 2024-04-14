@@ -630,6 +630,12 @@ class LuxSyncVectorEnv(gym.vector.AsyncVectorEnv):
 
         # return deepcopy(results)
         return results
+
+    def set_seed(self, seed: int):
+        for i, pipe in enumerate(self.parent_pipes):
+            pipe.send(("seed", seed + i))
+        for pipe in self.parent_pipes:
+            pipe.recv()
     
     def process_eval_results(self, results):
         if self.num_envs==1:

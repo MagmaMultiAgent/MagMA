@@ -287,7 +287,7 @@ def sample_actions_for_players(envs: LuxSyncVectorEnv,
             action[player] = tree.map_structure(lambda x: x.detach().to(store_device), _action)
             valid_action[player] = _valid_action
             logprob[player] = _logprob.detach().to(store_device)
-            value[player] = _value.detach().to(store_device)
+            value[player] = _value.detach().to(store_device) if _value is not None else None
 
     return action, valid_action, logprob, value
 
@@ -459,19 +459,16 @@ def write(writer, prefix, results, step):
             writer.add_scalar(new_prefix, value, step)
 
 
-def eval2(agent: torch.nn.Module, writer, seed: int = 0, num_envs: int = 8, device: Union[torch.device, str] = "cpu", global_step: int = 0) -> dict:
+def eval2(agent: torch.nn.Module, envs: LuxSyncVectorEnv, writer, seed: int = 0, num_envs: int = 8, device: Union[torch.device, str] = "cpu", global_step: int = 0) -> dict:
     print("Evaluating")
+    agent.eval()
     with torch.no_grad():
-        eval_seed = seed
-        envs = LuxSyncVectorEnv(
-            [make_env(i, eval_seed + i, None, device=device) for i in range(num_envs)],
-            device=device
-        )
-
+        eval_seed = np.random.SeedSequence(seed).generate_state(1).item()
         own = 0
         enemy = 1 - own
 
         # Reset envs, get obs
+        envs.set_seed(seed=eval_seed)
         next_obs, _ = envs.reset(seed=eval_seed)
         next_obs = tree.map_structure(lambda x: np2torch(x, torch.float32), next_obs)
 
@@ -566,8 +563,7 @@ def eval2(agent: torch.nn.Module, writer, seed: int = 0, num_envs: int = 8, devi
             "total_ice_transfered": eval_results["avg_info_total"]["sum_ice_transfered"],
             "total_ice_mined": eval_results["avg_info_total"]["sum_ice_mined"],
         })
-        envs.close()
-        del envs
+    agent.train()
 
 
 def main(args, model_device, store_device):
@@ -603,6 +599,10 @@ def main(args, model_device, store_device):
         [make_env(i, args.seed + i, args.replay_dir, device=model_device, max_entity_number=args.max_entity_number) for i in range(args.num_envs)],
         device=model_device
     )
+    eval_envs = LuxSyncVectorEnv(
+        [make_env(i, args.seed + i, args.replay_dir, device=model_device, max_entity_number=args.max_entity_number) for i in range(args.evaluate_num)],
+        device=model_device
+    )
 
     # Start the game
     global_step = 0
@@ -612,7 +612,7 @@ def main(args, model_device, store_device):
     num_updates = args.total_timesteps // args.batch_size
 
     # Evaluate at the beggining
-    eval2(agent, writer, seed=0, num_envs=args.evaluate_num, device=model_device, global_step=global_step)
+    eval2(agent, eval_envs, writer, seed=0, num_envs=args.evaluate_num, device=model_device, global_step=global_step)
 
     # Init value stores for PPO
     # Store the value on 'store_device' (cpu)
@@ -921,7 +921,7 @@ def main(args, model_device, store_device):
 
             # Evaluate initially
             if args.evaluate_interval and (global_step - last_eval_step) >= args.evaluate_interval:
-                eval2(agent, writer, seed=0, num_envs=args.evaluate_num, device=model_device, global_step=global_step)
+                eval2(agent, eval_envs, writer, seed=0, num_envs=args.evaluate_num, device=model_device, global_step=global_step)
                 last_eval_step = global_step
 
             # Save model
