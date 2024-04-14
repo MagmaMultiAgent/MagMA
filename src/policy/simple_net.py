@@ -257,10 +257,26 @@ class SimpleNet(nn.Module):
 
         # critic
         self.critic_feature_count = self.embedding_dims
-        self.critic_dim = 4
+        self.critic_embedding_dim = 8
         self.critic_head = nn.Sequential(
-            Conv1x1("critic_1", self.critic_feature_count, self.critic_dim, bias=True, spectral_norm=True, batch_norm=True, layer_norm=False, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed),
-            Critic("critic_o", self.critic_dim, 2, seed=seed),  # 2 channels: 0 for unit, 1 for factory
+            Conv3x3("critic_emb", self.critic_feature_count, self.critic_embedding_dim, bias=(not USE_BATCH_NORM), spectral_norm=USE_SPECTRAL_NORM, batch_norm=USE_BATCH_NORM, layer_norm=USE_LAYER_NORM, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed),
+        )
+        self.critic_head_dim = 4
+        self.critic_unit_head = nn.Sequential(
+            Conv1x1("critic_u", self.critic_embedding_dim, self.critic_head_dim, bias=(not USE_BATCH_NORM), spectral_norm=USE_SPECTRAL_NORM, batch_norm=USE_BATCH_NORM, layer_norm=USE_LAYER_NORM, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed),
+            Critic("critic_u_o", self.critic_head_dim, 1, seed=seed),
+        )
+        self.critic_factory_head = nn.Sequential(
+            Conv1x1("critic_f", self.critic_embedding_dim, self.critic_head_dim, bias=(not USE_BATCH_NORM), spectral_norm=USE_SPECTRAL_NORM, batch_norm=USE_BATCH_NORM, layer_norm=USE_LAYER_NORM, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed),
+            Critic("critic_f_o", self.critic_head_dim, 1, seed=seed),
+        )
+        self.critic_global_unit_head = nn.Sequential(
+            Conv1x1("critic_gu", self.critic_embedding_dim, self.critic_head_dim, bias=(not USE_BATCH_NORM), spectral_norm=USE_SPECTRAL_NORM, batch_norm=USE_BATCH_NORM, layer_norm=USE_LAYER_NORM, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed),
+            Critic("critic_gu_o", self.critic_head_dim, 1, seed=seed),
+        )
+        self.critic_global_factory_head = nn.Sequential(
+            Conv1x1("critic_gf", self.critic_embedding_dim, self.critic_head_dim, bias=(not USE_BATCH_NORM), spectral_norm=USE_SPECTRAL_NORM, batch_norm=USE_BATCH_NORM, layer_norm=USE_LAYER_NORM, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed),
+            Critic("critic_gf_o", self.critic_head_dim, 1, seed=seed),
         )
 
         # factory
@@ -332,9 +348,16 @@ class SimpleNet(nn.Module):
 
         _critic_value = self.critic(features_embedded_value)
         _critic_value_unit = _gather_from_map(_critic_value[:, 0], unit_pos)
+        _critic_value_factory = _gather_from_map(_critic_value[:, 1], factory_pos)
+
+        _critic_value_global_unit = _critic_value[:, 2].view(B, -1).mean(dim=1)
+        _critic_value_unit = _critic_value_unit + _critic_value_global_unit[unit_pos[0]]
+        _critic_value_global_factory = _critic_value[:, 3].view(B, -1).mean(dim=1)
+        _critic_value_factory = _critic_value_factory + _critic_value_global_factory[factory_pos[0]]
+
         if len(unit_indices) > 0:
             critic_value.scatter_add_(0, unit_indices, _critic_value_unit)
-        _critic_value_factory = _gather_from_map(_critic_value[:, 1], factory_pos)
+       
         if len(factory_indices) > 0:
             critic_value.scatter_add_(0, factory_indices, _critic_value_factory)
 
@@ -346,7 +369,13 @@ class SimpleNet(nn.Module):
         return logp, critic_value, action, entropy
 
     def critic(self, x):
-        critic_value = self.critic_head(x)
+        critic_embedding = self.critic_head(x)
+        critic_value = torch.cat([
+            self.critic_unit_head(critic_embedding),
+            self.critic_factory_head(critic_embedding),
+            self.critic_global_unit_head(critic_embedding),
+            self.critic_global_factory_head(critic_embedding),
+        ], dim=1)
         return critic_value
 
     def actor(self, x, va, factory_pos, unit_act_type_va, unit_pos, factory_ids, max_group_count, unit_indices, factory_indices, action=None, is_deterministic=False):
