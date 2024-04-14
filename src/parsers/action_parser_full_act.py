@@ -490,6 +490,10 @@ class ActionParser():
                                 valid_actions["unit_act"]["act_type"][:, x, y] = False
                                 valid_actions["unit_act"]["act_type"][UnitActType.DIG, x, y] = True
 
+                    elif board.rubble[x, y] > 0:
+                        valid_actions["unit_act"]["dig"]['repeat'][0, x, y] = True
+                        valid_actions["unit_act"]["dig"]['repeat'][1, x, y] = False
+
             # valid selfdestruct
             if unit.power - action_queue_cost >= unit.unit_cfg.SELF_DESTRUCT_COST:
                 # self destruct can not repeat
