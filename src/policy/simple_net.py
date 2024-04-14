@@ -216,7 +216,7 @@ class Embedding(nn.Module):
 
 class SimpleNet(nn.Module):
 
-    def _gather_from_map(x, pos):
+    def _gather_from_map(self, x, pos):
         return x[pos[0], ..., pos[1], pos[2]]
 
     def __init__(self, max_entity_number: int, seed: int):
@@ -240,9 +240,8 @@ class SimpleNet(nn.Module):
         self.embedding_actor = Embedding("embedding_actor", self.embedding_feature_count, self.embedding_dims, seed=seed)
         self.embedding_value = Embedding("embedding_value", self.embedding_feature_count, self.embedding_dims, seed=seed)
 
-        # HEADS
 
-        # critic
+        # CRITIC
         self.critic_feature_count = self.embedding_dims
         self.critic_embedding_dim = 8
         self.critic_head = nn.Sequential(
@@ -266,28 +265,45 @@ class SimpleNet(nn.Module):
             Critic("critic_gf_o", self.critic_head_dim, 1, seed=seed),
         )
 
+
+        # ACTOR
+        self.actor_dim = 8
+
         # factory
         self.factory_feature_count = self.embedding_dims
         self.factory_head = nn.Sequential(
-            Actor("factory_act", self.factory_feature_count, ActDims.factory_act, seed=seed),
+            MyLinear("factory_act_linear", self.factory_feature_count, self.actor_dim, bias=True, spectral_norm=USE_SPECTRAL_NORM, batch_norm=False, layer_norm=True, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed),
+            Actor("factory_act", self.actor_dim, ActDims.factory_act, seed=seed),
         )
 
         self.unit_feature_count = self.embedding_dims
-        self.unit_emb_dim = self.unit_feature_count
 
         # act type
-        self.act_type_feature_count = self.unit_emb_dim
+        self.act_type_feature_count = self.unit_feature_count
         self.unit_act_type_net = nn.Sequential(
-            Actor("unit_act_type", self.act_type_feature_count, len(UnitActType), seed=seed),
+            MyLinear("unit_act_type_linear", self.act_type_feature_count, self.actor_dim, bias=True, spectral_norm=USE_SPECTRAL_NORM, batch_norm=False, layer_norm=True, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed),
+            Actor("unit_act_type", self.actor_dim, len(UnitActType), seed=seed),
         )
 
         # params
         self.param_heads = nn.ModuleDict({
             unit_act_type.name: nn.ModuleDict({
-                "direction": Actor(f"{unit_act_type}_direction", self.unit_emb_dim, ActDims.direction, seed=seed),
-                "resource": Actor(f"{unit_act_type}_resource", self.unit_emb_dim, ActDims.resource, seed=seed),
-                "amount": Actor(f"{unit_act_type}_amount", self.unit_emb_dim, ActDims.amount, seed=seed),
-                "repeat": Actor(f"{unit_act_type}_repeat", self.unit_emb_dim, ActDims.repeat, seed=seed),
+                "direction": nn.Sequential(
+                    MyLinear(f"{unit_act_type}_direction_linear", self.unit_feature_count, self.actor_dim, bias=True, spectral_norm=USE_SPECTRAL_NORM, batch_norm=False, layer_norm=True, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed),
+                    Actor(f"{unit_act_type}_direction", self.actor_dim, ActDims.direction, seed=seed),
+                ),
+                "resource": nn.Sequential(
+                    MyLinear(f"{unit_act_type}_resource_linear", self.unit_feature_count, self.actor_dim, bias=True, spectral_norm=USE_SPECTRAL_NORM, batch_norm=False, layer_norm=True, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed),
+                    Actor(f"{unit_act_type}_resource", self.actor_dim, ActDims.resource, seed=seed),
+                ),
+                "amount": nn.Sequential(
+                    MyLinear(f"{unit_act_type}_amount_linear", self.unit_feature_count, self.actor_dim, bias=True, spectral_norm=USE_SPECTRAL_NORM, batch_norm=False, layer_norm=True, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed),
+                    Actor(f"{unit_act_type}_amount", self.actor_dim, ActDims.amount, seed=seed),
+                ),
+                "repeat": nn.Sequential(
+                    MyLinear(f"{unit_act_type}_repeat_linear", self.unit_feature_count, self.actor_dim, bias=True, spectral_norm=USE_SPECTRAL_NORM, batch_norm=False, layer_norm=True, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed),
+                    Actor(f"{unit_act_type}_repeat", self.actor_dim, ActDims.repeat, seed=seed),
+                ),
             }) for unit_act_type in UnitActType
         })
 
@@ -299,8 +315,8 @@ class SimpleNet(nn.Module):
         # Embeddings
         global_feature = global_feature[..., None, None].expand(-1, -1, H, W)
         all_features = torch.cat([global_feature, factory_feature, unit_feature, map_feature], dim=1)
-        features_embedded_actor = self.embedding_basic_actor(all_features)
-        features_embedded_value = self.embedding_basic_value(all_features)
+        features_embedded_actor = self.embedding_actor(all_features)
+        features_embedded_value = self.embedding_value(all_features)
 
         # Valid actions
         unit_act_type_va = torch.stack(
@@ -322,8 +338,6 @@ class SimpleNet(nn.Module):
 
         factory_ids = self._gather_from_map(location_feature[:, 0], factory_pos).int()
         unit_ids = (self._gather_from_map(location_feature[:, 1], unit_pos)).int()
-        assert factory_ids.min() >= 0
-        assert unit_ids.min() >= 0
 
         unit_indices = unit_pos[0] * max_group_count + unit_ids
         if len(unit_indices) > 0:
@@ -363,8 +377,10 @@ class SimpleNet(nn.Module):
         critic_value_global_factory = self.critic_global_factory_head(critic_embedding)[:, 0]
         critic_value_global_factory = critic_value_global_factory.view(B, -1).mean(dim=1)
 
-        critic_value_unit = critic_value_unit + critic_value_global_unit
-        critic_value_factory = critic_value_factory + critic_value_global_factory
+        if len(unit_indices) > 0:
+            critic_value_unit = critic_value_unit + critic_value_global_unit[unit_pos[0]]
+        if len(factory_indices) > 0:
+            critic_value_factory = critic_value_factory + critic_value_global_factory[factory_pos[0]]
 
         if len(unit_indices) > 0:
             final_critic_value.scatter_add_(0, unit_indices, critic_value_unit)
