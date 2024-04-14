@@ -267,12 +267,11 @@ class SimpleNet(nn.Module):
 
 
         # ACTOR
-        self.actor_dim = 8
+        self.actor_dim = self.embedding_dims
 
         # factory
         self.factory_feature_count = self.embedding_dims
         self.factory_head = nn.Sequential(
-            MyLinear("factory_act_linear", self.factory_feature_count, self.actor_dim, bias=True, spectral_norm=USE_SPECTRAL_NORM, batch_norm=False, layer_norm=True, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed),
             Actor("factory_act", self.actor_dim, ActDims.factory_act, seed=seed),
         )
 
@@ -281,7 +280,6 @@ class SimpleNet(nn.Module):
         # act type
         self.act_type_feature_count = self.unit_feature_count
         self.unit_act_type_net = nn.Sequential(
-            MyLinear("unit_act_type_linear", self.act_type_feature_count, self.actor_dim, bias=True, spectral_norm=USE_SPECTRAL_NORM, batch_norm=False, layer_norm=True, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed),
             Actor("unit_act_type", self.actor_dim, len(UnitActType), seed=seed),
         )
 
@@ -289,19 +287,15 @@ class SimpleNet(nn.Module):
         self.param_heads = nn.ModuleDict({
             unit_act_type.name: nn.ModuleDict({
                 "direction": nn.Sequential(
-                    MyLinear(f"{unit_act_type}_direction_linear", self.unit_feature_count, self.actor_dim, bias=True, spectral_norm=USE_SPECTRAL_NORM, batch_norm=False, layer_norm=True, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed),
                     Actor(f"{unit_act_type}_direction", self.actor_dim, ActDims.direction, seed=seed),
                 ),
                 "resource": nn.Sequential(
-                    MyLinear(f"{unit_act_type}_resource_linear", self.unit_feature_count, self.actor_dim, bias=True, spectral_norm=USE_SPECTRAL_NORM, batch_norm=False, layer_norm=True, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed),
                     Actor(f"{unit_act_type}_resource", self.actor_dim, ActDims.resource, seed=seed),
                 ),
                 "amount": nn.Sequential(
-                    MyLinear(f"{unit_act_type}_amount_linear", self.unit_feature_count, self.actor_dim, bias=True, spectral_norm=USE_SPECTRAL_NORM, batch_norm=False, layer_norm=True, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed),
                     Actor(f"{unit_act_type}_amount", self.actor_dim, ActDims.amount, seed=seed),
                 ),
                 "repeat": nn.Sequential(
-                    MyLinear(f"{unit_act_type}_repeat_linear", self.unit_feature_count, self.actor_dim, bias=True, spectral_norm=USE_SPECTRAL_NORM, batch_norm=False, layer_norm=True, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed),
                     Actor(f"{unit_act_type}_repeat", self.actor_dim, ActDims.repeat, seed=seed),
                 ),
             }) for unit_act_type in UnitActType
