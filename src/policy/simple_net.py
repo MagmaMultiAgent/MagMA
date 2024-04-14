@@ -144,7 +144,7 @@ def Conv5x5(name, in_channels, out_channels, bias=True, spectral_norm=False, bat
 
 
 def EmbeddingConv(name, in_channels, out_channels, seed=None):
-    return Conv1x1(name, in_channels, out_channels, bias=(not USE_BATCH_NORM), spectral_norm=USE_SPECTRAL_NORM, batch_norm=USE_BATCH_NORM, layer_norm=USE_LAYER_NORM, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed)
+    return Conv3x3(name, in_channels, out_channels, bias=(not USE_BATCH_NORM), spectral_norm=USE_SPECTRAL_NORM, batch_norm=USE_BATCH_NORM, layer_norm=USE_LAYER_NORM, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed)
 
 def Critic(name, in_channels, out_channels, seed=None):
     return nn.Sequential(
