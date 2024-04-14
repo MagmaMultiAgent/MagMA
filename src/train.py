@@ -594,7 +594,6 @@ def main(args, model_device, store_device):
 
     # Create model
     agent, optimizer = create_model(model_device, args.load_model_path, args.learning_rate, args.max_entity_number, args.seed)
-    traced_model = None
 
     # reset seed after model creation
     seeding.set_seed(args.seed)
@@ -611,6 +610,9 @@ def main(args, model_device, store_device):
     last_save_model_step = 0
     start_time = time.time()
     num_updates = args.total_timesteps // args.batch_size
+
+    # Evaluate at the beggining
+    eval2(agent, writer, seed=0, num_envs=args.evaluate_num, device=model_device, global_step=global_step)
 
     # Init value stores for PPO
     # Store the value on 'store_device' (cpu)
@@ -636,11 +638,6 @@ def main(args, model_device, store_device):
         next_obs, _ = envs.reset(seed=new_seed)
         next_obs = tree.map_structure(lambda x: np2torch(x, torch.float32), next_obs)
         next_done = torch.zeros((args.num_envs, 2, args.max_entity_number), device=store_device, dtype=torch.bool)
-
-        # Evaluate at the beggining
-        if args.evaluate_interval is not None and last_eval_step == 0:
-            traced_model = create_traced_model(agent, next_obs, envs, model_device)
-            eval2(traced_model, writer, seed=0, num_envs=args.evaluate_num, device=model_device, global_step=global_step)
 
         # Annealing the rate if instructed to do so.
         if args.anneal_lr:
@@ -676,7 +673,7 @@ def main(args, model_device, store_device):
             put_into_store(next_obs, train_step, obs, args.max_train_step, args.num_envs, store_device)
 
             # Sample actions
-            action, valid_action, logprob, value = sample_actions_for_players(envs, traced_model, next_obs, model_device, store_device)
+            action, valid_action, logprob, value = sample_actions_for_players(envs, agent, next_obs, model_device, store_device)
 
             # Save actions for PPO
             put_into_store(action, train_step, actions, args.max_train_step, args.num_envs, store_device)
@@ -771,7 +768,7 @@ def main(args, model_device, store_device):
             # Train with PPO
             if train_step >= args.max_train_step-1 or step == args.num_steps-1:
                 logger.info("Training with PPO")
-                returns, advantages = calculate_returns(envs, traced_model, next_obs, next_done, dones, rewards, values, args.max_train_step, args.num_envs, args.max_entity_number, args.gamma, args.gae_lambda, model_device, store_device)
+                returns, advantages = calculate_returns(envs, agent, next_obs, next_done, dones, rewards, values, args.max_train_step, args.num_envs, args.max_entity_number, args.gamma, args.gae_lambda, model_device, store_device)
 
                 # flatten the batch
                 b_obs = obs
@@ -922,11 +919,9 @@ def main(args, model_device, store_device):
 
                 train_step = -1
 
-                traced_model = create_traced_model(agent, next_obs, envs, model_device)
-
             # Evaluate initially
             if args.evaluate_interval and (global_step - last_eval_step) >= args.evaluate_interval:
-                eval2(traced_model, writer, seed=0, num_envs=args.evaluate_num, device=model_device, global_step=global_step)
+                eval2(agent, writer, seed=0, num_envs=args.evaluate_num, device=model_device, global_step=global_step)
                 last_eval_step = global_step
 
             # Save model
