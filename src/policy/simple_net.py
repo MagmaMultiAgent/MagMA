@@ -191,15 +191,33 @@ class SEResidual(nn.Module):
         return x
 
 
-class ActivationNormalizer(nn.Module):
-    def __init__(self):
-        super(ActivationNormalizer, self).__init__()
-    
+class Embedding(nn.Module):
+    def __init__(self, name, in_channels, out_channels, seed=None):
+        super(Embedding, self).__init__()
+        self.embedding = nn.Sequential(
+            EmbeddingConv(f"{name}_hidden_conv_1", in_channels, out_channels, seed=seed),
+
+            SEResidual(f"{name}_se_residual_1", 2, out_channels, reduction=4, seed=seed),
+
+            SEResidual(f"{name}_se_residual_2", 2, out_channels, reduction=4, seed=seed),
+
+            EmbeddingConv(f"{name}_hidden_conv_2", out_channels, out_channels, seed=seed),
+
+            SEResidual(f"{name}_se_residual_3", 2, out_channels, reduction=4, seed=seed),
+
+            SEResidual(f"{name}_se_residual_4", 2, out_channels, reduction=4, seed=seed),
+
+            EmbeddingConv(f"{name}_hidden_conv_3", out_channels, out_channels, seed=seed),
+        )
+
     def forward(self, x):
-        return x / torch.norm(x, dim=1, keepdim=True)
+        return self.embedding(x)
 
 
 class SimpleNet(nn.Module):
+
+    def _gather_from_map(x, pos):
+        return x[pos[0], ..., pos[1], pos[2]]
 
     def __init__(self, max_entity_number: int, seed: int):
         super(SimpleNet, self).__init__()
@@ -211,8 +229,6 @@ class SimpleNet(nn.Module):
         Embeddings are used to convert the input features into a lower-dimensional space, and to extract relevant information from the input features.
         """
 
-        self.embedding_dims = 32
-
         self.embedding_feature_counts = {
             "global": 2,
             "factory": 6,
@@ -220,38 +236,9 @@ class SimpleNet(nn.Module):
             "map": 6,
         }
         self.embedding_feature_count = sum(self.embedding_feature_counts.values())
-
-        self.embedding_basic_actor = nn.Sequential(
-            EmbeddingConv("hidden_conv_1", self.embedding_feature_count, self.embedding_dims, seed=seed),
-
-            SEResidual("se_residual_1", 2, self.embedding_dims, reduction=4, seed=seed),
-
-            SEResidual("se_residual_2", 2, self.embedding_dims, reduction=4, seed=seed),
-
-            EmbeddingConv("hidden_conv_2", self.embedding_dims, self.embedding_dims, seed=seed),
-
-            SEResidual("se_residual_3", 2, self.embedding_dims, reduction=4, seed=seed),
-
-            SEResidual("se_residual_4", 2, self.embedding_dims, reduction=4, seed=seed),
-
-            EmbeddingConv("hidden_conv_3", self.embedding_dims, self.embedding_dims, seed=seed),
-        )
-
-        self.embedding_basic_value = nn.Sequential(
-            EmbeddingConv("_hidden_conv_1", self.embedding_feature_count, self.embedding_dims, seed=seed),
-
-            SEResidual("_se_residual_1", 2, self.embedding_dims, reduction=4, seed=seed),
-
-            SEResidual("_se_residual_2", 2, self.embedding_dims, reduction=4, seed=seed),
-
-            EmbeddingConv("_hidden_conv_2", self.embedding_dims, self.embedding_dims, seed=seed),
-
-            SEResidual("_se_residual_3", 2, self.embedding_dims, reduction=4, seed=seed),
-
-            SEResidual("_se_residual_4", 2, self.embedding_dims, reduction=4, seed=seed),
-
-            EmbeddingConv("_hidden_conv_3", self.embedding_dims, self.embedding_dims, seed=seed),
-        )
+        self.embedding_dims = 32
+        self.embedding_actor = Embedding("embedding_actor", self.embedding_feature_count, self.embedding_dims, seed=seed)
+        self.embedding_value = Embedding("embedding_value", self.embedding_feature_count, self.embedding_dims, seed=seed)
 
         # HEADS
 
@@ -332,54 +319,70 @@ class SimpleNet(nn.Module):
         # Locations
         factory_pos = torch.where(va['factory_act'].any(1))
         unit_pos = torch.where(unit_act_type_va.any(1))
-        def _gather_from_map(x, pos):
-            return x[pos[0], ..., pos[1], pos[2]]
-        factory_ids = _gather_from_map(location_feature[:, 0], factory_pos).int()
-        unit_ids = (_gather_from_map(location_feature[:, 1], unit_pos)).int()
+
+        factory_ids = self._gather_from_map(location_feature[:, 0], factory_pos).int()
+        unit_ids = (self._gather_from_map(location_feature[:, 1], unit_pos)).int()
+        assert factory_ids.min() >= 0
+        assert unit_ids.min() >= 0
+
         unit_indices = unit_pos[0] * max_group_count + unit_ids
         if len(unit_indices) > 0:
             assert unit_indices.max(dim=-1)[0] < (B * max_group_count)
             assert unit_indices.min(dim=-1)[0] >= 0
         factory_indices = factory_pos[0] * max_group_count + factory_ids
+        if len(factory_indices) > 0:
+            assert factory_indices.max(dim=-1)[0] < (B * max_group_count)
+            assert factory_indices.min(dim=-1)[0] >= 0
 
         # Critic
-        critic_value = torch.zeros((B, max_group_count), device=features_embedded_value.device)
-        critic_value = critic_value.view(-1)
-
-        _critic_value = self.critic(features_embedded_value)
-        _critic_value_unit = _gather_from_map(_critic_value[:, 0], unit_pos)
-        _critic_value_factory = _gather_from_map(_critic_value[:, 1], factory_pos)
-
-        _critic_value_global_unit = _critic_value[:, 2].view(B, -1).mean(dim=1)
-        _critic_value_unit = _critic_value_unit + _critic_value_global_unit[unit_pos[0]]
-        _critic_value_global_factory = _critic_value[:, 3].view(B, -1).mean(dim=1)
-        _critic_value_factory = _critic_value_factory + _critic_value_global_factory[factory_pos[0]]
-
-        if len(unit_indices) > 0:
-            critic_value.scatter_add_(0, unit_indices, _critic_value_unit)
-       
-        if len(factory_indices) > 0:
-            critic_value.scatter_add_(0, factory_indices, _critic_value_factory)
-
-        critic_value = critic_value.view(B, max_group_count)
+        critic_value = self.critic(features_embedded_value, unit_pos, factory_pos, unit_indices, factory_indices, max_group_count)
 
         # Actor
-        logp, action, entropy = self.actor(features_embedded_actor, va, factory_pos, unit_act_type_va, unit_pos, factory_ids, max_group_count, unit_indices, factory_indices, action, is_deterministic)
+        logp, action, entropy = self.actor(features_embedded_actor, va, factory_pos, unit_act_type_va, unit_pos, max_group_count, unit_indices, factory_indices, action, is_deterministic)
 
         return logp, critic_value, action, entropy
 
-    def critic(self, x):
-        critic_embedding = self.critic_head(x)
-        critic_value = torch.cat([
-            self.critic_unit_head(critic_embedding),
-            self.critic_factory_head(critic_embedding),
-            self.critic_global_unit_head(critic_embedding),
-            self.critic_global_factory_head(critic_embedding),
-        ], dim=1)
-        return critic_value
 
-    def actor(self, x, va, factory_pos, unit_act_type_va, unit_pos, factory_ids, max_group_count, unit_indices, factory_indices, action=None, is_deterministic=False):
+    def critic(self, x, unit_pos, factory_pos, unit_indices, factory_indices, max_group_count):
+        B, _, _, _ = x.shape
+
+        final_critic_value = torch.zeros((B, max_group_count), device=x.device)
+        final_critic_value = final_critic_value.view(-1)
+
+        critic_embedding = self.critic_head(x)
+
+        critic_value_unit = self.critic_unit_head(critic_embedding)[:, 0]
+        critic_value_unit = self._gather_from_map(critic_value_unit, unit_pos)
+
+        critic_value_factory = self.critic_factory_head(critic_embedding)[:, 0]
+        critic_value_factory = self._gather_from_map(critic_value_factory, factory_pos)
+
+        critic_value_global_unit = self.critic_global_unit_head(critic_embedding)[:, 0]
+        critic_value_global_unit = critic_value_global_unit.view(B, -1).mean(dim=1)
+
+        critic_value_global_factory = self.critic_global_factory_head(critic_embedding)[:, 0]
+        critic_value_global_factory = critic_value_global_factory.view(B, -1).mean(dim=1)
+
+        critic_value_unit = critic_value_unit + critic_value_global_unit
+        critic_value_factory = critic_value_factory + critic_value_global_factory
+
+        if len(unit_indices) > 0:
+            final_critic_value.scatter_add_(0, unit_indices, critic_value_unit)
+       
+        if len(factory_indices) > 0:
+            final_critic_value.scatter_add_(0, factory_indices, critic_value_factory)
+
+        final_critic_value = final_critic_value.view(B, max_group_count)
+        return final_critic_value
+
+
+    def actor(self, x, va, factory_pos, unit_act_type_va, unit_pos, max_group_count, unit_indices, factory_indices, action=None, is_deterministic=False):
         B, _, H, W = x.shape
+        def _put_into_map(emb, pos):
+            shape = (B, ) + emb.shape[1:] + (H, W)
+            map = torch.zeros(shape, dtype=emb.dtype, device=emb.device)
+            map[pos[0], ..., pos[1], pos[2]] = emb
+            return map
 
         logp = torch.zeros((B, max_group_count), device=x.device)
         logp = logp.view(-1)
@@ -387,20 +390,10 @@ class SimpleNet(nn.Module):
         entropy = entropy.view(-1)
         output_action = {}
 
-        def _gather_from_map(x, pos):
-            return x[pos[0], ..., pos[1], pos[2]]
-
-        def _put_into_map(emb, pos):
-            shape = (B, ) + emb.shape[1:] + (H, W)
-            map = torch.zeros(shape, dtype=emb.dtype, device=emb.device)
-            map[pos[0], ..., pos[1], pos[2]] = emb
-            return map
-
         # factory actor
-        factory_emb = _gather_from_map(x, factory_pos)
-
-        factory_va = _gather_from_map(va['factory_act'], factory_pos)
-        factory_action = action and _gather_from_map(action['factory_act'], factory_pos)
+        factory_emb = self._gather_from_map(x, factory_pos)
+        factory_va = self._gather_from_map(va['factory_act'], factory_pos)
+        factory_action = action and self._gather_from_map(action['factory_act'], factory_pos)
         factory_logp, factory_action, factory_entropy = self.factory_actor(
             factory_emb,
             factory_va,
@@ -411,24 +404,24 @@ class SimpleNet(nn.Module):
         if len(factory_indices) > 0:
             logp.scatter_add_(0, factory_indices, factory_logp)
             entropy.scatter_add_(0, factory_indices, factory_entropy)
-        
+
         output_action['factory_act'] = _put_into_map(factory_action, factory_pos)
 
         # unit actor
-        unit_emb = _gather_from_map(x, unit_pos)
+        unit_emb = self._gather_from_map(x, unit_pos)
         
         unit_va = {
-            'act_type': _gather_from_map(unit_act_type_va, unit_pos),
-            'move': _gather_from_map(va['move'], unit_pos),
-            'transfer': _gather_from_map(va['transfer'], unit_pos),
-            'pickup': _gather_from_map(va['pickup'], unit_pos),
-            'dig': _gather_from_map(va['dig'], unit_pos),
-            'self_destruct': _gather_from_map(va['self_destruct'], unit_pos),
-            'recharge': _gather_from_map(va['recharge'], unit_pos),
-            'do_nothing': _gather_from_map(va['do_nothing'], unit_pos),
+            'act_type': self._gather_from_map(unit_act_type_va, unit_pos),
+            'move': self._gather_from_map(va['move'], unit_pos),
+            'transfer': self._gather_from_map(va['transfer'], unit_pos),
+            'pickup': self._gather_from_map(va['pickup'], unit_pos),
+            'dig': self._gather_from_map(va['dig'], unit_pos),
+            'self_destruct': self._gather_from_map(va['self_destruct'], unit_pos),
+            'recharge': self._gather_from_map(va['recharge'], unit_pos),
+            'do_nothing': self._gather_from_map(va['do_nothing'], unit_pos),
         }
 
-        unit_action = action and _gather_from_map(action['unit_act'], unit_pos)
+        unit_action = action and self._gather_from_map(action['unit_act'], unit_pos)
         unit_logp, unit_action, unit_entropy = self.unit_actor(
             unit_emb,
             unit_emb,
