@@ -317,7 +317,8 @@ class SimpleNet(nn.Module):
         global_feature = global_feature[..., None, None].expand(-1, -1, H, W)
         all_features = torch.cat([global_feature, factory_feature, unit_feature, map_feature], dim=1)
         features_embedded_actor = self.embedding_actor(all_features)
-        features_embedded_value = self.embedding_value(all_features)
+        if self.training:
+            features_embedded_value = self.embedding_value(all_features)
 
         # Valid actions
         unit_act_type_va = torch.stack(
@@ -350,7 +351,10 @@ class SimpleNet(nn.Module):
             assert factory_indices.min(dim=-1)[0] >= 0
 
         # Critic
-        critic_value = self.critic(features_embedded_value, unit_pos, factory_pos, unit_indices, factory_indices, max_group_count)
+        if self.training:
+            critic_value = self.critic(features_embedded_value, unit_pos, factory_pos, unit_indices, factory_indices, max_group_count)
+        else:
+            critic_value = None
 
         # Actor
         logp, action, entropy = self.actor(features_embedded_actor, va, factory_pos, unit_act_type_va, unit_pos, max_group_count, unit_indices, factory_indices, action, is_deterministic)
