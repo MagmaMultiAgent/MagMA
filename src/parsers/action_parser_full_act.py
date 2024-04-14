@@ -343,6 +343,8 @@ class ActionParser():
             # Power masking
             if unit.power >= action_queue_cost:
                 valid_actions["unit_act"]["act_type"][:, x, y] = True
+                valid_actions["unit_act"]["act_type"][UnitActType.SELF_DESTRUCT, x, y] = False
+                valid_actions["unit_act"]["act_type"][UnitActType.DO_NOTHING, x, y] = False
 
                 if False:
                     # don't recharge if on top of factory, can pickup instead
@@ -353,15 +355,9 @@ class ActionParser():
                             valid_actions["unit_act"]["act_type"][UnitActType.PICKUP, x, y] = True
                             valid_actions["unit_act"]["act_type"][UnitActType.TRANSFER, x, y] = True
 
-                # if battery not at least half empty, don't recharge
-                if unit.power >= (battery_capacity / 2):
+                if unit.power >= battery_capacity:
                     valid_actions["unit_act"]["act_type"][UnitActType.RECHARGE, x, y] = False
-                
-                # if battery at least 80% full, don't pickup power
-                if unit.power >= (battery_capacity * 0.8):
                     valid_actions["unit_act"]["act_type"][UnitActType.PICKUP, x, y] = False
-
-                valid_actions["unit_act"]["act_type"][UnitActType.DO_NOTHING, x, y] = False
             else:
                 valid_actions["unit_act"]["act_type"][UnitActType.DO_NOTHING, x, y] = True
                 continue
@@ -431,7 +427,7 @@ class ActionParser():
                             can_move_to_factory = True
 
             cargo_capacity = unit.unit_cfg.CARGO_SPACE
-            cargo_full = sum([unit.cargo.ice, unit.cargo.ore, unit.cargo.water, unit.cargo.metal]) >= cargo_capacity * 0.9
+            cargo_full = (sum([unit.cargo.ice, unit.cargo.ore, unit.cargo.water, unit.cargo.metal]) + unit.unit_cfg.DIG_RESOURCE_GAIN) >= cargo_capacity
             if False:
                 cargo_full = cargo_full and sum([unit.cargo.ice, unit.cargo.ore, unit.cargo.water, unit.cargo.metal]) > 200
             cargo_empty = sum([unit.cargo.ice, unit.cargo.ore, unit.cargo.water, unit.cargo.metal]) == 0
