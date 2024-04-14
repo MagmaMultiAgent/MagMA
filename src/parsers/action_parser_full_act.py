@@ -344,13 +344,14 @@ class ActionParser():
             if unit.power >= action_queue_cost:
                 valid_actions["unit_act"]["act_type"][:, x, y] = True
 
-                # don't recharge if on top of factory, can pickup instead
-                if factory_under_unit(unit.pos, game_state.factories[player]) is not None:
-                    valid_actions["unit_act"]["act_type"][UnitActType.RECHARGE, x, y] = False
-                    if unit.power < low_power:
-                        valid_actions["unit_act"]["act_type"][:, x, y] = False
-                        valid_actions["unit_act"]["act_type"][UnitActType.PICKUP, x, y] = True
-                        valid_actions["unit_act"]["act_type"][UnitActType.TRANSFER, x, y] = True
+                if False:
+                    # don't recharge if on top of factory, can pickup instead
+                    if factory_under_unit(unit.pos, game_state.factories[player]) is not None:
+                        valid_actions["unit_act"]["act_type"][UnitActType.RECHARGE, x, y] = False
+                        if unit.power < low_power:
+                            valid_actions["unit_act"]["act_type"][:, x, y] = False
+                            valid_actions["unit_act"]["act_type"][UnitActType.PICKUP, x, y] = True
+                            valid_actions["unit_act"]["act_type"][UnitActType.TRANSFER, x, y] = True
 
                 # if battery not at least half empty, don't recharge
                 if unit.power >= (battery_capacity / 2):
@@ -430,7 +431,7 @@ class ActionParser():
                             can_move_to_factory = True
 
             cargo_capacity = unit.unit_cfg.CARGO_SPACE
-            cargo_full = sum([unit.cargo.ice, unit.cargo.ore, unit.cargo.water, unit.cargo.metal]) >= cargo_capacity * 0.6
+            cargo_full = sum([unit.cargo.ice, unit.cargo.ore, unit.cargo.water, unit.cargo.metal]) >= cargo_capacity * 0.9
             if False:
                 cargo_full = cargo_full and sum([unit.cargo.ice, unit.cargo.ore, unit.cargo.water, unit.cargo.metal]) > 200
             cargo_empty = sum([unit.cargo.ice, unit.cargo.ore, unit.cargo.water, unit.cargo.metal]) == 0
@@ -449,11 +450,12 @@ class ActionParser():
                     if factory_under_unit(target_pos, game_state.factories[player]) is not None:
                         valid_actions["unit_act"]["transfer"]["direction"][direction, x, y] = True
 
-                        if cargo_full:
-                            valid_actions["unit_act"]["act_type"][:, x, y] = False
-                            valid_actions["unit_act"]["act_type"][UnitActType.TRANSFER, x, y] = True
+                        if False:
+                            if cargo_full:
+                                valid_actions["unit_act"]["act_type"][:, x, y] = False
+                                valid_actions["unit_act"]["act_type"][UnitActType.TRANSFER, x, y] = True
 
-            if True:
+            if False:
                 # if low power or holding cargo, disable agent from moving away from factory
                 if (unit.power < low_power or not cargo_empty) and can_move_to_factory:
                     for direction in non_factory_moves:
@@ -482,7 +484,7 @@ class ActionParser():
                         valid_actions["unit_act"]["dig"]['repeat'][0, x, y] = False
                         valid_actions["unit_act"]["dig"]['repeat'][1, x, y] = True
 
-                        if True:
+                        if False:
                             rubble_on_tile = board.rubble[x, y]
                             dig_cost = unit.unit_cfg.DIG_COST
                             rubble_destory_on_dig = unit.unit_cfg.DIG_RUBBLE_REMOVED
