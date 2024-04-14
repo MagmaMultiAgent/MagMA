@@ -17,7 +17,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 from policy.net import Net
-from policy.simple_net import SimpleNet
+from policy.simple_net import SimpleNet, create_embedding_trace
 from luxenv import LuxSyncVectorEnv
 import tree
 from utils import save_args, save_model, cal_mean_return, make_env
@@ -25,6 +25,8 @@ import gc
 from pprint import pprint
 
 import seeding
+
+import copy
 
 import logging
 logging.basicConfig(level=logging.DEBUG,
@@ -220,20 +222,27 @@ def create_model(device: Union[torch.device, str], load_model_path: Union[str, N
     return agent, optimizer
 
 
-def create_traced_model(agent: Net, obs: TensorPerPlayer, envs: LuxSyncVectorEnv, device: Union[torch.device, str], forced_action: Union[TensorPerKey, None] = None):
+def create_traced_model(agent: Net, obs: TensorPerPlayer, envs: LuxSyncVectorEnv, device: Union[torch.device, str]):
     valid_action = envs.get_valid_actions(0)
     valid_action = tree.map_structure(lambda x: np2torch(x, torch.bool), valid_action)
     obs = obs['player_0']
 
-    traced_model = torch.jit.trace(agent, (
-        obs['global_feature'].to(device),
-        obs['map_feature'].to(device),
-        obs['factory_feature'].to(device),
-        obs['unit_feature'].to(device),
-        obs['location_feature'].to(device),
-        tree.map_structure(lambda x: x.to(device), valid_action),
-        None if forced_action is None else tree.map_structure(lambda x: x.to(device), forced_action)
-    ))
+    traced_model = copy.deepcopy(agent)
+    traced_model.eval()
+    actor_embedding = traced_model.embedding_actor
+    value_embedding = traced_model.embedding_value
+
+    gobal_feature = obs['global_feature'].to(device)
+    map_feature = obs['map_feature'].to(device)
+    factory_feature = obs['factory_feature'].to(device)
+    unit_feature = obs['unit_feature'].to(device)
+
+    actor_embedding_trace = create_embedding_trace(actor_embedding, gobal_feature, map_feature, factory_feature, unit_feature)
+    value_embedding_trace = create_embedding_trace(value_embedding, gobal_feature, map_feature, factory_feature, unit_feature)
+
+    traced_model.embedding_actor = actor_embedding_trace
+    traced_model.embedding_value = value_embedding_trace
+
     return traced_model
 
 
