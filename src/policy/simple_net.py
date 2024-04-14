@@ -235,18 +235,6 @@ class SimpleNet(nn.Module):
             SEResidual("se_residual_4", 2, self.embedding_dims, reduction=4, seed=seed),
 
             EmbeddingConv("hidden_conv_3", self.embedding_dims, self.embedding_dims, seed=seed),
-
-            SEResidual("se_residual_5", 2, self.embedding_dims, reduction=4, seed=seed),
-
-            SEResidual("se_residual_6", 2, self.embedding_dims, reduction=4, seed=seed),
-
-            EmbeddingConv("hidden_conv_4", self.embedding_dims, self.embedding_dims, seed=seed),
-
-             SEResidual("se_residual_7", 2, self.embedding_dims, reduction=4, seed=seed),
-
-            SEResidual("se_residual_8", 2, self.embedding_dims, reduction=4, seed=seed),
-
-            EmbeddingConv("hidden_conv_5", self.embedding_dims, self.embedding_dims, seed=seed),
         )
 
         self.embedding_basic_value = nn.Sequential(
@@ -263,18 +251,6 @@ class SimpleNet(nn.Module):
             SEResidual("_se_residual_4", 2, self.embedding_dims, reduction=4, seed=seed),
 
             EmbeddingConv("_hidden_conv_3", self.embedding_dims, self.embedding_dims, seed=seed),
-
-            SEResidual("_se_residual_5", 2, self.embedding_dims, reduction=4, seed=seed),
-
-            SEResidual("_se_residual_6", 2, self.embedding_dims, reduction=4, seed=seed),
-
-            EmbeddingConv("_hidden_conv_4", self.embedding_dims, self.embedding_dims, seed=seed),
-
-            SEResidual("_se_residual_7", 2, self.embedding_dims, reduction=4, seed=seed),
-
-            SEResidual("_se_residual_8", 2, self.embedding_dims, reduction=4, seed=seed),
-
-            EmbeddingConv("_hidden_conv_5", self.embedding_dims, self.embedding_dims, seed=seed),
         )
 
         # HEADS
