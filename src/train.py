@@ -8,6 +8,9 @@ from distutils.util import strtobool
 import sys
 from typing import Union
 
+import os
+os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -102,9 +105,9 @@ def parse_args():
         help="total timesteps of the experiments")
     parser.add_argument("--learning-rate", type=float, default=2e-4,
         help="the learning rate of the optimizer")
-    parser.add_argument("--num-envs", type=int, default=8,
+    parser.add_argument("--num-envs", type=int, default=32,
         help="the number of parallel game environments")
-    parser.add_argument("--num-steps", type=int, default=1024,
+    parser.add_argument("--num-steps", type=int, default=512,
         help="the number of steps to run in each environment per policy rollout")
     parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggle learning rate annealing for policy and value networks")
@@ -112,11 +115,11 @@ def parse_args():
         help="the discount factor gamma")
     parser.add_argument("--gae-lambda", type=float, default=0.95,
         help="the lambda for the general advantage estimation")
-    parser.add_argument("--train-num-collect", type=int, default=8192,
+    parser.add_argument("--train-num-collect", type=int, default=16384,
         help="the number of data collections in training process")
-    parser.add_argument("--num-minibatches", type=int, default=4,
+    parser.add_argument("--num-minibatches", type=int, default=32,
         help="the number of mini-batches")
-    parser.add_argument("--update-epochs", type=int, default=2,
+    parser.add_argument("--update-epochs", type=int, default=10,
         help="the K epochs to update the policy")
     parser.add_argument("--norm-adv", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggles advantages normalization")
@@ -132,15 +135,15 @@ def parse_args():
         help="the maximum norm for the gradient clipping")
     parser.add_argument("--target-kl", type=float, default=None,
         help="the target KL divergence threshold")
-    parser.add_argument("--save-interval", type=int, default=32768,
+    parser.add_argument("--save-interval", type=int, default=65536,
         help="global step interval to save model")
     parser.add_argument("--load-model-path", type=str, default=None,
         help="path for pretrained model loading")
     parser.add_argument("--replay-dir", type=str, default=None,
         help="replay dirs to reset state")
-    parser.add_argument("--evaluate-interval", type=int, default=4096,
+    parser.add_argument("--evaluate-interval", type=int, default=65536,
         help="evaluation steps")
-    parser.add_argument("--evaluate-num", type=int, default=8,
+    parser.add_argument("--evaluate-num", type=int, default=16,
         help="evaluation numbers")
 
     args = parser.parse_args()
@@ -158,7 +161,7 @@ def parse_args():
         args.evaluate_num = 2
 
     # Reward per entity
-    args.max_entity_number = 1000
+    args.max_entity_number = 500
 
     # size of a batch
     args.batch_size = int(args.num_envs * args.num_steps)
@@ -446,28 +449,8 @@ def write(writer, prefix, results, step):
         else:
             writer.add_scalar(new_prefix, value, step)
 
-def eval(agent: torch.nn.Module, writer, seed: int = 0, num_envs: int = 8, device: Union[torch.device, str] = "cpu", step: int = 0) -> dict:
-    print("Evaluating")
-    with torch.no_grad():
-        eval_seed = seed
-        eval_envs = LuxSyncVectorEnv(
-            [make_env(i, eval_seed + i, None, device=device) for i in range(num_envs)],
-            device=device
-        )
-        eval_results = eval_envs.eval(agent)
-        if writer:
-            write(writer, "eval", eval_results, step)
-        pprint({
-            "avg_return_total": eval_results["avg_return_total"],
-            "avg_episode_length": eval_results["avg_episode_length"],
-            "total_ice_transfered": eval_results["avg_info_total"]["sum_ice_transfered"],
-            "total_ice_mined": eval_results["avg_info_total"]["sum_ice_mined"],
-        })
-        eval_envs.close()
-        del eval_envs
 
-
-def eval2(agent: torch.nn.Module, writer, seed: int = 0, num_envs: int = 8, device: Union[torch.device, str] = "cpu", step: int = 0) -> dict:
+def eval2(agent: torch.nn.Module, writer, seed: int = 0, num_envs: int = 8, device: Union[torch.device, str] = "cpu", global_step: int = 0) -> dict:
     print("Evaluating")
     with torch.no_grad():
         eval_seed = seed
@@ -537,6 +520,9 @@ def eval2(agent: torch.nn.Module, writer, seed: int = 0, num_envs: int = 8, devi
             _done = done.all(axis=-1).any(-1)
             first_episode = first_episode & ~_done
 
+            if (~first_episode).all():
+                break
+
         # Need a list of tuples where each tuple contains info about environment
         # - episode_length
         # - return_own
@@ -563,7 +549,8 @@ def eval2(agent: torch.nn.Module, writer, seed: int = 0, num_envs: int = 8, devi
         ]
         eval_results = envs.process_eval_results(results)
         if writer:
-            write(writer, "eval", eval_results, step)
+            write(writer, "eval", eval_results, global_step)
+        print(f"Finished evaluating for step {global_step}")
         pprint({
             "avg_return_total": eval_results["avg_return_total"],
             "avg_episode_length": eval_results["avg_episode_length"],
@@ -599,6 +586,7 @@ def main(args, model_device, store_device):
     # Create model
     agent, optimizer = create_model(model_device, args.load_model_path, args.learning_rate, args.max_entity_number, args.seed)
     traced_model = None
+
     # reset seed after model creation
     seeding.set_seed(args.seed)
 
@@ -707,6 +695,8 @@ def main(args, model_device, store_device):
             done = terminated | truncation
             # all entities done for a player, at least one player is done
             _done = done.all(axis=-1).any(-1)
+            if step == args.num_steps-1:
+                _done[:] = 1
             next_done = np2torch(done, torch.bool)
 
             # Save rewards for PPO
@@ -905,8 +895,10 @@ def main(args, model_device, store_device):
                 if LOG:
                     writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
                     writer.add_scalar("charts/SPS", round(global_step / (time.time() - start_time), 2), global_step)
+                    writer.add_scalar("charts/SPR", round((time.time() - start_time) / update, 2), global_step)
 
                 logger.info(f"SPS: {round(global_step / (time.time() - start_time), 2)}")
+                logger.info(f"SPR: {round((time.time() - start_time) / update, 2)}")
                 logger.info(f"global step: {global_step}")
 
                 reset_store(obs)

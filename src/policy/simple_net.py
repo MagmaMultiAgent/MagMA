@@ -12,6 +12,13 @@ import hashlib
 used_names = set()
 
 
+def create_embedding_trace(embedding_layer, global_feature, map_feature, factory_feature, unit_feature):
+    B, _, H, W = map_feature.shape
+    global_feature = global_feature[..., None, None].expand(-1, -1, H, W)
+    all_features = torch.cat([global_feature, factory_feature, unit_feature, map_feature], dim=1)
+    return torch.jit.trace(embedding_layer, all_features)
+
+
 def myHash(text: str) -> int:
     text_bytes = text.encode('utf-8')
     hash_str = hashlib.md5(text_bytes).hexdigest()
