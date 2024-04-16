@@ -158,6 +158,7 @@ class ActionParser():
                 else:
                     space_limit = robot.unit_cfg.CARGO_SPACE
                 robot_space = space_limit - robot_amount
+                target_amount = robot_space
 
                 for _, target in factories.items():
                     if (np.abs(np.array(robot.pos) - target.pos) <= 1).all():
