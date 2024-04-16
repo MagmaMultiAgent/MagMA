@@ -128,6 +128,7 @@ class ActionParser():
             if act_type == UnitActType.TRANSFER:
                 self_amount = get_resource_amount(robot, resource)
                 target_pos = robot.pos + lux_actions.move_deltas[dir]
+                target_space = self_amount
 
                 # if the target is a unit
                 for _, target in robots.items():
