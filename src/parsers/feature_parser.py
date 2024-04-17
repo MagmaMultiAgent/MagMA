@@ -484,17 +484,12 @@ class FeatureParser():
     @staticmethod
     def get_unit_id(unit, factories):
         unit_id = int(unit.unit_id.split('_')[1])
-        # return unit_id + 10
-        if unit.unit_type == 'HEAVY':
-            return 0
-        else:
-            return 1
+        return unit_id + 10
     
     @staticmethod
     def get_factory_id(factory):
         factory_id = int(factory.unit_id.split('_')[1])
-        # return factory_id
-        return 2
+        return factory_id
 
     @staticmethod
     def cluster_board(board):
