@@ -35,7 +35,7 @@ class IceRewardParser(DenseRewardParser):
 
             unit_count = own_global_info["unit_count"]
 
-            own_reward_weight = 0.0
+            own_reward_weight = 0.5
             unit_groups = {}
             for unit_name, unit in own_unit_info.items():
                 unit_reward = 0
