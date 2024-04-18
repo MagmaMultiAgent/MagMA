@@ -94,8 +94,7 @@ class IceRewardParser(DenseRewardParser):
 
             global_rev = 0
             if len(unit_groups) > 0:
-                total_reward = sum(unit_groups.values()) / len(unit_groups)
-                global_rev /= len(unit_groups)
+                total_reward = sum(unit_groups.values())
             else:
                 total_reward = 0
 
