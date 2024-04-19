@@ -484,13 +484,13 @@ class FeatureParser():
     @staticmethod
     def get_unit_id(unit, factories):
         unit_id = int(unit.unit_id.split('_')[1])
+        unit_id = unit_id % 4
         return unit_id + 10
     
     @staticmethod
     def get_factory_id(factory):
         factory_id = int(factory.unit_id.split('_')[1])
-        # return factory_id
-        return 0
+        return factory_id
 
     @staticmethod
     def cluster_board(board):
