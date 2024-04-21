@@ -484,9 +484,8 @@ class FeatureParser():
     @staticmethod
     def get_unit_id(unit, factories):
         unit_id = int(unit.unit_id.split('_')[1])
-        unit_id = unit_id % 2
-        # return unit_id + 10
-        return 10
+        unit_id = unit_id % 8
+        return unit_id + 10
     
     @staticmethod
     def get_factory_id(factory):
