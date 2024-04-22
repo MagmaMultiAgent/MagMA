@@ -342,6 +342,10 @@ class LuxEnv(gym.Env):
                 terminations_final[player, group_id] = terminations[player]
                 truncations_final[player, group_id] = truncations[player]
 
+            # global setting
+            terminations_final[player, :] = terminations[player]
+            truncations_final[player, :] = truncations[player]
+
         reward, sub_rewards = self.reward_parser.parse(
             dones,
             self.game_state,
