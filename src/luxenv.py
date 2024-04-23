@@ -346,6 +346,12 @@ class LuxEnv(gym.Env):
             terminations_final[player, :] = terminations[player]
             truncations_final[player, :] = truncations[player]
 
+            # no future rewards
+            terminations_final[player, :] = 1
+            truncations_final[player, :] = 1
+            terminations_final[player, -1] = terminations[player]
+            truncations_final[player, -1] = truncations[player]
+
         reward, sub_rewards = self.reward_parser.parse(
             dones,
             self.game_state,
