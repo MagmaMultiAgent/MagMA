@@ -372,9 +372,11 @@ class SimpleNet(nn.Module):
 
         critic_value_unit = self.critic_unit_head(critic_embedding)[:, 0]
         critic_value_unit = self._gather_from_map(critic_value_unit, unit_pos)
+        critic_value_unit = 0 * critic_value_unit
 
         critic_value_factory = self.critic_factory_head(critic_embedding)[:, 0]
         critic_value_factory = self._gather_from_map(critic_value_factory, factory_pos)
+        critic_value_factory = 0 * critic_value_factory
 
         critic_value_global_unit = self.critic_global_unit_head(critic_embedding)[:, 0]
         critic_value_global_unit = critic_value_global_unit.view(B, -1).mean(dim=1)
