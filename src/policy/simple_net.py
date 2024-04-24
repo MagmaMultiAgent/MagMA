@@ -372,11 +372,9 @@ class SimpleNet(nn.Module):
 
         critic_value_unit = self.critic_unit_head(critic_embedding)[:, 0]
         critic_value_unit = self._gather_from_map(critic_value_unit, unit_pos)
-        critic_value_unit = 0 * critic_value_unit
 
         critic_value_factory = self.critic_factory_head(critic_embedding)[:, 0]
         critic_value_factory = self._gather_from_map(critic_value_factory, factory_pos)
-        critic_value_factory = 0 * critic_value_factory
 
         critic_value_global_unit = self.critic_global_unit_head(critic_embedding)[:, 0]
         critic_value_global_unit = critic_value_global_unit.view(B, -1).mean(dim=1)
@@ -412,6 +410,9 @@ class SimpleNet(nn.Module):
         entropy = torch.zeros((B, max_group_count), device=x.device)
         entropy = entropy.view(-1)
         output_action = {}
+
+        logp_global = torch.zeros(B, device=x.device)
+        entropy_global = torch.zeros(B, device=x.device)
 
         # factory actor
         factory_emb = self._gather_from_map(x, factory_pos)
@@ -461,6 +462,20 @@ class SimpleNet(nn.Module):
 
         logp = logp.view(B, max_group_count)
         entropy = entropy.view(B, max_group_count)
+
+        # sum
+        logp_global = logp.sum(dim=1)
+        entropy_global = entropy.sum(dim=1)
+        # same shape as logp
+        logp_global = logp_global[:, None].expand(-1, max_group_count)
+        entropy_global = entropy_global[:, None].expand(-1, max_group_count)
+
+        if True:
+            # assign global logprob to every non-zero logprob in a differentiable way
+            logp = (logp != 0) * logp_global
+        if False:
+            # assign global entropy to every non-zero entropy in a differentiable way
+            entropy = (entropy > 0) * entropy_global
 
         return logp, output_action, entropy
 
