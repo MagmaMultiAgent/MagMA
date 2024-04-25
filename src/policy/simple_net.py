@@ -470,12 +470,12 @@ class SimpleNet(nn.Module):
         logp_global = logp_global[:, None].expand(-1, max_group_count)
         entropy_global = entropy_global[:, None].expand(-1, max_group_count)
 
-        if True:
+        if False:
             # assign global logprob to every non-zero logprob in a differentiable way
             logp = (logp != 0) * logp_global
-        if False:
+        if True:
             # assign global entropy to every non-zero entropy in a differentiable way
-            entropy = (entropy > 0) * entropy_global
+            entropy = (entropy != 0) * entropy_global
 
         return logp, output_action, entropy
 
