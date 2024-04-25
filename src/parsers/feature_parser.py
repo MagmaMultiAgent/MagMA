@@ -484,7 +484,23 @@ class FeatureParser():
     @staticmethod
     def get_unit_id(unit, factories):
         unit_id = int(unit.unit_id.split('_')[1])
-        return unit_id + 10
+        unit_id = 0
+        # 4 unit IDs based on map quadrant
+        H, W = 48, 48
+        x, y = unit.pos
+        if x < H // 2:
+            if y < W // 2:
+                unit_id = 0
+            else:
+                unit_id = 1
+        else:
+            if y < W // 2:
+                unit_id = 2
+            else:
+                unit_id = 3
+        unit_id += 10
+        return unit_id
+        
     
     @staticmethod
     def get_factory_id(factory):
