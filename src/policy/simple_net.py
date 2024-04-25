@@ -473,7 +473,7 @@ class SimpleNet(nn.Module):
         if False:
             # assign global logprob to every non-zero logprob in a differentiable way
             logp = (logp != 0) * logp_global
-        if True:
+        if False:
             # assign global entropy to every non-zero entropy in a differentiable way
             entropy = (entropy != 0) * entropy_global
 
