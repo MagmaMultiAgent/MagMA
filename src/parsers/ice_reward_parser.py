@@ -69,11 +69,11 @@ class IceRewardParser(DenseRewardParser):
                 if factory_name not in last_count_factories:
                     continue
 
-                # lichen_count = factory["lichen_count"]
-                # lichen_reward = lichen_count / 20
-                # lichen_reward *= 0.1
-                # lichen_reward *= step_weight
-                # factory_reward += lichen_reward
+                lichen_count = factory["lichen_count"]
+                lichen_reward = lichen_count / 100
+                lichen_reward *= 0.1
+                lichen_reward *= step_weight_later
+                factory_reward += lichen_reward
 
                 cargo_ice = factory["cargo_ice"]
                 last_cargo_ice = last_count_factories[factory_name]['cargo_ice']
@@ -83,7 +83,7 @@ class IceRewardParser(DenseRewardParser):
 
                 factory_reward += ice_increment_reward
 
-                factory_reward /= 2  # don't count it twice (onece with gent, once with factory)
+                factory_reward /= 2  # don't count it twice (onece with unit, once with factory)
 
                 factory_reward *= reward_scale
 

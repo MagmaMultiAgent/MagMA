@@ -96,7 +96,7 @@ class FeatureParser():
             'enemy',
             # 'lichen',
             # 'lichen_strains',
-            # 'lichen_strains_own',
+            'own_lichen',
             # 'lichen_strains_enm',
             # 'valid_region_indicator',
             # 'factory_id',
@@ -415,6 +415,7 @@ class FeatureParser():
         # Factory
 
         factory_feature = {name: np.zeros_like(obs.board.ice, dtype=np.float32) for name in self.factory_feature_names}
+        lichen_strains_own = np.zeros_like(obs.board.lichen_strains, dtype=np.float32)
         for owner, factories in obs.factories.items():
             for fid, factory in factories.items():
                 x, y = factory.pos
@@ -432,6 +433,9 @@ class FeatureParser():
                 factory_feature['factory_water_cost'][x, y] = (water_cost - 0) / (heavy_cfg.CARGO_SPACE - 0) * 2 - 1
 
                 if owner == player:
+
+                    lichen_strains_own[obs.board.lichen_strains == factory.strain_id] = 1.0
+
                     for offset in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
                         dx, dy = offset
                         if 0 <= x + dx < obs.board.ice.shape[0] and 0 <= y + dy < obs.board.ice.shape[1]:
@@ -468,6 +472,8 @@ class FeatureParser():
             for dx, dy in deltas:
                 map_feature['enemy'][x + dx, y + dy] = 1.0
 
+        map_feature["own_lichen"] = (obs.board.lichen * lichen_strains_own) - 0 / (env_cfg.MAX_LICHEN_PER_TILE - 0) * 2 - 1
+
         # Assemble return
 
         global_feature = np.array(list(global_feature.values()))
@@ -484,21 +490,6 @@ class FeatureParser():
     @staticmethod
     def get_unit_id(unit, factories, units):
         unit_id = int(unit.unit_id.split('_')[1])
-        # if not heavy, get closest heavy
-        if unit.unit_type != 'HEAVY':
-            closest_heavy = None
-            closest_distance = sys.maxsize
-            for heavy in units:
-                if heavy.unit_type == 'HEAVY':
-                    distance = np.abs(np.array(unit.pos) - np.array(heavy.pos)).sum()
-                    if distance < closest_distance:
-                        closest_distance = distance
-                        closest_heavy = heavy
-            if closest_heavy is not None:
-                unit_id = int(closest_heavy.unit_id.split('_')[1])
-            else:
-                unit_id = 0
-
         unit_id += 10
         return unit_id
         

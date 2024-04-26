@@ -141,6 +141,7 @@ def get_single_observation_space(map_size):
         'rubble': 9999,
         'unit': 2,
         'enemy': 2,
+        'own_lichen': 9999,
 
         # 'unit_own': 2,
         # 'unit_enm': 2

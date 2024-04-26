@@ -240,7 +240,8 @@ class SimpleNet(nn.Module):
             "global": 2,
             "factory": 6,
             "unit": 4,
-            "map": 6,
+            # "map": 6,
+            "map": 7,
         }
         self.embedding_feature_count = sum(self.embedding_feature_counts.values())
         self.embedding_dims = 32

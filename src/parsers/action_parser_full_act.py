@@ -324,9 +324,11 @@ class ActionParser():
                 no_ruble = (board.rubble[adj_x, adj_y] == 0)
                 no_ice = (board.ice[adj_x, adj_y] == 0)
                 no_ore = (board.ore[adj_x, adj_y] == 0)
-                if (no_ruble & no_ice & no_ore).any():
+                # if not after 150 steps, don't water
+                early = game_state.env_steps < 128
+                if (no_ruble & no_ice & no_ore).any() and not early:
                     # if enough resources to build heavy, don't water
-                    factory_va[FactoryActType.WATER, x, y] = False
+                    factory_va[FactoryActType.WATER, x, y] = ~factory_va[FactoryActType.BUILD_HEAVY, x, y]
 
             # can't do nothing if heavy building is possible
             factory_va[FactoryActType.DO_NOTHING, x, y] = ~factory_va[FactoryActType.BUILD_HEAVY, x, y]
