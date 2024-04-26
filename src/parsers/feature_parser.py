@@ -254,7 +254,7 @@ class FeatureParser():
                 'ice_under': obs.board.ice[unit.pos[0], unit.pos[1]],
                 'x': unit.pos[0],
                 'y': unit.pos[1],
-                'group_id': self.get_unit_id(unit, factories)
+                'group_id': self.get_unit_id(unit, factories, units)
             }
         for factory in factories:
             factory_info[factory.unit_id] = {
@@ -446,7 +446,7 @@ class FeatureParser():
         for unit in units.values():
             x, y = unit.pos
 
-            unit_group_id = self.get_unit_id(unit, list(obs.factories[player].values()))
+            unit_group_id = self.get_unit_id(unit, list(obs.factories[player].values()), units.values())
             location_feature['unit'][x, y] = unit_group_id
 
             unit_type = unit.unit_type
@@ -482,16 +482,22 @@ class FeatureParser():
         return LuxFeature(global_feature, map_feature, factory_feature, unit_feature, location_feature)
 
     @staticmethod
-    def get_unit_id(unit, factories):
+    def get_unit_id(unit, factories, units):
         unit_id = int(unit.unit_id.split('_')[1])
-        unit_id = 0
-        # get closest factory
-        min_distance = sys.maxsize
-        for factory in factories:
-            distance = np.abs(np.array(factory.pos) - np.array(unit.pos)).sum()
-            if distance < min_distance:
-                min_distance = distance
-                unit_id = int(factory.unit_id.split('_')[1])
+        # if not heavy, get closest heavy
+        if unit.unit_type != 'HEAVY':
+            closest_heavy = None
+            closest_distance = sys.maxsize
+            for heavy in units:
+                if heavy.unit_type == 'HEAVY':
+                    distance = np.abs(np.array(unit.pos) - np.array(heavy.pos)).sum()
+                    if distance < closest_distance:
+                        closest_distance = distance
+                        closest_heavy = heavy
+            if closest_heavy is not None:
+                unit_id = int(closest_heavy.unit_id.split('_')[1])
+            else:
+                unit_id = 0
 
         unit_id += 10
         return unit_id
