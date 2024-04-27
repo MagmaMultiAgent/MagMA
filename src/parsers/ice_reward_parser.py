@@ -59,7 +59,7 @@ class IceRewardParser(DenseRewardParser):
                 unit_reward += ice_decrement_reward
                 unit_reward /= 2  # don't count it twice (onece with gent, once with factory)
 
-                if False:
+                if True:
                     # clearing away rubble from next to lichen and factories
                     # check if unit in same pos as last time
                     # check if unit is next to lichen or factory
@@ -67,7 +67,6 @@ class IceRewardParser(DenseRewardParser):
                         rubble_under = unit["rubble_under"]
                         last_rubble_under = last_count_units[unit_name]["rubble_under"]
                         rubber_decrease = max(last_rubble_under - rubble_under, 0) / 100 * 0.1
-                        print(f"rubber_decrease: {rubber_decrease}", file=sys.stderr)
                         unit_reward += rubber_decrease
 
                 unit_reward *= reward_scale
@@ -83,13 +82,6 @@ class IceRewardParser(DenseRewardParser):
                 if factory_name not in last_count_factories:
                     continue
 
-                # if game is over for both
-                if dones["player_0"] and dones["player_1"]:
-                    lichen_count = factory["lichen_count"]
-                    lichen_reward = lichen_count / 100
-                    lichen_reward *= step_weight_later
-                    factory_reward += lichen_reward
-
                 cargo_ice = factory["cargo_ice"]
                 last_cargo_ice = last_count_factories[factory_name]['cargo_ice']
                 ice_increment = max(cargo_ice - last_cargo_ice, 0) / 4  # 4 ice = 1 water
@@ -99,6 +91,13 @@ class IceRewardParser(DenseRewardParser):
                 factory_reward += ice_increment_reward
 
                 factory_reward /= 2  # don't count it twice (onece with unit, once with factory)
+
+                # if game is over for both and both have factories and more than 900 steps -> truncation after 1000 steps
+                if dones["player_0"] and dones["player_1"] and factory_count[0] > 0 and factory_count[1] > 0 and game_state[0].real_env_steps > 900:
+                    lichen_count = factory["lichen_count"]
+                    lichen_reward = lichen_count / 100
+                    lichen_reward *= 10
+                    factory_reward += lichen_reward
 
                 factory_reward *= reward_scale
 
