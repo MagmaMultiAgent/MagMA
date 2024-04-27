@@ -19,6 +19,9 @@ class IceRewardParser(DenseRewardParser):
         step_weight_later = 1 + (game_state[0].real_env_steps / 1000) * 0.1
         step_weight_early = 1 + ((1000 - game_state[0].real_env_steps) / 1000) * 0.1
 
+        # factory counts
+        factory_count = [global_info[f'player_{pid}']["factory_count"] for pid in range(2)]
+
         reward_scale = 0.01
 
         ice_norm = 1
@@ -69,11 +72,12 @@ class IceRewardParser(DenseRewardParser):
                 if factory_name not in last_count_factories:
                     continue
 
-                lichen_count = factory["lichen_count"]
-                lichen_reward = lichen_count / 100
-                lichen_reward *= 0.1
-                lichen_reward *= step_weight_later
-                factory_reward += lichen_reward
+                # if game is over for both
+                if dones["player_0"] and dones["player_1"]:
+                    lichen_count = factory["lichen_count"]
+                    lichen_reward = lichen_count / 100
+                    lichen_reward *= step_weight_later
+                    factory_reward += lichen_reward
 
                 cargo_ice = factory["cargo_ice"]
                 last_cargo_ice = last_count_factories[factory_name]['cargo_ice']
