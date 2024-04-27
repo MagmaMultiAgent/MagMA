@@ -59,6 +59,15 @@ class IceRewardParser(DenseRewardParser):
                 unit_reward += ice_decrement_reward
                 unit_reward /= 2  # don't count it twice (onece with gent, once with factory)
 
+                # clearing away rubble from next to lichen and factories
+                # check if unit in same pos as last time
+                # check if unit is next to lichen or factory
+                if unit["x"] == last_count_units[unit_name]["x"] and unit["y"] == last_count_units[unit_name]["y"] and unit["next_to_lichen_or_factory"]:
+                    rubble_under = unit["rubble_under"]
+                    last_rubble_under = last_count_units[unit_name]["rubble_under"]
+                    rubber_decrease = max(last_rubble_under - rubble_under, 0) / 100 * 0.1
+                    unit_reward += rubber_decrease
+
                 unit_reward *= reward_scale
 
                 group_id = unit["group_id"]

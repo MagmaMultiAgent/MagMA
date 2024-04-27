@@ -97,6 +97,7 @@ class FeatureParser():
             # 'lichen',
             # 'lichen_strains',
             'own_lichen',
+            # 'next_to_lichen_or_factory',
             # 'lichen_strains_enm',
             # 'valid_region_indicator',
             # 'factory_id',
@@ -184,7 +185,8 @@ class FeatureParser():
                 'ice_under',
                 'x',
                 'y',
-                'group_id'
+                'group_id',
+                'next_to_lichen_or_factory'
             ],
             'factories': [
                 'power',
@@ -243,6 +245,37 @@ class FeatureParser():
         factory_info = {}
 
         for unit in units:
+
+            next_to_lichen_or_factory = False
+            for factory in factories:
+                for offset in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+                    dx, dy = offset
+                    fx, fy = factory.pos
+                    fx, fy = fx + dx, fy + dy
+                    ux, uy = unit.pos
+                    # if offsetted factory poss is next to unit (factory is 3x3), (less than 2 distance away)
+                    # OFFSET IS STILL PART OF FACTORY
+                    if abs(fx - ux) <= 1 and abs(fy - uy) <= 1:
+                        next_to_lichen_or_factory = True
+                        break
+            # shift lichen boards by 1 in each 4 directions and then or them
+            lichen_board_up = np.roll(obs.board.lichen, -1, axis=0)
+            lichen_board_up[-1, :] = 0
+            lichen_board_down = np.roll(obs.board.lichen, 1, axis=0)
+            lichen_board_down[0, :] = 0
+            lichen_board_left = np.roll(obs.board.lichen, -1, axis=1)
+            lichen_board_left[:, -1] = 0
+            lichen_board_right = np.roll(obs.board.lichen, 1, axis=1)
+            lichen_board_right[:, 0] = 0
+
+            next_to_lichen_or_factory = not (obs.board.lichen[unit.pos[0], unit.pos[1]] > 0) and (
+                                            next_to_lichen_or_factory or \
+                                            (lichen_board_up[unit.pos[0], unit.pos[1]] > 0) or \
+                                            (lichen_board_down[unit.pos[0], unit.pos[1]] > 0) or \
+                                            (lichen_board_left[unit.pos[0], unit.pos[1]] > 0) or \
+                                            (lichen_board_right[unit.pos[0], unit.pos[1]] > 0)
+                                        )
+
             unit_info[unit.unit_id] = {
                 'heavy': int(unit.unit_type == 'HEAVY'),
                 'power': unit.power,
@@ -254,7 +287,8 @@ class FeatureParser():
                 'ice_under': obs.board.ice[unit.pos[0], unit.pos[1]],
                 'x': unit.pos[0],
                 'y': unit.pos[1],
-                'group_id': self.get_unit_id(unit, factories, units)
+                'group_id': self.get_unit_id(unit, factories, units),
+                'next_to_lichen_or_factory': int(next_to_lichen_or_factory)
             }
         for factory in factories:
             factory_info[factory.unit_id] = {
@@ -440,7 +474,6 @@ class FeatureParser():
                         dx, dy = offset
                         if 0 <= x + dx < obs.board.ice.shape[0] and 0 <= y + dy < obs.board.ice.shape[1]:
                             map_feature['factory'][x + dx, y + dy] = 1.0
-                            pass
 
         # Unit
 
