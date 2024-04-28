@@ -27,7 +27,7 @@ import os
 import seeding
 
 ### The model path
-PATH = 'mt_standard_scaledicein_116_116_res2_116_v4s_f_a_p_bs_model_196608.pth'
+PATH = 'aa_result_lichen_rewend_rewrub10_seed42_0_model_86016.pth'
 ### DO NOT REMOVE THE FOLLOWING CODE ###
 agent_dict = (
     dict()
@@ -36,7 +36,7 @@ agent_prev_obs = dict()
     
 np.set_printoptions(threshold=sys.maxsize)
 
-seeding.set_seed(42)
+seeding.set_seed(0)
 
 def agent_fn(observation, configurations, i):
     """
@@ -49,7 +49,7 @@ def agent_fn(observation, configurations, i):
     remainingOverageTime = observation.remainingOverageTime
     if step == 0:
         env_cfg = EnvConfig.from_dict(configurations["env_cfg"])
-        agent_dict[player] = SimpleNet(500)
+        agent_dict[player] = SimpleNet(500, 0)
         agent_prev_obs[player] = dict()
         agent = agent_dict[player]
         agent.load_state_dict(torch.load(PATH,map_location=torch.device('cpu')))

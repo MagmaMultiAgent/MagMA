@@ -156,7 +156,7 @@ def parse_args():
     # Test arguments
     if True:
         args.num_steps = 200
-        args.num_envs = 4
+        args.num_envs = 1
         args.train_num_collect = args.num_envs*args.num_steps
         args.evaluate_interval = None
         args.save_interval = None
@@ -219,6 +219,11 @@ def create_model(device: Union[torch.device, str], load_model_path: Union[str, N
         print('load successfully')
 
     optimizer = optim.Adam(agent.parameters(), lr=learning_rate, eps=1e-5)
+
+    # get parameter count of agent
+    param_count = sum([p.numel() for p in agent.parameters() if p.requires_grad])
+    print(f"Agent parameter count: {param_count}")
+
     return agent, optimizer
 
 
@@ -612,7 +617,7 @@ def main(args, model_device, store_device):
     num_updates = args.total_timesteps // args.batch_size
 
     # Evaluate at the beggining
-    eval2(agent, eval_envs, writer, seed=0, num_envs=args.evaluate_num, device=model_device, global_step=global_step)
+    # eval2(agent, eval_envs, writer, seed=0, num_envs=args.evaluate_num, device=model_device, global_step=global_step)
 
     # Init value stores for PPO
     # Store the value on 'store_device' (cpu)
@@ -921,7 +926,7 @@ def main(args, model_device, store_device):
 
             # Evaluate initially
             if args.evaluate_interval and (global_step - last_eval_step) >= args.evaluate_interval:
-                eval2(agent, eval_envs, writer, seed=0, num_envs=args.evaluate_num, device=model_device, global_step=global_step)
+                # eval2(agent, eval_envs, writer, seed=0, num_envs=args.evaluate_num, device=model_device, global_step=global_step)
                 last_eval_step = global_step
 
             # Save model
