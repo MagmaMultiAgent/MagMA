@@ -96,7 +96,7 @@ class FeatureParser():
             'enemy',
             # 'lichen',
             # 'lichen_strains',
-            'own_lichen',
+            # 'own_lichen',
             # 'next_to_lichen_or_factory',
             # 'lichen_strains_enm',
             # 'valid_region_indicator',
@@ -505,7 +505,7 @@ class FeatureParser():
             for dx, dy in deltas:
                 map_feature['enemy'][x + dx, y + dy] = 1.0
 
-        map_feature["own_lichen"] = (obs.board.lichen * lichen_strains_own) - 0 / (env_cfg.MAX_LICHEN_PER_TILE - 0) * 2 - 1
+        # map_feature["own_lichen"] = (obs.board.lichen * lichen_strains_own) - 0 / (env_cfg.MAX_LICHEN_PER_TILE - 0) * 2 - 1
 
         # Assemble return
 

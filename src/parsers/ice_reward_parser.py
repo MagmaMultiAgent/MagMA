@@ -59,7 +59,7 @@ class IceRewardParser(DenseRewardParser):
                 unit_reward += ice_decrement_reward
                 unit_reward /= 2  # don't count it twice (onece with gent, once with factory)
 
-                if True:
+                if False:
                     # clearing away rubble from next to lichen and factories
                     # check if unit in same pos as last time
                     # check if unit is next to lichen or factory
@@ -92,12 +92,13 @@ class IceRewardParser(DenseRewardParser):
 
                 factory_reward /= 2  # don't count it twice (onece with unit, once with factory)
 
-                # if game is over for both and both have factories and more than 900 steps -> truncation after 1000 steps
-                if dones["player_0"] and dones["player_1"] and factory_count[0] > 0 and factory_count[1] > 0 and game_state[0].real_env_steps > 900:
-                    lichen_count = factory["lichen_count"]
-                    lichen_reward = lichen_count / 100
-                    lichen_reward *= 10
-                    factory_reward += lichen_reward
+                if False:
+                    # if game is over for both and both have factories and more than 900 steps -> truncation after 1000 steps
+                    if dones["player_0"] and dones["player_1"] and factory_count[0] > 0 and factory_count[1] > 0 and game_state[0].real_env_steps > 900:
+                        lichen_count = factory["lichen_count"]
+                        lichen_reward = lichen_count / 100
+                        lichen_reward *= 10
+                        factory_reward += lichen_reward
 
                 factory_reward *= reward_scale
 
