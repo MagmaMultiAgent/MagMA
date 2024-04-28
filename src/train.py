@@ -155,7 +155,7 @@ def parse_args():
 
     # Test arguments
     if True:
-        args.num_steps = 200
+        args.num_steps = 50
         args.num_envs = 1
         args.train_num_collect = args.num_envs*args.num_steps
         args.evaluate_interval = None
@@ -342,6 +342,7 @@ def calculate_loss(advantages: torch.Tensor,
                    values: torch.Tensor,
                    newvalue: torch.Tensor,
                    entropy: torch.Tensor,
+                   mb_logprobs: torch.Tensor,
                    ratio: torch.Tensor,
                    max_entity_number: int,
                    clip_vloss: bool,
@@ -354,6 +355,17 @@ def calculate_loss(advantages: torch.Tensor,
     Calculate the loss
     """
     newvalue = newvalue.view(-1, max_entity_number)
+
+    top_ind = torch.topk(advantages, 4, dim=1).indices
+    advantages = torch.gather(advantages, 1, top_ind)
+    returns = torch.gather(returns, 1, top_ind)
+    values = torch.gather(values, 1, top_ind)
+    newvalue = torch.gather(newvalue, 1, top_ind)
+    entropy = torch.gather(entropy, 1, top_ind)
+    ratio = torch.gather(ratio, 1, top_ind)
+    
+    mb_logprobs = torch.gather(mb_logprobs, 1, top_ind)
+    valid_samples = torch.where(mb_logprobs != 0)
 
     advantages = advantages[valid_samples]
     returns = returns[valid_samples]
@@ -426,8 +438,6 @@ def optimize_for_player(player: str,
         mb_returns = (b_returns[player][mb_inds]).to(device)
         mb_values = (b_values[player][mb_inds]).to(device)
 
-        valid_samples = torch.where(mb_logprobs != 0)
-
         newlogprob, newvalue, _, entropy = sample_action_for_player(agent, mb_obs, mb_va, device, mb_actions)
 
         logratio = newlogprob - mb_logprobs
@@ -445,7 +455,7 @@ def optimize_for_player(player: str,
             else:
                 mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
 
-        loss, pg_loss, entropy_loss, v_loss = calculate_loss(mb_advantages, mb_returns, mb_values, newvalue, entropy, ratio, max_entity_number, clip_vloss, clip_coef, ent_coef, vf_coef, valid_samples)
+        loss, pg_loss, entropy_loss, v_loss = calculate_loss(mb_advantages, mb_returns, mb_values, newvalue, entropy, mb_logprobs, ratio, max_entity_number, clip_vloss, clip_coef, ent_coef, vf_coef)
 
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
