@@ -244,37 +244,53 @@ class FeatureParser():
         unit_info = {}
         factory_info = {}
 
+        # new infos based on previous obs
+        global_info['ice_transfered'] = 0
+        global_info['ore_transfered'] = 0
+        global_info['ice_mined'] = 0
+        global_info['ore_mined'] = 0
+        global_info['lichen_grown'] = 0
+        global_info['unit_created'] = 0
+        global_info['light_created'] = 0
+        global_info['heavy_created'] = 0
+        global_info['unit_destroyed'] = 0
+        global_info['light_destroyed'] = 0
+        global_info['heavy_destroyed'] = 0
+
         for unit in units:
 
             next_to_lichen_or_factory = False
-            for factory in factories:
-                for offset in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
-                    dx, dy = offset
-                    fx, fy = factory.pos
-                    fx, fy = fx + dx, fy + dy
-                    ux, uy = unit.pos
-                    # if offsetted factory poss is next to unit (factory is 3x3), (less than 2 distance away)
-                    # OFFSET IS STILL PART OF FACTORY
-                    if abs(fx - ux) <= 1 and abs(fy - uy) <= 1:
-                        next_to_lichen_or_factory = True
-                        break
-            # shift lichen boards by 1 in each 4 directions and then or them
-            lichen_board_up = np.roll(obs.board.lichen, -1, axis=0)
-            lichen_board_up[-1, :] = 0
-            lichen_board_down = np.roll(obs.board.lichen, 1, axis=0)
-            lichen_board_down[0, :] = 0
-            lichen_board_left = np.roll(obs.board.lichen, -1, axis=1)
-            lichen_board_left[:, -1] = 0
-            lichen_board_right = np.roll(obs.board.lichen, 1, axis=1)
-            lichen_board_right[:, 0] = 0
+            if False:
+                for factory in factories:
+                    for offset in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+                        dx, dy = offset
+                        fx, fy = factory.pos
+                        fx, fy = fx + dx, fy + dy
+                        ux, uy = unit.pos
+                        # if offsetted factory poss is next to unit (factory is 3x3), (less than 2 distance away)
+                        # OFFSET IS STILL PART OF FACTORY
+                        if abs(fx - ux) <= 1 and abs(fy - uy) <= 1:
+                            next_to_lichen_or_factory = True
+                            break
+                
+                # shift lichen boards by 1 in each 4 directions and then or them
+                lichen_board_up = np.roll(obs.board.lichen, -1, axis=0)
+                lichen_board_up[-1, :] = 0
+                lichen_board_down = np.roll(obs.board.lichen, 1, axis=0)
+                lichen_board_down[0, :] = 0
+                lichen_board_left = np.roll(obs.board.lichen, -1, axis=1)
+                lichen_board_left[:, -1] = 0
+                lichen_board_right = np.roll(obs.board.lichen, 1, axis=1)
+                lichen_board_right[:, 0] = 0
 
-            next_to_lichen_or_factory = not (obs.board.lichen[unit.pos[0], unit.pos[1]] > 0) and (
-                                            next_to_lichen_or_factory or \
-                                            (lichen_board_up[unit.pos[0], unit.pos[1]] > 0) or \
-                                            (lichen_board_down[unit.pos[0], unit.pos[1]] > 0) or \
-                                            (lichen_board_left[unit.pos[0], unit.pos[1]] > 0) or \
-                                            (lichen_board_right[unit.pos[0], unit.pos[1]] > 0)
-                                        )
+            if False:
+                next_to_lichen_or_factory = not (obs.board.lichen[unit.pos[0], unit.pos[1]] > 0) and (
+                                                next_to_lichen_or_factory or \
+                                                (lichen_board_up[unit.pos[0], unit.pos[1]] > 0) or \
+                                                (lichen_board_down[unit.pos[0], unit.pos[1]] > 0) or \
+                                                (lichen_board_left[unit.pos[0], unit.pos[1]] > 0) or \
+                                                (lichen_board_right[unit.pos[0], unit.pos[1]] > 0)
+                                            )
 
             unit_info[unit.unit_id] = {
                 'heavy': int(unit.unit_type == 'HEAVY'),
@@ -290,87 +306,18 @@ class FeatureParser():
                 'group_id': self.get_unit_id(unit, factories, units),
                 'next_to_lichen_or_factory': int(next_to_lichen_or_factory)
             }
-        for factory in factories:
-            factory_info[factory.unit_id] = {
-                'power': factory.power,
-                'cargo_ice': factory.cargo.ice,
-                'cargo_ore': factory.cargo.ore,
-                'cargo_water': factory.cargo.water,
-                'cargo_metal': factory.cargo.metal,
-                'water_cost': np.sum(obs.board.lichen_strains == factory.strain_id) // obs.env_cfg.LICHEN_WATERING_COST_FACTOR + 1,
-                'lichen_count': obs.board.lichen[obs.board.lichen_strains == factory.strain_id].sum(),
-                'x': factory.pos[0],
-                'y': factory.pos[1],
-                'group_id': self.get_factory_id(factory)
-            }
 
-        global_info['light_count'] = sum(int(u.unit_type == 'LIGHT') for u in units)
-        global_info['heavy_count'] = sum(int(u.unit_type == 'HEAVY') for u in units)
-        global_info['unit_count'] = global_info['light_count'] + global_info['heavy_count']
-        global_info["factory_count"] = len(factories)
+            global_info['unit_ice'] += unit.cargo.ice
+            global_info['unit_ore'] += unit.cargo.ore
+            global_info['unit_water'] += unit.cargo.water
+            global_info['unit_metal'] += unit.cargo.metal
+            global_info['unit_power'] += unit.power
 
-        global_info['unit_ice'] = sum(u.cargo.ice for u in units)
-        global_info['unit_ore'] = sum(u.cargo.ore for u in units)
-        global_info['unit_water'] = sum(u.cargo.water for u in units)
-        global_info['unit_metal'] = sum(u.cargo.metal for u in units)
-        global_info['unit_power'] = sum(u.power for u in units)
+            global_info['light_count'] += int(unit.unit_type == 'LIGHT')
+            global_info['heavy_count'] += int(unit.unit_type == 'HEAVY')
+            global_info['unit_count'] += 1
 
-        global_info['factory_ice'] = sum(f.cargo.ice for f in factories)
-        global_info['factory_ore'] = sum(f.cargo.ore for f in factories)
-        global_info['factory_water'] = sum(f.cargo.water for f in factories)
-        global_info['factory_metal'] = sum(f.cargo.metal for f in factories)
-        global_info['factory_power'] = sum(f.power for f in factories)
-
-        global_info['total_ice'] = global_info['unit_ice'] + global_info['factory_ice']
-        global_info['total_ore'] = global_info['unit_ore'] + global_info['factory_ore']
-        global_info['total_water'] = global_info['unit_water'] + global_info['factory_water']
-        global_info['total_metal'] = global_info['unit_metal'] + global_info['factory_metal']
-        global_info['total_power'] = global_info['unit_power'] + global_info['factory_power']
-
-        units_positions = [u.pos for u in units]
-        unit_board = np.zeros_like(obs.board.ice, dtype=np.bool8)
-        for pos in units_positions:
-            unit_board[pos[0], pos[1]] = True
-        ice_board = obs.board.ice
-        units_standing_on_ice = [(ice_board[pos[0], pos[1]] > 0) for pos in units_positions]
-        unit_count_on_ice = sum(units_standing_on_ice)
-        global_info['units_on_ice'] = unit_count_on_ice
-
-        # get avg distance from ice
-        if len(units_positions) < 0:
-            avg_distance_from_ice = 1.0
-        else:
-            avg_distance_from_ice = self.get_avg_distance(unit_board, ice_board)
-        global_info['avg_distance_from_ice'] = avg_distance_from_ice
-
-        lichen = obs.board.lichen
-        lichen_strains = obs.board.lichen_strains
-        if factories:
-            lichen_count = sum((np.sum(lichen[lichen_strains == f.strain_id]) for f in factories), 0)
-            global_info['lichen_count'] = lichen_count
-        else:
-            global_info['lichen_count'] = 0
-
-        # rubble on ice
-        ice_board = obs.board.ice.astype(np.float32)
-        rubble_board = obs.board.rubble.astype(np.float32)
-        rubble_on_ice = ice_board * rubble_board
-        global_info['rubble_on_ice'] = np.sum(rubble_on_ice)
-
-        # new infos based on previous obs
-        global_info['ice_transfered'] = 0
-        global_info['ore_transfered'] = 0
-        global_info['ice_mined'] = 0
-        global_info['ore_mined'] = 0
-        global_info['lichen_grown'] = 0
-        global_info['unit_created'] = 0
-        global_info['light_created'] = 0
-        global_info['heavy_created'] = 0
-        global_info['unit_destroyed'] = 0
-        global_info['light_destroyed'] = 0
-        global_info['heavy_destroyed'] = 0
-        if prev_obs is not None:
-            for unit in units:
+            if prev_obs is not None:
                 unit_name = unit.unit_id
                 if unit_name in prev_obs.units[player]:
                     prev_unit = prev_obs.units[player][unit_name]
@@ -388,6 +335,8 @@ class FeatureParser():
                         global_info['light_created'] += 1
                     else:
                         global_info['heavy_created'] += 1
+
+        if prev_obs is not None:
             for unit in prev_obs.units[player].values():
                 if unit.unit_id not in units:
                     global_info['unit_destroyed'] += 1
@@ -395,6 +344,67 @@ class FeatureParser():
                         global_info['light_destroyed'] += 1
                     else:
                         global_info['heavy_destroyed'] += 1
+
+        for factory in factories:
+            factory_info[factory.unit_id] = {
+                'power': factory.power,
+                'cargo_ice': factory.cargo.ice,
+                'cargo_ore': factory.cargo.ore,
+                'cargo_water': factory.cargo.water,
+                'cargo_metal': factory.cargo.metal,
+                'water_cost': np.sum(obs.board.lichen_strains == factory.strain_id) // obs.env_cfg.LICHEN_WATERING_COST_FACTOR + 1,
+                'lichen_count': obs.board.lichen[obs.board.lichen_strains == factory.strain_id].sum(),
+                'x': factory.pos[0],
+                'y': factory.pos[1],
+                'group_id': self.get_factory_id(factory)
+            }
+
+            global_info['factory_ice'] += factory.cargo.ice
+            global_info['factory_ore'] += factory.cargo.ore
+            global_info['factory_water'] += factory.cargo.water
+            global_info['factory_metal'] += factory.cargo.metal
+            global_info['factory_power'] += factory.power
+
+            global_info["factory_count"] += 1
+
+        global_info['total_ice'] = global_info['unit_ice'] + global_info['factory_ice']
+        global_info['total_ore'] = global_info['unit_ore'] + global_info['factory_ore']
+        global_info['total_water'] = global_info['unit_water'] + global_info['factory_water']
+        global_info['total_metal'] = global_info['unit_metal'] + global_info['factory_metal']
+        global_info['total_power'] = global_info['unit_power'] + global_info['factory_power']
+
+        if False:
+            units_positions = [u.pos for u in units]
+            unit_board = np.zeros_like(obs.board.ice, dtype=np.bool8)
+            for pos in units_positions:
+                unit_board[pos[0], pos[1]] = True
+            ice_board = obs.board.ice
+            units_standing_on_ice = [(ice_board[pos[0], pos[1]] > 0) for pos in units_positions]
+            unit_count_on_ice = sum(units_standing_on_ice)
+            global_info['units_on_ice'] = unit_count_on_ice
+
+            # get avg distance from ice
+            if len(units_positions) < 0:
+                avg_distance_from_ice = 1.0
+            else:
+                avg_distance_from_ice = self.get_avg_distance(unit_board, ice_board)
+            global_info['avg_distance_from_ice'] = avg_distance_from_ice
+
+            lichen = obs.board.lichen
+            lichen_strains = obs.board.lichen_strains
+            if factories:
+                lichen_count = sum((np.sum(lichen[lichen_strains == f.strain_id]) for f in factories), 0)
+                global_info['lichen_count'] = lichen_count
+            else:
+                global_info['lichen_count'] = 0
+
+            # rubble on ice
+            ice_board = obs.board.ice.astype(np.float32)
+            rubble_board = obs.board.rubble.astype(np.float32)
+            rubble_on_ice = ice_board * rubble_board
+            global_info['rubble_on_ice'] = np.sum(rubble_on_ice)
+
+
             for factory in factories:
                 factory_name = factory.unit_id
                 if factory_name in prev_obs.factories[player]:
@@ -449,7 +459,7 @@ class FeatureParser():
         # Factory
 
         factory_feature = {name: np.zeros_like(obs.board.ice, dtype=np.float32) for name in self.factory_feature_names}
-        lichen_strains_own = np.zeros_like(obs.board.lichen_strains, dtype=np.float32)
+        # lichen_strains_own = np.zeros_like(obs.board.lichen_strains, dtype=np.float32)
         for owner, factories in obs.factories.items():
             for fid, factory in factories.items():
                 x, y = factory.pos
@@ -468,7 +478,7 @@ class FeatureParser():
 
                 if owner == player:
 
-                    lichen_strains_own[obs.board.lichen_strains == factory.strain_id] = 1.0
+                    # lichen_strains_own[obs.board.lichen_strains == factory.strain_id] = 1.0
 
                     for offset in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
                         dx, dy = offset
