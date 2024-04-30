@@ -69,7 +69,7 @@ init_value_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 
 init_actor_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 0.01, weight_scale)
 
 
-USE_BATCH_NORM = True
+USE_BATCH_NORM = False
 USE_LAYER_NORM = False
 USE_SPECTRAL_NORM = True
 
