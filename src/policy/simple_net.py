@@ -71,7 +71,7 @@ init_actor_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 
 
 USE_BATCH_NORM = True
 USE_LAYER_NORM = True
-USE_SPECTRAL_NORM = False
+USE_SPECTRAL_NORM = True
 
 
 def MyConv2d(name, in_channels, out_channels, kernel_size=1, stride=1, padding="same", bias=True, dilation=1, spectral_norm=False, batch_norm=False, layer_norm=False, activation="leaky_relu", init_fn=None, seed=None):
