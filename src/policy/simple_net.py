@@ -70,7 +70,7 @@ init_actor_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 
 
 
 USE_BATCH_NORM = True
-USE_LAYER_NORM = True
+USE_LAYER_NORM = False
 USE_SPECTRAL_NORM = True
 
 
