@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from typing import Callable, List, Optional, Tuple, Type, Union
 from torch import Tensor
-
+import math
 
 def conv3x3(in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dilation: int = 1) -> nn.Conv2d:
 
@@ -315,8 +315,16 @@ class UpBlockForUNetWithResNet50(nn.Module):
         """
         Forward pass
         """
-        x = self.upsample(up_x)
-        x = torch.cat([x, down_x], 1)
+        
+        if up_x.shape != down_x.shape:
+            x = self.upsample(up_x)
+            temp_concat = torch.cat([x, down_x], dim=2)
+            
+            x = torch.cat([temp_concat, temp_concat], dim=3)
+        else:
+            temp_concat = torch.cat([up_x, down_x], dim=2)
+            x = torch.cat([temp_concat, temp_concat], dim=3)
+            
         x = self.conv_block_1(x)
         x = self.conv_block_2(x)
         return x
@@ -325,9 +333,7 @@ class UNetWithResnet50Encoder(BaseFeaturesExtractor):
     DEPTH = 6
     def __init__(self, observation, output_channels):
 
-        num_cnn_channels = observation['map'].shape[0]
-        num_global_features = observation['global'].shape[0]
-        num_factory_features = observation['factory'].shape[0]
+        num_cnn_channels = observation['map'].shape[0] + observation['global'].shape[0] + observation['factory'].shape[0] + observation['unit'].shape[0]
         super(UNetWithResnet50Encoder, self).__init__(num_cnn_channels, output_channels)
         
         resnet = ResNet(Bottleneck, [3, 4, 6, 3]).cuda()
@@ -354,22 +360,55 @@ class UNetWithResnet50Encoder(BaseFeaturesExtractor):
         self.last_conv2d_layer = list(self.last_down_block.children())[-1]
         self.last_conv2d_layer_out_channels = self.last_conv2d_layer.conv3.out_channels
 
-        self.aap2d = nn.AdaptiveAvgPool2d((1, 1))
-        self.lin = nn.Linear(in_features=self.last_conv2d_layer_out_channels, out_features=1024)
+        self.flatten = nn.Flatten()
 
-        self.global_fc_1 = nn.Linear(num_global_features, 512)
-        self.global_fc_2 = nn.Linear(num_factory_features, 512)
+        #self.aap2d = nn.AdaptiveAvgPool2d((1, 1))
+        self.lin = nn.Linear(in_features=8192, out_features=4096)
+        self.relu = nn.ReLU(inplace=True)
+        self.lin2 = nn.Linear(in_features=4096, out_features=2048)
 
-        self.bridge = Bridge(self.last_conv2d_layer_out_channels, self.last_conv2d_layer_out_channels, self.last_conv2d_layer_out_channels * 4)
-        up_blocks.append(UpBlockForUNetWithResNet50(self.last_conv2d_layer_out_channels, 1024))
+        self.lin3 = nn.Linear(in_features=4096, out_features=2048)
+        self.lin3 = nn.Linear(in_features=2048, out_features=1024)
+
+        self.lin35 = nn.Linear(in_features=1024, out_features=2048)
+
+        self.lin4 = nn.Linear(in_features=2048, out_features=4096)
+
+        self.lin5 = nn.Linear(in_features=4096, out_features=8192)
+
+
+
+        #self.bridge = Bridge(self.last_conv2d_layer_out_channels, self.last_conv2d_layer_out_channels, self.last_conv2d_layer_out_channels * 4)
+        #up_blocks.append(UpBlockForUNetWithResNet50(self.last_conv2d_layer_out_channels, 1024))
         up_blocks.append(UpBlockForUNetWithResNet50(1024, 512))
         up_blocks.append(UpBlockForUNetWithResNet50(512, 256))
-        up_blocks.append(UpBlockForUNetWithResNet50(in_channels=128 + 64, out_channels=128,
-                                                    up_conv_in_channels=256, up_conv_out_channels=128))
-        up_blocks.append(UpBlockForUNetWithResNet50(in_channels=64 + num_cnn_channels, out_channels=64,
-                                                    up_conv_in_channels=128, up_conv_out_channels=64))
+        #up_blocks.append(UpBlockForUNetWithResNet50(in_channels=128 + 64, out_channels=128,
+                                                    #up_conv_in_channels=256, up_conv_out_channels=128))
+        #up_blocks.append(UpBlockForUNetWithResNet50(in_channels=64 + num_cnn_channels, out_channels=64,
+                                                    #up_conv_in_channels=128, up_conv_out_channels=64))
+        
 
+
+        self.layers = nn.Sequential(
+            # First layer: 12x12 to 24x24, reduce channels from 256 to 128
+            nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1),
+            nn.ReLU(),  # Activation function can help with non-linear capacity between layers
+            # Second layer: 24x24 to 48x48, reduce channels from 128 to 50
+            nn.ConvTranspose2d(128, 50, kernel_size=4, stride=2, padding=1),
+            nn.ReLU(),
+            # Final layer: Adjust channels to 25 without changing dimension
+            nn.ConvTranspose2d(50, 25, kernel_size=3, stride=1, padding=1),
+        )
+        self.upconv_1 = nn.Conv2d(2048, 1024, kernel_size=1, stride=1)
         self.up_blocks = nn.ModuleList(up_blocks)
+
+        self.transpose = nn.ConvTranspose2d(
+            in_channels=2,
+            out_channels=2,
+            kernel_size=48,
+            stride=48,
+            padding=0
+        )
 
         self.out = nn.Conv2d(64, output_channels, kernel_size=1, stride=1)
         
@@ -378,43 +417,64 @@ class UNetWithResnet50Encoder(BaseFeaturesExtractor):
         cnn_features = x['map']
         global_features = x['global']
         factory_features = x['factory']
-        x = cnn_features
+        unit_features = x['unit']
+
+        #global_features = self.transpose(global_features.unsqueeze(-1).unsqueeze(-1))
+
+
+        x = torch.cat((cnn_features, global_features, factory_features, unit_features), dim=1)
 
         pre_pools = dict()
         pre_pools[f"layer_0"] = x
+
         x = self.input_block(x)
+
+
         pre_pools[f"layer_1"] = x
         x = self.input_pool(x)
+
+
 
         for i, block in enumerate(self.down_blocks, 2):
             x = block(x)
             if i == (UNetWithResnet50Encoder.DEPTH - 1):
                 continue
+
             pre_pools[f"layer_{i}"] = x
+
         
-        last_size = pre_pools[f"layer_{UNetWithResnet50Encoder.DEPTH - 2}"].shape[-1]
-        batch_size = x.shape[0]
-        x = self.aap2d(x)
-        x = x.view(batch_size, -1)
+        
+        #last_size = pre_pools[f"layer_{UNetWithResnet50Encoder.DEPTH - 2}"].shape[-1]
+
+
+        x = self.flatten(x)
+
         x = self.lin(x)
 
-        factory_features = self.global_fc_2(factory_features)
-        global_features = self.global_fc_1(global_features)
+        x = self.relu(x)
+        x = self.lin2(x)
+        x = self.relu(x)
+        x = self.lin3(x)
+        x = self.relu(x)
 
-        global_features = torch.cat((global_features, factory_features), dim=1)
+        x = self.lin35(x)
+        x = self.relu(x)
 
-        x = torch.cat((x, global_features), dim=1)
+        x = self.lin4(x)
+        x = self.relu(x)
+        x = self.lin5(x)
+        x = self.relu(x)
 
-        x = self.bridge(x)
+        x = x.view(-1, 2048, 2, 2)
 
-        x = x.view(batch_size, self.last_conv2d_layer_out_channels, 1, 1)
-        x = F.interpolate(x, size=(int(last_size / 2), int(last_size / 2)), mode='bilinear', align_corners=False)
-
+        x = F.interpolate(x, size=(3, 3), mode='bilinear', align_corners=False)
+        x = self.upconv_1(x)
         for i, block in enumerate(self.up_blocks, 1):
             key = f"layer_{UNetWithResnet50Encoder.DEPTH - 1 - i}"
             x = block(x, pre_pools[key])
+        
 
-        x = self.out(x)
+        x = self.layers(x)
         del pre_pools
         return x
     

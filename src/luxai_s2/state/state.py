@@ -22,6 +22,7 @@ from luxai_s2.unit import (FactionTypes, Unit, UnitCargo, UnitStateDict,
                            UnitType)
 
 
+
 class SparseBoardStateDict(TypedDict):
     rubble: Dict[str, int]
     lichen: Dict[str, int]

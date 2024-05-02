@@ -9,13 +9,13 @@ import argparse
 import os.path as osp
 import gymnasium as gym
 import torch as th
-from wrappers.time_limit_wrapper import TimeLimit
-from luxai_s2.state import StatsStateDict
 from stable_baselines3.common.callbacks import (
     BaseCallback,
     EvalCallback,
+    CheckpointCallback,
 )
 from stable_baselines3.common.evaluation import evaluate_policy
+from wrappers.reward_wrapper import EarlyRewardParserWrapper
 from wrappers.monitor_wrapper import Monitor
 from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecVideoRecorder
@@ -24,105 +24,8 @@ from sb3_contrib.ppo_mask import MaskablePPO
 from controller.controller import MultiUnitController
 from wrappers.obs_wrappers import SimpleUnitObservationWrapper
 from wrappers.sb3_iam_wrapper import SB3InvalidActionWrapper
-from wrappers.utils import factory_placement, bid_with_log_bias
+from wrappers.utils import gaussian_ice_placement, bid_zero_to_not_waste
 from net.mixed_net import UNetWithResnet50Encoder
-from reward.reward import EarlyRewardParser
-import warnings
-warnings.filterwarnings("ignore", category=RuntimeWarning, module="pygame", append=True)
-
-
-class EarlyRewardParserWrapper(gym.Wrapper):
-    """
-    Custom wrapper for the LuxAI_S2 environment
-    """
-
-    def __init__(self, env: gym.Env) -> None:
-        """
-        Adds a custom reward and turns the LuxAI_S2 environment \
-        into a single-agent environment for easy training
-        """
-        super().__init__(env)
-        self.prev_step_metrics = None
-        self.reward_parser = EarlyRewardParser()
-
-    def step(self, action):
-        
-        agent = "player_0"
-        opp_agent = "player_1"
-
-        opp_factories = self.env.state.factories[opp_agent]
-        for k in opp_factories.keys():
-            factory = opp_factories[k]
-            factory.cargo.water = 1000
-
-        action = {agent: action}
-        obs, _, termination, truncation, info = self.env.step(action)
-        done = dict()
-        for k in termination:
-            done[k] = termination[k] | truncation[k]
-        obs = obs[agent]
-
-        stats: StatsStateDict = self.env.state.stats[agent]
-
-        global_info_own = self.reward_parser.get_global_info(agent, self.env.state)
-        self.reward_parser.reset(global_info_own, stats)
-        reward = self.reward_parser.parse(self.env.state, stats, global_info_own)
-
-        stats: StatsStateDict = self.env.state.stats[agent]
-        info = dict()
-        metrics = dict()
-        metrics["ice_dug"] = (
-            stats["generation"]["ice"]["HEAVY"] + stats["generation"]["ice"]["LIGHT"]
-        )
-        metrics["ore_dug"] = (
-            stats["generation"]["ore"]["HEAVY"] + stats["generation"]["ore"]["LIGHT"]
-        )
-        metrics["power_consumed"] = (
-            stats["consumption"]["power"]["HEAVY"] + stats["consumption"]["power"]["LIGHT"] + stats["consumption"]["power"]["FACTORY"]
-        )
-        metrics["water_consumed"] = stats["consumption"]["water"]
-        metrics["metal_consumed"] = stats["consumption"]["metal"]
-        metrics["rubble_destroyed"] = (
-            stats["destroyed"]["rubble"]["LIGHT"] + stats["destroyed"]["rubble"]["HEAVY"]
-        )
-        metrics["ore_transferred"] = stats["transfer"]["ore"]
-        metrics["water_transferred"] = stats["transfer"]["water"]
-        metrics["energy_transferred"] = stats["transfer"]["power"]
-        metrics["energy_pickup"] = stats["pickup"]["power"]
-        metrics["light_robots_built"] = stats["generation"]["built"]["LIGHT"]
-        metrics["heavy_robots_built"] = stats["generation"]["built"]["HEAVY"]
-        metrics["light_power"] = stats["generation"]["power"]["LIGHT"]
-        metrics["heavy_power"] = stats["generation"]["power"]["HEAVY"]
-        metrics["factory_power"] = stats["generation"]["power"]["FACTORY"]
-        metrics["metal_produced"] = stats["generation"]["metal"]
-        metrics["water_produced"] = stats["generation"]["water"]
-        metrics["action_queue_updates_success"] = stats["action_queue_updates_success"]
-        metrics["action_queue_updates_total"] = stats["action_queue_updates_total"]
-
-        
-        info["metrics"] = metrics
-
-        reward = 0
-        if self.prev_step_metrics is not None:
-            # we check how much ice and water is produced and reward the agent for generating both
-            ice_dug_this_step = metrics["ice_dug"] - self.prev_step_metrics["ice_dug"]
-            water_produced_this_step = (
-                metrics["water_produced"] - self.prev_step_metrics["water_produced"]
-            )
-            # we reward water production more as it is the most important resource for survival
-            reward = ice_dug_this_step / 100 + water_produced_this_step
-        
-        self.prev_step_metrics = copy.deepcopy(metrics)
-        return obs, reward, termination[agent], truncation[agent], info
-
-    def reset(self, **kwargs):
-        """
-        Resets the environment
-        """
-        obs, reset_info = self.env.reset(**kwargs)
-        self.prev_step_metrics = None
-        return obs["player_0"], reset_info
-
 
 def parse_args():
     """
@@ -135,14 +38,26 @@ def parse_args():
         that can succesfully control a heavy unit to dig ice and transfer it back to \
         a factory to keep it alive"
     )
-    parser.add_argument("-s", "--seed", type=int, default=666, help="seed for training")
+    parser.add_argument("-s", "--seed", type=int, default=42, help="seed for training")
     parser.add_argument(
         "-n",
         "--n-envs",
         type=int,
-        default=8,
+        default=1,
         help="Number of parallel envs to run. Note that the rollout \
         size is configured separately and invariant to this value",
+    )
+    parser.add_argument(
+        "--eval-interval",
+        type=int,
+        default=4096,
+        help="Number of timesteps between evaluations",
+    )
+    parser.add_argument(
+        "--eval-num",
+        type=int,
+        default=12,
+        help="Number of episodes to evaluate the policy on",
     )
     parser.add_argument(
         "--max-episode-steps",
@@ -153,7 +68,7 @@ def parse_args():
     parser.add_argument(
         "--total-timesteps",
         type=int,
-        default=5_000_000,
+        default=500000,
         help="Total timesteps for training",
     )
 
@@ -178,7 +93,10 @@ def parse_args():
     return args
 
 
-def make_env(env_id: str, rank: int, seed: int = 0, max_episode_steps=100):
+
+
+
+def make_env(env_id: str, rank: int, max_episode_steps: int = 1024, seed: int = 42):
     """
     Creates the environment
     """
@@ -188,26 +106,21 @@ def make_env(env_id: str, rank: int, seed: int = 0, max_episode_steps=100):
         Initializes the environment
         """
 
-        env = gym.make(env_id, verbose=1, collect_stats=True, MAX_FACTORIES=4, disable_env_checker=True)
+        env = gym.make(env_id, verbose=1, collect_stats=True, disable_env_checker=True, max_episode_steps=max_episode_steps)
 
         env = SB3InvalidActionWrapper(
             env,
-            factory_placement_policy=factory_placement,
-            bid_policy=bid_with_log_bias,
+            factory_placement_policy=gaussian_ice_placement,
+            bid_policy=bid_zero_to_not_waste,
             controller=MultiUnitController(env.env_cfg),
         )
-
         env = SimpleUnitObservationWrapper(
             env
         )
         env = EarlyRewardParserWrapper(env)
-        env = TimeLimit(
-            env, max_episode_steps=max_episode_steps
-        )
         env = Monitor(env)
         env.reset(seed=seed + rank)
         set_random_seed(seed)
-
         return env
 
     return _init
@@ -231,7 +144,6 @@ class TensorboardCallback(BaseCallback):
         Called on every step
         """
         count = 0
-
         for i, done in enumerate(self.locals["dones"]):
             if done:
                 info = self.locals["infos"][i]
@@ -242,24 +154,15 @@ class TensorboardCallback(BaseCallback):
         return True
 
 
-def save_model_state_dict(save_path, model):
-    """
-    Saves the model state dict
-    """
-
-    state_dict = model.policy.to("cpu").state_dict()
-    th.save(state_dict, save_path)
-
-
 def evaluate(args, env_id, model):
     """
     Evaluates the model
     """
 
     model = model.load(args.model_path)
-    video_length = 1000
+    video_length = 1024
     eval_env = SubprocVecEnv(
-        [make_env(env_id, i, max_episode_steps=1000) for i in range(args.n_envs)]
+        [make_env(env_id, i, max_episode_steps=1024) for i in range(args.eval_num)]
     )
     eval_env = VecVideoRecorder(
         eval_env,
@@ -278,22 +181,28 @@ def train(args, env_id, model: PPO):
     Trains the model
     """
 
-    eval_environments = [make_env(env_id, i, max_episode_steps=1000) for i in range(4)]
+    eval_environments = [make_env(env_id, i, max_episode_steps=1024) for i in range(args.eval_num)]
     eval_env = SubprocVecEnv(eval_environments)
     eval_env.reset()
     eval_callback = EvalCallback(
         eval_env,
         best_model_save_path=osp.join(args.log_path, "models"),
         log_path=osp.join(args.log_path, "eval_logs"),
-        eval_freq=24_000,
+        eval_freq=args.eval_interval,
         deterministic=False,
         render=False,
-        n_eval_episodes=5,
+        n_eval_episodes=args.eval_num,
+    )
+
+    checkpoint_callback = CheckpointCallback(
+        save_freq=4096,
+        save_path=osp.join(args.log_path, "models"),
+        name_prefix="model",
     )
 
     model.learn(
         args.total_timesteps,
-        callback=[TensorboardCallback(tag="train_metrics"), eval_callback],
+        callback=[TensorboardCallback(tag="train_metrics"), eval_callback, checkpoint_callback],
     )
     model.save(osp.join(args.log_path, "models/latest_model"))
 
@@ -319,18 +228,21 @@ def main(args):
             "output_channels": 25,
             }
         }
-    rollout_steps = 4000
+    rollout_steps = 4096
     model = MaskablePPO(
         "MultiInputPolicy",
         env,
         n_steps=rollout_steps // args.n_envs,
-        batch_size=16,
-        learning_rate=3e-4,
+        batch_size=512,
+        learning_rate=2e-4,
         policy_kwargs=policy_kwargs_unit,
         verbose=1,
         n_epochs=10,
-        target_kl=0.05,
         gamma=0.99,
+        gae_lambda=0.95,
+        clip_range=0.2,
+        vf_coef=0.5,
+        max_grad_norm=0.5,
         tensorboard_log=osp.join(args.log_path),
     )
     if args.eval:

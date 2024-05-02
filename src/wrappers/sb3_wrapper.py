@@ -1,9 +1,9 @@
 from typing import Callable, Dict
-
 import gymnasium as gym
 import numpy as np
 import numpy.typing as npt
 from gymnasium import spaces
+from kit.config import EnvConfig
 
 import luxai_s2.env
 from luxai_s2.env import LuxAI_S2
@@ -20,7 +20,7 @@ class SB3Wrapper(gym.Wrapper):
         self,
         env: LuxAI_S2,
         bid_policy: Callable[[str, ObservationStateDict], Dict[str, BidActionType]] = None,
-        factory_placement_policy: Callable[[str, ObservationStateDict], Dict[str, FactoryPlacementActionType]] = None,
+        factory_placement_policy: Callable[[str, int, EnvConfig, ObservationStateDict], Dict[str, FactoryPlacementActionType]] = None,
         controller: Controller = None,
     ) -> None:
         """
@@ -89,14 +89,10 @@ class SB3Wrapper(gym.Wrapper):
         while self.env.state.real_env_steps < 0:
             action = dict()
             for agent in self.env.agents:
-                if my_turn_to_place_factory(
-                    obs["player_0"]["teams"][agent]["place_first"],
-                    self.env.state.env_steps,
-                ):
-                    action[agent] = self.factory_placement_policy(agent, obs[agent])
+                if my_turn_to_place_factory(obs["player_0"]["teams"][agent]["place_first"], self.env.state.env_steps):
+                    action[agent] = self.factory_placement_policy(agent, self.env.env_steps, self.env.env_cfg, obs[agent])
                 else:
                     action[agent] = dict()
             obs, _, _, _, _ = self.env.step(action)
         self.prev_obs = obs
-        
         return obs, {}
