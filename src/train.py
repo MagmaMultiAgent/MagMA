@@ -225,7 +225,7 @@ def main(args):
     policy_kwargs_unit = {
         "features_extractor_class": UNetWithResnet50Encoder,
         "features_extractor_kwargs": {
-            "output_channels": 25,
+            "output_channels": 20,
             }
         }
     rollout_steps = 4096

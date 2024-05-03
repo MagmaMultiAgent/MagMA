@@ -1,8 +1,8 @@
 from typing import Dict, List, Tuple, Union
-from rewards.ice_reward_parser import IceRewardParser
 import gym
 import copy
 import numpy as np
+from luxai_s2.state import StatsStateDict
 import kit.kit
 
 
@@ -18,44 +18,32 @@ class EarlyRewardParserWrapper(gym.Wrapper):
         """
         super().__init__(env)
         self.prev_step_metrics = None
-        self.reward_parser = IceRewardParser()
 
         self.global_info_names = [
-            'factory_count',
-            'unit_count',
-            'light_count',
-            'heavy_count',
-            'unit_ice',
-            'unit_ore',
-            'unit_water',
-            'unit_metal',
-            'unit_power',
-            'factory_ice',
-            'factory_ore',
-            'factory_water',
-            'factory_metal',
+            'power_consumed',
+            'water_consumed',
+            'metal_consumed',
+            'ore_transferred',
+            'ice_transferred',
+            'energy_pickup',
+            'rubble_destroyed',
+            'lichen_destroyed',
+            'ice_dug',
+            'ore_dug',
+            'metal_produced',
+            'water_produced',
+            'lichen_produced',
+            'light_robots_built',
+            'heavy_robots_built',
+            'light_power',
+            'heavy_power',
             'factory_power',
-            'total_ice',
-            'total_ore',
-            'total_water',
-            'total_metal',
             'total_power',
-            'lichen_count',
+            'action_queue_updates_success',
+            'action_queue_updates_total',
             'units_on_ice',
             'avg_distance_from_ice',
             'rubble_on_ice',
-
-            'ice_transfered',
-            'ore_transfered',
-            'ice_mined',
-            'ore_mined',
-            'lichen_grown',
-            'unit_created',
-            'light_created',
-            'heavy_created',
-            'unit_destroyed',
-            'light_destroyed',
-            'heavy_destroyed',
         ]
 
     def step(self, action):
@@ -76,89 +64,96 @@ class EarlyRewardParserWrapper(gym.Wrapper):
 
         obs = obs[agent]
 
-        metrics = self._get_info(agent, self.env.state, prev_obs=self.prev_step_metrics)
-        reward = self.reward_parser.parse(done, self.env.state, metrics)
+        metrics = self._get_info(agent, self.env.state.stats[agent], self.env.state)
+        reward = self.parse(self.env.state, metrics)
+
         self.prev_step_metrics = copy.deepcopy(metrics)
 
         info["metrics"] = metrics
         return obs, reward, termination[agent], truncation[agent], info
     
-    def _get_info(self, player: str, obs: kit.kit.GameState, prev_obs: kit.kit.GameState = None):
+    def _get_info(self, player: str, stats: StatsStateDict , state: kit.kit.GameState):
 
-        global_info = {k: 0 for k in self.global_info_names}
-        factories = list(obs.factories[player].values())
-        units = list(obs.units[player].values())
+        metrics = {k: 0 for k in self.global_info_names}
 
-        global_info['light_count'] = sum(int(u.unit_type == 'LIGHT') for u in units)
-        global_info['heavy_count'] = sum(int(u.unit_type == 'HEAVY') for u in units)
-        global_info['unit_count'] = global_info['light_count'] + global_info['heavy_count']
-        global_info["factory_count"] = len(factories)
+        units = list(state.units[player].values())
 
-        global_info['unit_ice'] = sum(u.cargo.ice for u in units)
-        global_info['unit_ore'] = sum(u.cargo.ore for u in units)
-        global_info['unit_water'] = sum(u.cargo.water for u in units)
-        global_info['unit_metal'] = sum(u.cargo.metal for u in units)
-        global_info['unit_power'] = sum(u.power for u in units)
+        
+        metrics["power_consumed"] = stats["consumption"]["power"]["HEAVY"] + stats["consumption"]["power"]["LIGHT"] + stats["consumption"]["power"]["FACTORY"]
+        metrics["water_consumed"] = stats["consumption"]["water"]
+        metrics["metal_consumed"] = stats["consumption"]["metal"]
 
-        global_info['factory_ice'] = sum(f.cargo.ice for f in factories)
-        global_info['factory_ore'] = sum(f.cargo.ore for f in factories)
-        global_info['factory_water'] = sum(f.cargo.water for f in factories)
-        global_info['factory_metal'] = sum(f.cargo.metal for f in factories)
-        global_info['factory_power'] = sum(f.power for f in factories)
+        
+        metrics["ore_transferred"] = stats["transfer"]["ore"]
+        metrics["ice_transferred"] = stats["transfer"]["ice"] ####
+        
+        metrics["energy_pickup"] = stats["pickup"]["power"]
 
-        global_info['total_ice'] = global_info['unit_ice'] + global_info['factory_ice']
-        global_info['total_ore'] = global_info['unit_ore'] + global_info['factory_ore']
-        global_info['total_water'] = global_info['unit_water'] + global_info['factory_water']
-        global_info['total_metal'] = global_info['unit_metal'] + global_info['factory_metal']
-        global_info['total_power'] = global_info['unit_power'] + global_info['factory_power']
-        global_info['lichen_count'] = np.sum(obs.board.lichen)
+        metrics["rubble_destroyed"] = stats["destroyed"]["rubble"]["LIGHT"] + stats["destroyed"]["rubble"]["HEAVY"] ##
+        metrics["lichen_destroyed"] = stats["destroyed"]["lichen"]["LIGHT"] + stats["destroyed"]["lichen"]["HEAVY"]
+
+        metrics["ice_dug"] = stats["generation"]["ice"]["HEAVY"] + stats["generation"]["ice"]["LIGHT"] #### 
+        metrics["ore_dug"] = stats["generation"]["ore"]["HEAVY"] + stats["generation"]["ore"]["LIGHT"]
+        metrics["metal_produced"] = stats["generation"]["metal"]
+        metrics["water_produced"] = stats["generation"]["water"] ####
+        metrics["lichen_produced"] = stats["generation"]["lichen"] 
+        metrics["light_robots_built"] = stats["generation"]["built"]["LIGHT"]
+        metrics["heavy_robots_built"] = stats["generation"]["built"]["HEAVY"]
+        metrics["light_power"] = stats["generation"]["power"]["LIGHT"]
+        metrics["heavy_power"] = stats["generation"]["power"]["HEAVY"]
+        metrics["factory_power"] = stats["generation"]["power"]["FACTORY"]
+        
+        metrics["action_queue_updates_success"] = stats["action_queue_updates_success"]
+        metrics["action_queue_updates_total"] = stats["action_queue_updates_total"]
 
         units_positions = [u.pos for u in units]
-        unit_board = np.zeros_like(obs.board.ice, dtype=np.bool8)
+        unit_board = np.zeros_like(state.board.ice, dtype=np.bool8)
         for pos in units_positions:
             unit_board[pos.x, pos.x] = True
-        ice_board = obs.board.ice
+        ice_board = state.board.ice
         units_standing_on_ice = [(ice_board[pos.x, pos.y] > 0) for pos in units_positions]
         unit_count_on_ice = sum(units_standing_on_ice)
-        global_info['units_on_ice'] = unit_count_on_ice
+        metrics['units_on_ice'] = unit_count_on_ice
 
         if len(units_positions) < 0:
             avg_distance_from_ice = 1.0
         else:
             avg_distance_from_ice = self.get_avg_distance(unit_board, ice_board)
-        global_info['avg_distance_from_ice'] = avg_distance_from_ice
+        metrics['avg_distance_from_ice'] = avg_distance_from_ice
 
-        ice_board = obs.board.ice.astype(np.float32)
-        rubble_board = obs.board.rubble.astype(np.float32)
+        ice_board = state.board.ice.astype(np.float32)
+        rubble_board = state.board.rubble.astype(np.float32)
         rubble_on_ice = ice_board * rubble_board
-        global_info['rubble_on_ice'] = np.sum(rubble_on_ice)
+        metrics['rubble_on_ice'] = np.sum(rubble_on_ice)
 
-        global_info['ice_transfered'] = 0
-        global_info['ore_transfered'] = 0
-        global_info['ice_mined'] = 0
-        global_info['ore_mined'] = 0
-        global_info['lichen_grown'] = 0
-        global_info['unit_created'] = 0
-        global_info['light_created'] = 0
-        global_info['heavy_created'] = 0
-        global_info['unit_destroyed'] = 0
-        global_info['light_destroyed'] = 0
-        global_info['heavy_destroyed'] = 0
+        return metrics
+    
+    def parse(self, game_state, metrics):
 
-        if prev_obs is not None:
-            global_info['ice_transfered'] = global_info['unit_ice'] - prev_obs['unit_ice']
-            global_info['ore_transfered'] = global_info['unit_ore'] - prev_obs['unit_ore']
-            global_info['ice_mined'] = global_info['total_ice'] - prev_obs['total_ice']
-            global_info['ore_mined'] = global_info['total_ore'] - prev_obs['total_ore']
-            global_info['lichen_grown'] = global_info['lichen_count'] - prev_obs['lichen_count']
-            global_info['unit_created'] = global_info['unit_count'] - prev_obs['unit_count']
-            global_info['light_created'] = global_info['light_count'] - prev_obs['light_count']
-            global_info['heavy_created'] = global_info['heavy_count'] - prev_obs['heavy_count']
-            global_info['unit_destroyed'] = prev_obs['unit_count'] - global_info['unit_count']
-            global_info['light_destroyed'] = prev_obs['light_count'] - global_info['light_count']
-            global_info['heavy_destroyed'] = prev_obs['heavy_count'] - global_info['heavy_count']
+        ## TOASK: should we add other metrics, in the other code we call the parent of IceRewardParser that takes in done
+        ## to give reward for winning, should we do the same here? Should we give for rubble destruction as well?
+        ## Are these weightings enough?
 
-        return global_info
+        final_reward = 0
+        reward_scale = 0.01
+        ice_norm = 1
+        step_weight_early = 1 + ((1000 - game_state.real_env_steps) / 1000) * 0.1
+
+
+        if self.prev_step_metrics is not None:
+            ice_dug_this_step = (metrics['ice_dug'] - self.prev_step_metrics['ice_dug']) / 4
+            ice_transfered_this_step = (metrics['ice_transferred'] - self.prev_step_metrics['ice_transferred']) / 4
+            water_increment_this_step = (metrics['water_produced'] - self.prev_step_metrics['water_produced'])
+
+            ice_dug_this_step_reward = ice_dug_this_step * reward_scale / ice_norm * step_weight_early
+            ice_transfered_this_step_reward = ice_transfered_this_step * reward_scale / ice_norm * step_weight_early
+            water_increment_this_step_reward = water_increment_this_step * reward_scale / 4 * step_weight_early
+
+            final_reward += ice_dug_this_step_reward
+            final_reward += ice_transfered_this_step_reward
+            final_reward += water_increment_this_step_reward
+
+        return final_reward
     
 
     @staticmethod

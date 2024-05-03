@@ -158,31 +158,26 @@ class FeatureParser():
         # Global
 
         global_feature = {name: 0 for name in self.global_feature_names}
+
         # normalize between -1 and 1
         global_feature['env_step'] = (obs.real_env_steps - 0) / (env_cfg.max_episode_length - 0) * 2 - 1
-        # global_feature['cycle'] = obs.real_env_steps // env_cfg.CYCLE_LENGTH
-        # global_feature['hour'] = obs.real_env_steps % env_cfg.CYCLE_LENGTH
         hour = obs.real_env_steps % env_cfg.CYCLE_LENGTH
         global_feature['daytime_or_night'] = hour < 30
 
-        # global_feature['num_factory_own'] = (len(obs.factories[player]) - 0) / (env_cfg.MAX_FACTORIES - 0) * 2 - 1
-        # global_feature['num_factory_enm'] = (len(obs.factories[other_player]) - 0) / (env_cfg.MAX_FACTORIES - 0) * 2 - 1
-
         # Map
-
         map_feature = {name: np.zeros_like(obs.board.ice, dtype=np.float32) for name in self.map_featrue_names}
         map_feature['ice'] = obs.board.ice
         map_feature['ore'] = obs.board.ore
         map_feature['rubble'] = (obs.board.rubble - 0) / (env_cfg.MAX_RUBBLE - 0) * 2 - 1
 
         # Factory
-
         factory_feature = {name: np.zeros_like(obs.board.ice, dtype=np.float32) for name in self.factory_feature_names}
         for owner, factories in obs.factories.items():
             for fid, factory in factories.items():
                 x, y = factory.pos
 
-                factory_feature['factory_power'][x, y] = (factory.power - 0) / (heavy_cfg.BATTERY_CAPACITY - 0) * 2 - 1
+                ## TOASK: isnt this an issue since we are normalizing by heav cargo space?
+                factory_feature['factory_power'][x, y] = (factory.power - 0) / (heavy_cfg.CARGO_SPACE - 0) * 2 - 1
                 factory_feature['factory_ice'][x, y] = (factory.cargo.ice - 0) / (heavy_cfg.CARGO_SPACE - 0) * 2 - 1
                 factory_feature['factory_water'][x, y] = (factory.cargo.water - 0) / (heavy_cfg.CARGO_SPACE - 0) * 2 - 1
                 factory_feature['factory_ore'][x, y] = (factory.cargo.ore - 0) / (heavy_cfg.CARGO_SPACE - 0) * 2 - 1
@@ -199,7 +194,6 @@ class FeatureParser():
                             pass
 
         # Unit
-
         unit_feature = {name: np.zeros_like(obs.board.ice, dtype=np.float32) for name in self.unit_feature_names}
         units = obs.units[player]
         
@@ -226,16 +220,11 @@ class FeatureParser():
                 map_feature['enemy'][x + dx, y + dy] = 1.0
 
         # Assemble return
-
         global_feature = np.array(list(global_feature.values()))
         map_feature = np.array(list(map_feature.values()))
         factory_feature = np.array(list(factory_feature.values()))
         unit_feature = np.array(list(unit_feature.values()))
-
-        if output_dict:
-            return {'global_feature': global_feature, 'map_feature': map_feature, 'factory_feature': factory_feature, 'unit_feature': unit_feature}
-        
-        feature_map_size = (48, 48)
+        feature_map_size = (obs.board.ice.shape[0], obs.board.ice.shape[0])
         upscaled_features_global_features = np.tile(global_feature[:, np.newaxis, np.newaxis], (1, *feature_map_size))
 
         return upscaled_features_global_features, map_feature, factory_feature, unit_feature

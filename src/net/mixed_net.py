@@ -397,7 +397,7 @@ class UNetWithResnet50Encoder(BaseFeaturesExtractor):
             nn.ConvTranspose2d(128, 50, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
             # Final layer: Adjust channels to 25 without changing dimension
-            nn.ConvTranspose2d(50, 25, kernel_size=3, stride=1, padding=1),
+            nn.ConvTranspose2d(50, 20, kernel_size=3, stride=1, padding=1),
         )
         self.upconv_1 = nn.Conv2d(2048, 1024, kernel_size=1, stride=1)
         self.up_blocks = nn.ModuleList(up_blocks)

@@ -72,7 +72,7 @@ class MultiUnitController(Controller):
         self.env_cfg = env_cfg
         self.move_act_dims = 4
         self.one_transfer_dim = 5
-        self.transfer_act_dims = self.one_transfer_dim * 3
+        self.transfer_act_dims = self.one_transfer_dim * 2
         self.pickup_act_dims = 1
         self.dig_act_dims = 1
         self.recharge_act_dims = 1
@@ -113,10 +113,11 @@ class MultiUnitController(Controller):
 
     def _get_transfer_action(self, id):
         
-        id = id - (self.transfer_act_dims/3)
-        transfer_dir = id % (self.transfer_act_dims/3)
-        transfer_type_mapping = [0, 1, 4]  # Mapping index to desired value
-        transfer_type_index = id // (self.transfer_act_dims/3)  # 0 for ice, 1 for ore, 2 for power
+        id = id - (self.transfer_act_dims/2)
+        id += 1
+        transfer_dir = id % (self.transfer_act_dims/2)
+        transfer_type_mapping = [0, 1]  # Mapping index to desired value
+        transfer_type_index = id // (self.transfer_act_dims/2)  # 0 for ice, 1 for ore
         transfer_type = transfer_type_mapping[transfer_type_index.astype(int).item()]
         return np.array([1, transfer_dir, transfer_type, self.env_cfg.max_transfer_amount, 0, 1], dtype=int)
 
@@ -154,7 +155,7 @@ class MultiUnitController(Controller):
         """
         Converts the action id to a recharge action
         """
-        return np.array([4, 0, 0, 0, 0, 1])
+        return np.array([5, 0, 0, 0, 0, 1])
     
     def _is_light_unit_build_action(self, id):
         """
@@ -205,6 +206,7 @@ class MultiUnitController(Controller):
 
         unit_id = list(units.keys())
         factory_id = list(shared_obs["factories"][agent].keys())
+
         for unit_id, unit in units.items():
             pos = tuple(unit['pos'])
             filtered_action = action[pos]
@@ -231,6 +233,10 @@ class MultiUnitController(Controller):
             if not no_op:
                 lux_action[unit_id] = action_queue
 
+        
+
+        
+
         factories = shared_obs["factories"][agent]
         
         for factory_id, factory in factories.items():
@@ -245,7 +251,7 @@ class MultiUnitController(Controller):
                 lux_action[factory_id] = self._get_water_lichen_action(choice)
             else:
                 continue
-        
+
         return lux_action
 
     def action_masks(self, agent: str, obs: Dict[str, Any]):
@@ -287,7 +293,7 @@ class MultiUnitController(Controller):
             pos = np.array(unit["pos"])
 
             # move is only valid if there is a unit there
-            action_mask[:4, pos[0], pos[1]] = True
+            action_mask[:4, pos[0], pos[1]] = False
 
             # transferring is valid only if the target exists
             unit = units[unit_id]
@@ -313,12 +319,12 @@ class MultiUnitController(Controller):
                 if unit_there != -1:
                     for j in range(3):  # we want to allow transfer of any kind of resouce if its possible
                         index = (self.transfer_dim_high - self.transfer_act_dims + i) + j * self.one_transfer_dim
-                        action_mask[index, pos[0], pos[1]] = True
+                        action_mask[index, pos[0], pos[1]] = False
 
                 if factory_there in shared_obs["teams"][agent]["factory_strains"]:
                     for j in range(3):  # same for factories
                         index = (self.transfer_dim_high - self.transfer_act_dims + i) + j * self.one_transfer_dim
-                        action_mask[index, pos[0], pos[1]] = True
+                        action_mask[index, pos[0], pos[1]] = False
 
             factory_there = factory_occupancy_map[pos[0], pos[1]]
             on_top_of_factory = (
@@ -339,7 +345,7 @@ class MultiUnitController(Controller):
             if on_top_of_factory or factory_there != -1:
                 action_mask[
                     self.transfer_dim_high - self.one_transfer_dim : self.transfer_dim_high, pos[0], pos[1]
-                ] = False
+                ] = True
             # dig is valid only if on top of tile with rubble or resources or lichen
             board_sum = (
                 shared_obs["board"]["ice"][pos[0], pos[1]]
@@ -350,13 +356,13 @@ class MultiUnitController(Controller):
             if board_sum > 0 and not on_top_of_factory:
                 action_mask[
                     self.dig_dim_high - self.dig_act_dims : self.dig_dim_high, pos[0], pos[1]
-                ] = True
+                ] = False
 
             # pickup is valid only if on top of factory tile
             if on_top_of_factory:
                 action_mask[
                     self.pickup_dim_high - self.pickup_act_dims : self.pickup_dim_high, pos[0], pos[1]
-                ] = True
+                ] = False
                 action_mask[
                     self.dig_dim_high - self.dig_act_dims : self.dig_dim_high, pos[0], pos[1]
                 ] = False
@@ -365,16 +371,19 @@ class MultiUnitController(Controller):
             if shared_obs["real_env_steps"] % 40 > 30:
                 action_mask[
                     self.recharge_dim_high - self.recharge_act_dims : self.recharge_dim_high, pos[0], pos[1]
-                ] = True
+                ] = False
+
+            
+
+        
+
+
+        action_mask = np.ones((self.total_act_dims, self.env_cfg.map_size, self.env_cfg.map_size), dtype=bool)  
 
         for factory_id in factories:
             factory = factories[factory_id]
             pos = np.array(factory["pos"])
-            if factory["cargo"]["metal"] >= 10 and factory["power"] >= 50:
-                action_mask[self.light_unit_build_dim_high, pos[0], pos[1]] = True
-            elif factory["cargo"]["metal"] >= 50 and factory["power"] >= 500:
-                action_mask[self.heavy_unit_build_dim_high, pos[0], pos[1]] = True
-            elif factory["cargo"]["water"] >= 200:
-                action_mask[self.water_lichen_dim_high, pos[0], pos[1]] = True
+            action_mask[0:19, pos[0], pos[1]] = False
 
+        action_mask[4:14, :, :] = False
         return action_mask
