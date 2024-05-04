@@ -130,10 +130,6 @@ class EarlyRewardParserWrapper(gym.Wrapper):
     
     def parse(self, game_state, metrics):
 
-        ## TOASK: should we add other metrics, in the other code we call the parent of IceRewardParser that takes in done
-        ## to give reward for winning, should we do the same here? Should we give for rubble destruction as well?
-        ## Are these weightings enough?
-
         final_reward = 0
         reward_scale = 0.01
         ice_norm = 1
@@ -141,7 +137,7 @@ class EarlyRewardParserWrapper(gym.Wrapper):
 
 
         if self.prev_step_metrics is not None:
-            ice_dug_this_step = (metrics['ice_dug'] - self.prev_step_metrics['ice_dug']) / 4
+            ice_dug_this_step = (metrics['ice_dug'] - self.prev_step_metrics['ice_dug']) / 4 * 0.1
             ice_transfered_this_step = (metrics['ice_transferred'] - self.prev_step_metrics['ice_transferred']) / 4
             water_increment_this_step = (metrics['water_produced'] - self.prev_step_metrics['water_produced'])
 

@@ -136,7 +136,6 @@ class MaskableActorCriticPolicy(BasePolicy):
             pi_features, vf_features = features
             latent_pi: th.Tensor = self.mlp_extractor.forward_actor(pi_features)
             latent_vf: th.Tensor = self.mlp_extractor.forward_critic(vf_features)
-        # Evaluate the values for the given observations
 
         values = self.value_net(latent_vf)
 
@@ -148,10 +147,13 @@ class MaskableActorCriticPolicy(BasePolicy):
 
         batch_size, action_channels, height, width = latent_shape
 
-        latent_pi = latent_pi.view(-1, action_channels)
+        latent_pi = latent_pi.permute(0, 2, 3, 1)
+        latent_pi = latent_pi.reshape(-1, action_channels)
         assert latent_pi.shape[0] == batch_size * height * width
+        
 
         if action_masks is not None:
+            action_masks = action_masks.T
             action_masks = action_masks.reshape(-1, action_channels)
             assert latent_pi.shape == action_masks.shape
 
@@ -162,8 +164,11 @@ class MaskableActorCriticPolicy(BasePolicy):
         log_prob = distribution.log_prob(actions)
         
 
-        actions = actions.view(batch_size, height, width)
+        actions = actions.reshape(batch_size, height, width)
+        actions = actions.permute(0, 1, 2)
+   
         log_prob = log_prob.view(batch_size, height, width)
+        log_prob = log_prob.permute(0, 1, 2)
         log_prob = log_prob.sum(axis=[1,2])
 
         return actions, values, log_prob
@@ -278,7 +283,8 @@ class MaskableActorCriticPolicy(BasePolicy):
         """
         distribution, batch_size, height, width = self.get_distribution(observation, action_masks)
         actions = distribution.get_actions(deterministic=deterministic)
-        actions = actions.view(batch_size, height, width)
+        actions = actions.reshape(batch_size, height, width)
+        actions = actions.permute(0, 1, 2)
         return actions
 
     def predict(
@@ -358,7 +364,8 @@ class MaskableActorCriticPolicy(BasePolicy):
         if action_masks is not None:
             assert action_masks.shape == (batch_size * height * width, action_channels)
 
-        latent_pi = latent_pi.view(-1, action_channels)
+        latent_pi = latent_pi.permute(0, 2, 3, 1)
+        latent_pi = latent_pi.reshape(-1, action_channels)
         assert latent_pi.shape[0] == batch_size * height * width
 
         if action_masks is not None:
@@ -367,12 +374,13 @@ class MaskableActorCriticPolicy(BasePolicy):
         distribution = self._get_action_dist_from_latent(latent_pi)
         if action_masks is not None:
             distribution.apply_masking(action_masks)
+            
         actions = actions.view(-1)
         log_prob = distribution.log_prob(actions)
         
         log_prob = log_prob.view(batch_size, height, width)
+        log_prob = log_prob.permute(0, 1, 2)
         log_prob = log_prob.sum(axis=[1,2])
-
         values = self.value_net(latent_vf)
         return values, log_prob, distribution.entropy()
 
@@ -391,7 +399,10 @@ class MaskableActorCriticPolicy(BasePolicy):
             pi_features, _ = features
             latent_pi = self.mlp_extractor.forward_actor(pi_features)
         batch_size, action_channels, height, width = latent_pi.shape
-        latent_pi = latent_pi.view(-1, action_channels)
+
+
+        latent_pi = latent_pi.permute(0, 2, 3, 1)
+        latent_pi = latent_pi.reshape(-1, action_channels)
         assert latent_pi.shape[0] == batch_size * height * width
         distribution = self._get_action_dist_from_latent(latent_pi)
         if action_masks is not None:

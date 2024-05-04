@@ -5,6 +5,7 @@ from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from typing import Callable, List, Optional, Tuple, Type, Union
 from torch import Tensor
 import math
+import sys
 
 def conv3x3(in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dilation: int = 1) -> nn.Conv2d:
 
@@ -397,7 +398,7 @@ class UNetWithResnet50Encoder(BaseFeaturesExtractor):
             nn.ConvTranspose2d(128, 50, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
             # Final layer: Adjust channels to 25 without changing dimension
-            nn.ConvTranspose2d(50, 20, kernel_size=3, stride=1, padding=1),
+            nn.ConvTranspose2d(50, 15, kernel_size=3, stride=1, padding=1),
         )
         self.upconv_1 = nn.Conv2d(2048, 1024, kernel_size=1, stride=1)
         self.up_blocks = nn.ModuleList(up_blocks)

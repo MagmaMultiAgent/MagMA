@@ -14,6 +14,8 @@ from stable_baselines3.common.callbacks import (
     EvalCallback,
     CheckpointCallback,
 )
+import seeding
+from sb3_contrib.common.maskable.callbacks import MaskableEvalCallback
 from stable_baselines3.common.evaluation import evaluate_policy
 from wrappers.reward_wrapper import EarlyRewardParserWrapper
 from wrappers.monitor_wrapper import Monitor
@@ -26,6 +28,8 @@ from wrappers.obs_wrappers import SimpleUnitObservationWrapper
 from wrappers.sb3_iam_wrapper import SB3InvalidActionWrapper
 from wrappers.utils import gaussian_ice_placement, bid_zero_to_not_waste
 from net.mixed_net import UNetWithResnet50Encoder
+import torch as th
+th.autograd.set_detect_anomaly(True)
 
 def parse_args():
     """
@@ -43,7 +47,7 @@ def parse_args():
         "-n",
         "--n-envs",
         type=int,
-        default=1,
+        default=16,
         help="Number of parallel envs to run. Note that the rollout \
         size is configured separately and invariant to this value",
     )
@@ -62,8 +66,20 @@ def parse_args():
     parser.add_argument(
         "--max-episode-steps",
         type=int,
-        default=1000,
+        default=256,
         help="Max steps per episode before truncating them",
+    )
+    parser.add_argument(
+        "--eval-seed",
+        type=int,
+        default=0,
+        help="Seed for evaluation",
+    )
+    parser.add_argument(
+        "--eval-max-episode-steps",
+        type=int,
+        default=1024,
+        help="Seed for evaluation",
     )
     parser.add_argument(
         "--total-timesteps",
@@ -96,7 +112,7 @@ def parse_args():
 
 
 
-def make_env(env_id: str, rank: int, max_episode_steps: int = 1024, seed: int = 42):
+def make_env(env_id: str, rank: int, max_episode_steps: int = 256, seed: int = 42, eval_seed = 0):
     """
     Creates the environment
     """
@@ -154,37 +170,15 @@ class TensorboardCallback(BaseCallback):
         return True
 
 
-def evaluate(args, env_id, model):
-    """
-    Evaluates the model
-    """
-
-    model = model.load(args.model_path)
-    video_length = 1024
-    eval_env = SubprocVecEnv(
-        [make_env(env_id, i, max_episode_steps=1024) for i in range(args.eval_num)]
-    )
-    eval_env = VecVideoRecorder(
-        eval_env,
-        osp.join(args.log_path, "eval_videos"),
-        record_video_trigger=lambda x: x == 0,
-        video_length=video_length,
-        name_prefix="evaluation_video",
-    )
-    eval_env.reset()
-    out = evaluate_policy(model, eval_env, render=False, deterministic=False)
-    print(out)
-
-
 def train(args, env_id, model: PPO):
     """
     Trains the model
     """
-
-    eval_environments = [make_env(env_id, i, max_episode_steps=1024) for i in range(args.eval_num)]
+    seeding.set_seed(args.seed)
+    eval_environments = [make_env(env_id, i, max_episode_steps=args.eval_max_episode_steps, seed=args.eval_seed) for i in range(args.eval_num)]
     eval_env = SubprocVecEnv(eval_environments)
     eval_env.reset()
-    eval_callback = EvalCallback(
+    eval_callback = MaskableEvalCallback(
         eval_env,
         best_model_save_path=osp.join(args.log_path, "models"),
         log_path=osp.join(args.log_path, "eval_logs"),
@@ -216,8 +210,8 @@ def main(args):
         set_random_seed(args.seed)
     env_id = "LuxAI_S2-v0"
 
-    environments = [make_env(env_id, i, max_episode_steps=args.max_episode_steps) \
-                    for i in range(args.n_envs)]
+    seeding.set_seed(args.seed)
+    environments = [make_env(env_id, i, max_episode_steps=args.max_episode_steps, seed=args.seed) for i in range(args.n_envs)]
 
     env = SubprocVecEnv(environments)
     env.reset()
@@ -225,7 +219,7 @@ def main(args):
     policy_kwargs_unit = {
         "features_extractor_class": UNetWithResnet50Encoder,
         "features_extractor_kwargs": {
-            "output_channels": 20,
+            "output_channels": 15,
             }
         }
     rollout_steps = 4096
@@ -242,13 +236,12 @@ def main(args):
         gae_lambda=0.95,
         clip_range=0.2,
         vf_coef=0.5,
+        ent_coef=0.001,
         max_grad_norm=0.5,
         tensorboard_log=osp.join(args.log_path),
     )
-    if args.eval:
-        evaluate(args, env_id, model)
-    else:
-        train(args, env_id, model)
+
+    train(args, env_id, model)
 
 
 if __name__ == "__main__":

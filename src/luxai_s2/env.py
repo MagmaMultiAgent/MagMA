@@ -158,7 +158,8 @@ class LuxAI_S2(ParallelEnv):
             pygame.display.quit()
             pygame.quit()
         except:
-            print("No pygame installed, ignoring import")
+            #print("No pygame installed, ignoring import")
+            pass
         pass
 
     def get_state(self):
