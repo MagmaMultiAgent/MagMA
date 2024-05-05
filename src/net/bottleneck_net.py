@@ -128,8 +128,8 @@ def Conv3x3(name, in_channels, out_channels, bias=True, spectral_norm=False, bat
 def Conv3x3_2(name, in_channels, out_channels, bias=True, spectral_norm=False, batch_norm=False, layer_norm=False, activation="leaky_relu", init_fn=None, seed=None):
     return MyConv2d(name, in_channels, out_channels, kernel_size=3, stride=2, padding=1, bias=bias, spectral_norm=spectral_norm, batch_norm=batch_norm, layer_norm=layer_norm, activation=activation, init_fn=init_fn, seed=seed)
 
-def Conv3x3_d(name, in_channels, out_channels, dilation = 2, bias=True, spectral_norm=False, batch_norm=False, layer_norm=False, activation="leaky_relu", init_fn=None, seed=None):
-    return MyConv2d(name, in_channels, out_channels, kernel_size=3, stride=1, padding=2, bias=bias, dilation=dilation, spectral_norm=spectral_norm, batch_norm=batch_norm, layer_norm=layer_norm, activation=activation, init_fn=init_fn, seed=seed)
+def Conv3x3_d(name, in_channels, out_channels, dilation = 2, padding = 2, bias=True, spectral_norm=False, batch_norm=False, layer_norm=False, activation="leaky_relu", init_fn=None, seed=None):
+    return MyConv2d(name, in_channels, out_channels, kernel_size=3, stride=1, padding=padding, bias=bias, dilation=dilation, spectral_norm=spectral_norm, batch_norm=batch_norm, layer_norm=layer_norm, activation=activation, init_fn=init_fn, seed=seed)
 
 def Conv5x5(name, in_channels, out_channels, bias=True, spectral_norm=False, batch_norm=False, layer_norm=False, activation="leaky_relu", init_fn=None, seed=None):
     return MyConv2d(name, in_channels, out_channels, kernel_size=5, stride=1, padding="same", bias=bias, spectral_norm=spectral_norm, batch_norm=batch_norm, layer_norm=layer_norm, activation=activation, init_fn=init_fn, seed=seed)
