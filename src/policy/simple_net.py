@@ -63,11 +63,18 @@ def init_orthogonal(module, weight_init, bias_init, gain=1, scaling=1.0):
 
 weight_scale_hidden = 1.0
 weight_scale_out = 1.0
+gain_out = 1.0
 init_leaky_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('leaky_relu'), weight_scale_hidden)
 init_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('relu'), weight_scale_hidden)
 init_sigmoid_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('sigmoid'), weight_scale_hidden)
-init_value_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 0.01, weight_scale_out)
-init_actor_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 0.01, weight_scale_out)
+init_value_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, gain_out, weight_scale_out)
+init_actor_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, gain_out, weight_scale_out)
+if False:
+    init_leaky_relu_ = None
+    init_relu_ = None
+    init_sigmoid_ = None
+    init_value_ = None
+    init_actor_ = None
 
 
 USE_BATCH_NORM = True
