@@ -163,10 +163,8 @@ class MaskableActorCriticPolicy(BasePolicy):
         actions = distribution.get_actions(deterministic=deterministic)
         log_prob = distribution.log_prob(actions)
         
-
         actions = actions.reshape(batch_size, height, width)
         actions = actions.permute(0, 1, 2)
-   
         log_prob = log_prob.view(batch_size, height, width)
         log_prob = log_prob.permute(0, 1, 2)
         log_prob = log_prob.sum(axis=[1,2])
@@ -374,8 +372,7 @@ class MaskableActorCriticPolicy(BasePolicy):
         distribution = self._get_action_dist_from_latent(latent_pi)
         if action_masks is not None:
             distribution.apply_masking(action_masks)
-            
-        actions = actions.view(-1)
+        
         log_prob = distribution.log_prob(actions)
         
         log_prob = log_prob.view(batch_size, height, width)

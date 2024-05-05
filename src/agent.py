@@ -99,6 +99,7 @@ class Agent:
             logits[~action_mask] = -1e8
             dist = th.distributions.Categorical(logits=logits)
 
+
             actions = dist.sample()
             actions = actions.reshape(batch_size, height, width)
             actions = actions.permute(0, 1, 2).cpu().numpy()

@@ -123,6 +123,7 @@ class MaskableCategoricalDistribution(MaskableDistribution):
         self: SelfMaskableCategoricalDistribution, action_logits: th.Tensor
     ) -> SelfMaskableCategoricalDistribution:
         # Restructure shape to align with logits
+
         reshaped_logits = action_logits.view(-1, self.action_dim)
         self.distribution = MaskableCategorical(logits=reshaped_logits)
         return self

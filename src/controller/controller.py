@@ -6,8 +6,10 @@ from typing import Any, Dict
 import numpy as np
 import numpy.typing as npt
 from gymnasium import spaces
+import sys
 
-move_deltas = np.array([[0, 0], [0, -1], [1, 0], [0, 1], [-1, 0]])
+move_deltas = np.array([[0, -1], [1, 0], [0, 1], [-1, 0]])
+transfer_deltas = np.array([[0, 0], [0, -1], [1, 0], [0, 1], [-1, 0]])
 factory_adjacent_delta_xy = np.array([
     [-2, -1],
     [-2, +0],
@@ -77,16 +79,6 @@ class MultiUnitController(Controller):
         see how the lux action space is defined in luxai_s2/spaces/action.py
 
         """
-        self.num_of_move = 0
-        self.num_of_transfer = 0
-        self.num_of_pickup = 0
-        self.num_of_dig = 0
-        self.num_of_recharge = 0
-        self.num_of_light_unit_build = 0
-        self.num_of_heavy_unit_build = 0
-        self.num_of_water_lichen = 0
-
-
         self.env_cfg = env_cfg
         self.move_act_dims = 4
         self.one_transfer_dim = 5
@@ -97,6 +89,7 @@ class MultiUnitController(Controller):
         self.light_unit_build = 1
         self.heavy_unit_build = 1
         self.water_lichen = 1
+        self.fact_do_nothing = 1
 
         self.move_dim_high = self.move_act_dims
         self.transfer_dim_high = self.move_dim_high + self.transfer_act_dims
@@ -106,8 +99,9 @@ class MultiUnitController(Controller):
         self.light_unit_build_dim_high = self.recharge_dim_high + self.light_unit_build
         self.heavy_unit_build_dim_high = self.light_unit_build_dim_high + self.heavy_unit_build
         self.water_lichen_dim_high = self.heavy_unit_build_dim_high + self.water_lichen
+        self.fact_do_nothing_dim_high = self.water_lichen_dim_high + self.fact_do_nothing
 
-        self.total_act_dims = self.water_lichen_dim_high
+        self.total_act_dims = self.fact_do_nothing_dim_high
         action_space = spaces.Discrete(self.total_act_dims)
         super().__init__(action_space)
 
@@ -129,7 +123,7 @@ class MultiUnitController(Controller):
         """
         return id < self.transfer_dim_high
 
-    def _get_transfer_action(self, id):
+    def _get_transfer_action(self, id, unit_type):
         
         id = id - (self.transfer_act_dims/1)
         id += 1
@@ -137,7 +131,11 @@ class MultiUnitController(Controller):
         transfer_type_mapping = [0]  # Mapping index to desired value
         transfer_type_index = id // (self.transfer_act_dims/1)  # 0 for ice, 1 for ore
         transfer_type = transfer_type_mapping[transfer_type_index.astype(int).item()]
-        return np.array([1, transfer_dir, transfer_type, self.env_cfg.max_transfer_amount, 0, 1], dtype=int)
+
+        if unit_type == "HEAVY":
+            return np.array([1, transfer_dir, transfer_type, self.env_cfg.ROBOTS["HEAVY"].CARGO_SPACE, 0, 1], dtype=int)
+        else:
+            return np.array([1, transfer_dir, transfer_type, self.env_cfg.ROBOTS["LIGHT"].CARGO_SPACE, 0, 1], dtype=int)
 
     def _is_pickup_action(self, id):
         """
@@ -145,11 +143,14 @@ class MultiUnitController(Controller):
         """
         return id < self.pickup_dim_high
 
-    def _get_pickup_action(self, id):
+    def _get_pickup_action(self, id, unit_type):
         """
         Converts the action id to a pickup action
         """
-        return np.array([2, 0, 4, self.env_cfg.max_transfer_amount, 0, 1])
+        if unit_type == "HEAVY":
+            return np.array([2, 0, 4, self.env_cfg.ROBOTS["HEAVY"].BATTERY_CAPACITY, 0, 1])
+        else:
+            return np.array([2, 0, 4, self.env_cfg.ROBOTS["LIGHT"].BATTERY_CAPACITY, 0, 1])
 
     def _is_dig_action(self, id):
         """
@@ -169,11 +170,14 @@ class MultiUnitController(Controller):
         """
         return id < self.recharge_dim_high
     
-    def _get_recharge_action(self, id):
+    def _get_recharge_action(self, id, unit_type):
         """
         Converts the action id to a recharge action
         """
-        return np.array([5, 0, 0, 0, 0, 1])
+        if unit_type == "HEAVY":
+            return np.array([5, 0, 0, self.env_cfg.ROBOTS["HEAVY"].BATTERY_CAPACITY, 0, 1])
+        else:
+            return np.array([5, 0, 0, self.env_cfg.ROBOTS["LIGHT"].BATTERY_CAPACITY, 0, 1])
     
     def _is_light_unit_build_action(self, id):
         """
@@ -210,6 +214,12 @@ class MultiUnitController(Controller):
         Converts the action id to a water lichen action
         """
         return 2
+    
+    def _is_fact_do_nothing_action(self, id):
+        """
+        Checks if the action id corresponds to a factory do nothing action
+        """
+        return id < self.fact_do_nothing_dim_high
 
     def action_to_lux_action(
         self, agent: str, obs: Dict[str, Any], action: npt.NDArray
@@ -226,18 +236,19 @@ class MultiUnitController(Controller):
             pos = tuple(unit['pos'])
             filtered_action = action[pos]
             choice = filtered_action
+            unit_type = unit["unit_type"]
             action_queue = []
             no_op = False
             if self._is_move_action(choice):
                 action_queue = [self._get_move_action(choice)]
             elif self._is_transfer_action(choice):
-                action_queue = [self._get_transfer_action(choice)]
+                action_queue = [self._get_transfer_action(choice, unit_type)]
             elif self._is_pickup_action(choice):
-                action_queue = [self._get_pickup_action(choice)]
+                action_queue = [self._get_pickup_action(choice, unit_type)]
             elif self._is_dig_action(choice):
                 action_queue = [self._get_dig_action(choice)]
             elif self._is_recharge_action(choice):
-                action_queue = [self._get_recharge_action(choice)]
+                action_queue = [self._get_recharge_action(choice, unit_type)]
             else:
                 no_op = True
 
@@ -259,90 +270,172 @@ class MultiUnitController(Controller):
                 lux_action[factory_id] = self._get_heavy_unit_build_action(choice)
             elif self._is_water_lichen_action(choice):
                 lux_action[factory_id] = self._get_water_lichen_action(choice)
+            elif self._is_fact_do_nothing_action(choice):
+                continue
             else:
                 continue
-        
-        if lux_action:
-            for k, v in lux_action.items():
-                if isinstance(v, list):
-                    if v[0][0] == 0:
-                        self.num_of_move += 1
-                    elif v[0][0] == 1:
-                        self.num_of_transfer += 1
-                    elif v[0][0] == 2:
-                        self.num_of_pickup += 1
-                    elif v[0][0] == 3:
-                        self.num_of_dig += 1
-                    elif v[0][0] == 5:
-                        self.num_of_recharge += 1
-                else:
-                    if v == 0:
-                        self.num_of_light_unit_build += 1
-                    elif v == 1:
-                        self.num_of_heavy_unit_build += 1
-                    elif v == 2:
-                        self.num_of_water_lichen += 1
-
-        #print("Number of move actions: ", self.num_of_move)
-        #print("Number of transfer actions: ", self.num_of_transfer)
-        #print("Number of pickup actions: ", self.num_of_pickup)
-        #print("Number of dig actions: ",self. num_of_dig)
-        #print("Number of recharge actions: ", self.num_of_recharge)
-        #print("Number of light unit build actions: ", self.num_of_light_unit_build)
-        #print("Number of heavy unit build actions: ", self.num_of_heavy_unit_build)
-        #print("Number of water lichen actions: ",self. num_of_water_lichen)
 
         return lux_action
+    
 
     def action_masks(self, agent: str, obs: Dict[str, Any]):
         """
         Defines a simplified action mask for this controller's action space
         Doesn't account for whether robot has enough power
         """
+
         # Get the own player and enemy
         own = "player_0" if agent == "player_0" else "player_1"
         enemy = "player_1" if agent == "player_0" else "player_0"
 
-        def factory_under_unit(unit_pos, factories):
-            for _, factory in factories.items():
-                factory_pos = factory["pos"]
-                if abs(unit_pos[0] - factory_pos[0]) <= 1 and abs(unit_pos[1] - factory_pos[1]) <= 1:
-                    return factory
-            return None
-        
         # Get the shared observation
         shared_obs = obs[agent]
-
-        # Create occupancy maps
-        factory_occupancy_map = (np.ones_like(shared_obs["board"]["rubble"], dtype=int) * -1)
-        player_occupancy_map = (np.ones_like(shared_obs["board"]["rubble"], dtype=int) * -1)
 
         # Get the positions of the units
         enemy_units = shared_obs["units"][enemy]
         enemy_units_pos = [tuple(unit["pos"]) for unit in enemy_units.values()]
         own_units = shared_obs["units"][own]
         own_units_pos = [tuple(unit["pos"]) for unit in own_units.values()]
-        own_factories = shared_obs["factories"][own]     
+        own_factories = shared_obs["factories"][own]
+        enemy_factories = shared_obs["factories"][enemy]
+        
 
-        # Fill the unit occupancy maps
+        # Create occupancy maps
+        factory_occupancy_map = (
+            np.ones_like(shared_obs["board"]["rubble"], dtype=int) * -1
+        )
+        player_occupancy_map = (
+            np.ones_like(shared_obs["board"]["rubble"], dtype=int) * -1
+        )
+
+        
         for player in shared_obs["units"]:
             for unit_id in shared_obs["units"][player]:
                 unit = shared_obs["units"][player][unit_id]
                 pos = np.array(unit["pos"])
                 player_occupancy_map[pos[0], pos[1]] = int(unit["unit_id"].split("_")[1])
-
-        # Fill the factory occupancy map
+                
+        factories = {}
         for player in shared_obs["factories"]:
+            factories[player] = {}
             for f_id in shared_obs["factories"][player]:
                 f_data = shared_obs["factories"][player][f_id]
                 f_pos = f_data["pos"]
                 # store in a 3x3 space around the factory position it's strain id.
-                factory_occupancy_map[f_pos[0] - 1 : f_pos[0] + 2, f_pos[1] - 1 : f_pos[1] + 2] = f_data["strain_id"]
-        
+                factory_occupancy_map[
+                    f_pos[0] - 1 : f_pos[0] + 2, f_pos[1] - 1 : f_pos[1] + 2
+                ] = f_data["strain_id"]
+
+
         # Everything is invalid by default
         action_mask = np.zeros((self.total_act_dims, self.env_cfg.map_size, self.env_cfg.map_size), dtype=bool)
 
-        for factory_id, factory in own_factories.items():
+        sorted_units = sorted(shared_obs["units"][agent].items(), reverse=True, key=(lambda x: (x[1]["unit_type"] == "HEAVY", x[1]["cargo"]["ice"], x[1]["power"])))
+        for unit_id, unit in sorted_units:
+            
+            action_mask[0:self.move_dim_high, :, :] = True
+            x, y = np.array(unit["pos"])
+
+            # Go trough move directions
+            for direction in range(len(move_deltas)):
+                # Target position
+                target_pos = (x + move_deltas[direction][0], y + move_deltas[direction][1])
+
+                # Check if the target is out of bounds
+                if (target_pos[0] < 0 or target_pos[1] < 0 or target_pos[0] >= self.env_cfg.map_size or target_pos[1] >= self.env_cfg.map_size):
+                    action_mask[direction, :, :] = False
+                    continue
+
+                # Check if there is a factory at target
+                factory_at_pos = next(
+                    (factory_id for factory_id, details in own_factories.items() if np.array_equal(details['pos'], target_pos)),
+                    False
+                )
+                # Check if enemy factory is at target
+                enemy_factory_at_pos = next(
+                    (factory_id for factory_id, details in enemy_factories.items() if np.array_equal(details['pos'], target_pos)),
+                    False
+                )
+
+                # Check if there is a unit at target
+                unit_there = player_occupancy_map[target_pos[0], target_pos[1]]
+
+                enemy_unit_there = target_pos in enemy_units_pos
+
+                # If there is factory there, we can't move there
+                if factory_at_pos or enemy_factory_at_pos:
+                    action_mask[direction, :, :] = False
+                    continue
+                
+                # If there is a unit there, we can't move there
+                if unit_there != -1:
+                    action_mask[direction, :, :] = False
+                    continue
+                
+                # if the unit is not heavy, it can't move to a tile with an enemy unit
+                if unit["unit_type"] != "HEAVY" and enemy_unit_there:
+                    action_mask[direction, :, :] = False
+                    continue
+
+            # Go trough transfer directions
+            for trans_direction in range(len(transfer_deltas)):
+                
+                # target position
+                transfer_pos = (x + transfer_deltas[trans_direction][0], y + transfer_deltas[trans_direction][1])
+
+                # Check if the target is out of bounds
+                if (transfer_pos[0] < 0 or transfer_pos[1] < 0 or transfer_pos[0] >= self.env_cfg.map_size or transfer_pos[1] >= self.env_cfg.map_size):
+                    continue
+
+                # Check if there is a factory at target
+                factory_there = factory_occupancy_map[transfer_pos[0], transfer_pos[1]]
+
+                # Check if there is a unit at target
+                unit_there = player_occupancy_map[transfer_pos[0], transfer_pos[1]]
+                enemy_unit_there = transfer_pos in enemy_units_pos
+                
+                # If unit has ice cargo
+                if unit["cargo"]["ice"] > 0:
+                    # If there is a factory there, we can transfer to it
+                    if factory_there in shared_obs["teams"][agent]["factory_strains"]:
+                        action_mask[self.move_dim_high + trans_direction, :, :] = True
+                    # If there is a unit there, we can transfer to it
+                    if unit_there != -1 and not enemy_unit_there:
+                        action_mask[self.move_dim_high + trans_direction, :, :] = True
+
+            factory_there = factory_occupancy_map[x, y]
+            on_top_of_factory = (
+                factory_there in shared_obs["teams"][agent]["factory_strains"]
+            )
+            
+            # Dig action is valid if there is ice, ore, rubble or lichen
+            board_sum = (
+                shared_obs["board"]["ice"][pos[0], pos[1]]
+                + shared_obs["board"]["ore"][pos[0], pos[1]]
+                + shared_obs["board"]["rubble"][pos[0], pos[1]]
+                + shared_obs["board"]["lichen"][pos[0], pos[1]]
+            )
+
+            if board_sum > 0 and not on_top_of_factory:
+                action_mask[
+                    self.dig_dim_high - self.dig_act_dims : self.dig_dim_high, pos[0], pos[1]
+                ] = True
+
+            # Pickup action is valid if there is power
+            if on_top_of_factory:
+                action_mask[
+                    self.pickup_dim_high - self.pickup_act_dims : self.pickup_dim_high, pos[0], pos[1]
+                ] = True
+
+
+            # Recharge action is valid if the unit is not on top of a factory and the real_env_steps is greater than 30
+            if shared_obs["real_env_steps"] % 40 > 30 and not on_top_of_factory:
+                action_mask[
+                    self.recharge_dim_high - self.recharge_act_dims : self.recharge_dim_high, pos[0], pos[1]
+                ] = True
+
+
+        for _, factory in own_factories.items():
             x, y = factory["pos"]
 
             unit_on_factory = (x, y) in own_units_pos
@@ -359,6 +452,7 @@ class MultiUnitController(Controller):
                 and not unit_on_factory:
                 action_mask[self.heavy_unit_build_dim_high-self.heavy_unit_build_dim_high, x, y] = True
 
+            # Water lichen is valid only if there is enough water and there is a free adjacent tile
             lichen_strains_size = np.sum(shared_obs["board"]["lichen"] == factory["strain_id"])
             if factory["cargo"]["water"] >= (lichen_strains_size + 1) // self.env_cfg.LICHEN_WATERING_COST_FACTOR:
                 adj_xy = factory['pos'] + factory_adjacent_delta_xy
@@ -370,91 +464,7 @@ class MultiUnitController(Controller):
                 if (no_rubble & no_ice & no_ore).any():
                     action_mask[self.water_lichen_dim_high - self.water_lichen, x, y] = True
 
-        unit_move_targets = set()
-        sorted_units = sorted(shared_obs["units"][agent].items(), reverse=True, key=(lambda x: (x[1]["unit_type"] == "HEAVY", x[1]["cargo"]["ice"], x[1]["power"])))
-        for unit_id, unit in sorted_units:
-            
-            x, y = np.array(unit["pos"])
-            if self.env_cfg.ROBOTS[unit["unit_type"]].ACTION_QUEUE_POWER_COST <= unit["power"]:
-                    for direction in range(len(move_deltas)):
-                        target_pos = (x + move_deltas[direction][0], y + move_deltas[direction][1])
+            # Factory do nothing is always valid
+            action_mask[self.fact_do_nothing_dim_high - self.fact_do_nothing, x, y] = True
 
-                        if (
-                            target_pos[0] < 0
-                            or target_pos[1] < 0
-                            or target_pos[0] >= self.env_cfg.map_size
-                            or target_pos[1] >= self.env_cfg.map_size
-                        ):
-                            continue
-
-                        if factory_under_unit(target_pos, shared_obs["factories"][agent]) is not None:
-                            continue
-
-                        unit_at_target = player_occupancy_map[target_pos[0], target_pos[1]]
-                        if unit_at_target != -1:
-                            continue
-
-                        if tuple(target_pos) in factory_occupancy_map:
-                            continue
-
-                        if not unit["unit_type"] != "HEAVY" and tuple(target_pos) in enemy_units_pos:
-                            continue
-                        
-                        if tuple(target_pos) not in unit_move_targets:
-                            action_mask[0:4, :, :] = True
-                            unit_move_targets.add(tuple(target_pos))
-
-
-                        if unit["cargo"]["ice"] > 0:
-                            unit_has_ice = True
-                        else:
-                            unit_has_ice = False
-
-                        for direction in range(1, len(move_deltas)):
-                            transfer_pos = (x + move_deltas[direction][0], y + move_deltas[direction][1])
-
-                            if (
-                            transfer_pos[0] < 0
-                            or transfer_pos[1] < 0
-                            or transfer_pos[0] >= len(factory_occupancy_map)
-                            or transfer_pos[1] >= len(factory_occupancy_map[0])
-                            ):
-                                continue
-
-                            if factory_under_unit(transfer_pos, shared_obs["factories"][agent]) is not None and unit_has_ice:
-                                action_mask[self.move_dim_high + direction, x, y] = True
-                            
-
-                            unit_there = player_occupancy_map[transfer_pos[0], transfer_pos[1]]
-
-                            if unit_there != -1:
-                                if unit_has_ice:
-                                    action_mask[self.move_dim_high + direction, x, y] = True
-
-
-                        board_sum = (
-                            shared_obs["board"]["ice"][pos[0], pos[1]]
-                            + shared_obs["board"]["ore"][pos[0], pos[1]]
-                            + shared_obs["board"]["rubble"][pos[0], pos[1]]
-                            + shared_obs["board"]["lichen"][pos[0], pos[1]]
-                        )
-                        if board_sum > 0 and factory_under_unit((x, y), shared_obs["factories"][agent]) is None:
-                            action_mask[
-                                self.dig_dim_high - self.dig_act_dims : self.dig_dim_high, pos[0], pos[1]
-                            ] = True
-
-
-                        if factory_under_unit((x, y), shared_obs["factories"][agent]) is not None:
-                            action_mask[
-                                self.pickup_dim_high - self.pickup_act_dims : self.pickup_dim_high, pos[0], pos[1]
-                            ] = True
-
-            
-            if shared_obs["real_env_steps"] % 40 > 30:
-                action_mask[
-                    self.recharge_dim_high - self.recharge_act_dims : self.recharge_dim_high, pos[0], pos[1]
-                ] = True
-
-        action_mask = np.ones((self.total_act_dims, self.env_cfg.map_size, self.env_cfg.map_size), dtype=bool)
-        action_mask[14, :, :] = False
         return action_mask

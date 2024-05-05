@@ -160,14 +160,19 @@ class CustomExtractor(nn.Module):
         super().__init__()
         device = get_device(device)
         policy_net: List[nn.Module] = [nn.Identity()]
-        value_net: List[nn.Module] = [nn.Flatten(start_dim=1)]
+        value_net: List[nn.Module] = [
+            nn.Conv2d(feature_dim, feature_dim, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(feature_dim),
+            activation_fn(),
+            nn.AdaptiveAvgPool2d(1),
+            nn.Flatten(),
+        ]
 
         self.policy_net = nn.Sequential(*policy_net).to(device)
         self.value_net = nn.Sequential(*value_net).to(device)
 
-        # TODO: make these sizes dynamic
-        self.latent_dim_pi = feature_dim  # action space
-        self.latent_dim_vf = obs_shape ** 2 * feature_dim  # observation space
+        self.latent_dim_pi = feature_dim
+        self.latent_dim_vf = feature_dim
 
     def forward(self, features: th.Tensor) -> Tuple[th.Tensor, th.Tensor]:
         """
