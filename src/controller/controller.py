@@ -79,10 +79,10 @@ class MultiUnitController(Controller):
         see how the lux action space is defined in luxai_s2/spaces/action.py
 
         """
+
         self.env_cfg = env_cfg
         self.move_act_dims = 4
         self.one_transfer_dim = 5
-        self.transfer_act_dims = self.one_transfer_dim * 1
         self.pickup_act_dims = 1
         self.dig_act_dims = 1
         self.recharge_act_dims = 1
@@ -92,7 +92,7 @@ class MultiUnitController(Controller):
         self.fact_do_nothing = 1
 
         self.move_dim_high = self.move_act_dims
-        self.transfer_dim_high = self.move_dim_high + self.transfer_act_dims
+        self.transfer_dim_high = self.move_dim_high + self.one_transfer_dim
         self.pickup_dim_high = self.transfer_dim_high + self.pickup_act_dims
         self.dig_dim_high = self.pickup_dim_high + self.dig_act_dims
         self.recharge_dim_high = self.dig_dim_high + self.recharge_act_dims
@@ -124,18 +124,15 @@ class MultiUnitController(Controller):
         return id < self.transfer_dim_high
 
     def _get_transfer_action(self, id, unit_type):
-        
-        id = id - (self.transfer_act_dims/1)
+        """
+        Converts the action id to a transfer action
+        """
         id += 1
-        transfer_dir = id % (self.transfer_act_dims/1)
-        transfer_type_mapping = [0]  # Mapping index to desired value
-        transfer_type_index = id // (self.transfer_act_dims/1)  # 0 for ice, 1 for ore
-        transfer_type = transfer_type_mapping[transfer_type_index.astype(int).item()]
-
+        transfer_dir = id % self.one_transfer_dim
         if unit_type == "HEAVY":
-            return np.array([1, transfer_dir, transfer_type, self.env_cfg.ROBOTS["HEAVY"].CARGO_SPACE, 0, 1], dtype=int)
+            return np.array([1, transfer_dir, 0, self.env_cfg.ROBOTS["HEAVY"].CARGO_SPACE, 0, 1], dtype=int)
         else:
-            return np.array([1, transfer_dir, transfer_type, self.env_cfg.ROBOTS["LIGHT"].CARGO_SPACE, 0, 1], dtype=int)
+            return np.array([1, transfer_dir, 0, self.env_cfg.ROBOTS["LIGHT"].CARGO_SPACE, 0, 1], dtype=int)
 
     def _is_pickup_action(self, id):
         """
@@ -410,29 +407,38 @@ class MultiUnitController(Controller):
             
             # Dig action is valid if there is ice, ore, rubble or lichen
             board_sum = (
-                shared_obs["board"]["ice"][pos[0], pos[1]]
-                + shared_obs["board"]["ore"][pos[0], pos[1]]
-                + shared_obs["board"]["rubble"][pos[0], pos[1]]
-                + shared_obs["board"]["lichen"][pos[0], pos[1]]
+                shared_obs["board"]["ice"][x, y]
+                + shared_obs["board"]["ore"][x, y]
+                + shared_obs["board"]["rubble"][x, y]
+                + shared_obs["board"]["lichen"][x, y]
             )
 
-            if board_sum > 0 and not on_top_of_factory:
+            if board_sum > 0:
                 action_mask[
-                    self.dig_dim_high - self.dig_act_dims : self.dig_dim_high, pos[0], pos[1]
+                    self.dig_dim_high - self.dig_act_dims : self.dig_dim_high, x , y
                 ] = True
 
             # Pickup action is valid if there is power
             if on_top_of_factory:
                 action_mask[
-                    self.pickup_dim_high - self.pickup_act_dims : self.pickup_dim_high, pos[0], pos[1]
+                    self.pickup_dim_high - self.pickup_act_dims : self.pickup_dim_high, x, y
                 ] = True
 
 
             # Recharge action is valid if the unit is not on top of a factory and the real_env_steps is greater than 30
             if shared_obs["real_env_steps"] % 40 > 30 and not on_top_of_factory:
                 action_mask[
-                    self.recharge_dim_high - self.recharge_act_dims : self.recharge_dim_high, pos[0], pos[1]
+                    self.recharge_dim_high - self.recharge_act_dims : self.recharge_dim_high, x , y
                 ] = True
+
+            if unit["power"] <= 0:
+                action_mask[
+                    self.recharge_dim_high - self.recharge_act_dims : self.recharge_dim_high, x, y
+                ] = True
+                action_mask[:self.recharge_dim_high-1, :, :] = False # Can't do anything else if no power
+
+            # do nothing is always valid for units too
+            action_mask[self.fact_do_nothing_dim_high - self.fact_do_nothing, x, y] = True
 
 
         for _, factory in own_factories.items():

@@ -84,7 +84,7 @@ def parse_args():
     parser.add_argument(
         "--total-timesteps",
         type=int,
-        default=500000,
+        default=106496,
         help="Total timesteps for training",
     )
 
@@ -221,7 +221,7 @@ def main(args):
         "features_extractor_kwargs": {
             "output_channels": 16,
             "num_bottleneck_channels": 256,
-            "bottleneck_type": "simple",
+            "bottleneck_type": "dilated",
             "use_se": True,
             }
         }
