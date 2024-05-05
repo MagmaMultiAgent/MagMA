@@ -27,7 +27,8 @@ from controller.controller import MultiUnitController
 from wrappers.obs_wrappers import SimpleUnitObservationWrapper
 from wrappers.sb3_iam_wrapper import SB3InvalidActionWrapper
 from wrappers.utils import gaussian_ice_placement, bid_zero_to_not_waste
-from net.mixed_net import MonoNet
+from net.bottleneck_net import BottleNet
+from net.dash_net import DashNet
 import torch as th
 th.autograd.set_detect_anomaly(True)
 
@@ -104,6 +105,24 @@ def parse_args():
         type=str,
         default="logs",
         help="Logging path",
+    )
+    parser.add_argument(
+        "--net",
+        type=str,
+        default="bottle",
+        help="Type of neural network to use",
+    )
+    parser.add_argument(
+        "--bottleneck-channels",
+        type=int,
+        default=256,
+        help="Number of bottleneck channels",
+    )
+    parser.add_argument(
+        "--bottleneck-type",
+        type=str,
+        default="regular",
+        help="Type of bottleneck",
     )
     args = parser.parse_args()
     return args
@@ -216,15 +235,25 @@ def main(args):
     env = SubprocVecEnv(environments)
     env.reset()
 
-    policy_kwargs_unit = {
-        "features_extractor_class": MonoNet,
-        "features_extractor_kwargs": {
-            "output_channels": 16,
-            "num_bottleneck_channels": 256,
-            "bottleneck_type": "dilated",
-            "use_se": True,
+    if args.net == "bottle":
+        policy_kwargs_unit = {
+            "features_extractor_class": BottleNet,
+            "features_extractor_kwargs": {
+                "output_channels": 16,
+                "num_bottleneck_channels": args.bottleneck_channels,
+                "bottleneck_type": args.bottleneck_type,
+                "seed": args.seed,
+                }
             }
-        }
+    else:
+        policy_kwargs_unit = {
+            "features_extractor_class": DashNet,
+            "features_extractor_kwargs": {
+                "output_channels": 16,
+                "seed": args.seed,
+                }
+            }
+
     rollout_steps = 4096
     model = MaskablePPO(
         "MultiInputPolicy",
