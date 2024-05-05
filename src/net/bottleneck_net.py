@@ -128,6 +128,9 @@ def Conv3x3(name, in_channels, out_channels, bias=True, spectral_norm=False, bat
 def Conv3x3_2(name, in_channels, out_channels, bias=True, spectral_norm=False, batch_norm=False, layer_norm=False, activation="leaky_relu", init_fn=None, seed=None):
     return MyConv2d(name, in_channels, out_channels, kernel_size=3, stride=2, padding=1, bias=bias, spectral_norm=spectral_norm, batch_norm=batch_norm, layer_norm=layer_norm, activation=activation, init_fn=init_fn, seed=seed)
 
+def Conv3x3_d(name, in_channels, out_channels, dilation = 2, bias=True, spectral_norm=False, batch_norm=False, layer_norm=False, activation="leaky_relu", init_fn=None, seed=None):
+    return MyConv2d(name, in_channels, out_channels, kernel_size=3, stride=1, padding=2, bias=bias, dilation=dilation, spectral_norm=spectral_norm, batch_norm=batch_norm, layer_norm=layer_norm, activation=activation, init_fn=init_fn, seed=seed)
+
 def Conv5x5(name, in_channels, out_channels, bias=True, spectral_norm=False, batch_norm=False, layer_norm=False, activation="leaky_relu", init_fn=None, seed=None):
     return MyConv2d(name, in_channels, out_channels, kernel_size=5, stride=1, padding="same", bias=bias, spectral_norm=spectral_norm, batch_norm=batch_norm, layer_norm=layer_norm, activation=activation, init_fn=init_fn, seed=seed)
 
@@ -215,8 +218,8 @@ class DilatedBottleneck(nn.Module):
     def __init__(self, name, in_channels, seed=None):
         super(DilatedBottleneck, self).__init__()
         self.block = nn.Sequential(
-            Conv3x3(name + "_conv1", in_channels, in_channels, dilation=2, padding=2, spectral_norm=USE_SPECTRAL_NORM, batch_norm=USE_BATCH_NORM, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed),
-            Conv3x3(name + "_conv2", in_channels, in_channels, dilation=4, padding=4, spectral_norm=USE_SPECTRAL_NORM, batch_norm=USE_BATCH_NORM, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed),
+            Conv3x3_d(name + "_conv1", in_channels, in_channels, dilation=2, padding=2, spectral_norm=USE_SPECTRAL_NORM, batch_norm=USE_BATCH_NORM, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed),
+            Conv3x3_d(name + "_conv2", in_channels, in_channels, dilation=4, padding=4, spectral_norm=USE_SPECTRAL_NORM, batch_norm=USE_BATCH_NORM, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed),
             ResidualBlock(name + "_res", in_channels, in_channels, seed=seed)
         )
 

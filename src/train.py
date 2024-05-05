@@ -55,7 +55,7 @@ def parse_args():
     parser.add_argument(
         "--eval-interval",
         type=int,
-        default=4096,
+        default=8192,
         help="Number of timesteps between evaluations",
     )
     parser.add_argument(
@@ -85,7 +85,7 @@ def parse_args():
     parser.add_argument(
         "--total-timesteps",
         type=int,
-        default=106496,
+        default=8192*25,
         help="Total timesteps for training",
     )
 
@@ -208,7 +208,7 @@ def train(args, env_id, model: PPO):
     )
 
     checkpoint_callback = CheckpointCallback(
-        save_freq=4096,
+        save_freq=8192,
         save_path=osp.join(args.log_path, "models"),
         name_prefix="model",
     )
@@ -254,7 +254,7 @@ def main(args):
                 }
             }
 
-    rollout_steps = 4096
+    rollout_steps = 8192
     model = MaskablePPO(
         "MultiInputPolicy",
         env,
