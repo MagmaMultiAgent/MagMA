@@ -566,8 +566,6 @@ class ActionParser():
             "recharge": recharge_va,
             "do_nothing": do_nothing_va,
         })
-        for key in valid_actions:
-            valid_actions[key][:] = False
         return valid_actions
 
     def action_stats(self, player, actions, game_state: GameState):

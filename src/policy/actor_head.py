@@ -1,4 +1,3 @@
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -15,7 +14,6 @@ def sample_from_categorical(logits, va, action=None, is_deterministic=False):
         logits = torch.where(va, logits, torch.tensor(BIG_NEG).type_as(logits))
         distribution = Categorical(logits=logits)
         if is_deterministic:
-            # Choose action with highest probability deterministically
             action = torch.argmax(logits, dim=-1) if action is None else action
         else:
             action = distribution.sample() if action is None else action
@@ -29,7 +27,6 @@ def sample_from_categorical(logits, va, action=None, is_deterministic=False):
         entropy = torch.zeros(torch.Size((0, )), device=logits.device, dtype=torch.float32)
     return logp, action.long(), entropy
 
-
 def sample_from_categorical_bc(logits, va, action=None):
     n, head_dim = logits.shape[0], logits.shape[-1]
     action = torch.clamp_max(action, head_dim-1)
@@ -39,7 +36,6 @@ def sample_from_categorical_bc(logits, va, action=None):
         loss = None
     return loss
 
-
 def sample_from_beta(param, action=None):
     alpha = nn.functional.softplus(param[..., 0]) + 0.001
     beta = nn.functional.softplus(param[..., 1]) + 0.001
@@ -48,7 +44,6 @@ def sample_from_beta(param, action=None):
     logp = distribution.log_prob(action)
     entropy = distribution.entropy()
     return logp, action, entropy
-
 
 def sample_from_normal(param, action=None):
     mu = torch.sigmoid(param[..., 0])
@@ -60,7 +55,6 @@ def sample_from_normal(param, action=None):
 
     action = torch.clamp(action, 0., 1.)
     return logp, action, entropy
-
 
 class ActorHead(nn.Module):
     amount_head_dim = {
@@ -77,65 +71,116 @@ class ActorHead(nn.Module):
         self.spawn_distribution = ModelParam.spawn_distribution
         self.spawn_amount_dim = ActorHead.amount_head_dim[self.spawn_distribution]
 
-        # Output Head
+        def layer_norm_1d(channel):
+            return nn.LayerNorm(channel)
+
+        def layer_norm_2d(channel):
+            return nn.GroupNorm(1, channel)
+        
         if not EnvParam.rule_based_early_step:
             self.bid = nn.Sequential(
                 nn.Conv2d(channel_sz, 1, kernel_size=1, stride=1, padding=0, bias=True),
+                layer_norm_2d(1),
                 nn.ReLU(),
                 nn.Flatten(1),
                 nn.Linear(EnvParam.map_size * EnvParam.map_size, ActDims.bid, bias=True),
             )
             self.spawn = nn.ModuleDict({
-                "logits": nn.Conv2d(channel_sz, 1, kernel_size=1, bias=True),
-                "water": nn.Conv2d(channel_sz, self.spawn_amount_dim, kernel_size=1, bias=True),
-                "metal": nn.Conv2d(channel_sz, self.spawn_amount_dim, kernel_size=1, bias=True),
+                "logits": nn.Sequential(
+                    nn.Conv2d(channel_sz, 1, kernel_size=1, bias=True),
+                    layer_norm_2d(1)
+                ),
+                "water": nn.Sequential(
+                    nn.Conv2d(channel_sz, self.spawn_amount_dim, kernel_size=1, bias=True),
+                    layer_norm_2d(self.spawn_amount_dim)
+                ),
+                "metal": nn.Sequential(
+                    nn.Conv2d(channel_sz, self.spawn_amount_dim, kernel_size=1, bias=True),
+                    layer_norm_2d(self.spawn_amount_dim)
+                )
             })
 
-        self.factory_act = nn.Linear(channel_sz, ActDims.factory_act, bias=True)
+        self.factory_act = nn.Sequential(
+            nn.Linear(channel_sz, ActDims.factory_act, bias=True),
+            layer_norm_1d(ActDims.factory_act)
+        )
 
-        self.unit_act_type = nn.Linear(channel_sz, ActDims.robot_act, bias=True)
+        self.unit_act_type = nn.Sequential(
+            nn.Linear(channel_sz, ActDims.robot_act, bias=True),
+            layer_norm_1d(ActDims.robot_act)
+        )
 
         self.unit_act_move = nn.ModuleDict({
-            "direction": nn.Linear(channel_sz, ActDims.direction, bias=True),
-            "repeat": nn.Linear(channel_sz, ActDims.repeat, bias=True),
+            "direction": nn.Sequential(
+                nn.Linear(channel_sz, ActDims.direction, bias=True),
+                layer_norm_1d(ActDims.direction)
+            ),
+            "repeat": nn.Sequential(
+                nn.Linear(channel_sz, ActDims.repeat, bias=True),
+                layer_norm_1d(ActDims.repeat)
+            )
         })
 
         self.unit_act_transfer = nn.ModuleDict({
-            "direction":
-            nn.Linear(channel_sz, ActDims.direction, bias=True),
-            "resource":
-            nn.Sequential(
-                nn.Linear(channel_sz, (ActDims.direction * ActDims.resource), bias=True),
+            "direction": nn.Sequential(
+                nn.Linear(channel_sz, ActDims.direction, bias=True),
+                layer_norm_1d(ActDims.direction)
+            ),
+            "resource": nn.Sequential(
+                nn.Linear(channel_sz, ActDims.direction * ActDims.resource, bias=True),
                 nn.Unflatten(1, (ActDims.direction, ActDims.resource)),
+                layer_norm_2d(ActDims.direction)
             ),
-            "amount":
-            nn.Sequential(
-                nn.Linear(channel_sz, (ActDims.direction * ActDims.resource * self.amount_head_dim), bias=True),
+            "amount": nn.Sequential(
+                nn.Linear(channel_sz, ActDims.direction * ActDims.resource * self.amount_head_dim, bias=True),
                 nn.Unflatten(1, (ActDims.direction, ActDims.resource, self.amount_head_dim)),
+                layer_norm_2d(ActDims.direction)
             ),
-            "repeat":
-            nn.Linear(channel_sz, ActDims.repeat, bias=True),
+            "repeat": nn.Sequential(
+                nn.Linear(channel_sz, ActDims.repeat, bias=True),
+                layer_norm_1d(ActDims.repeat)
+            )
         })
 
         self.unit_act_pickup = nn.ModuleDict({
-            "resource":
-            nn.Linear(channel_sz, ActDims.resource, bias=True),
-            "amount":
-            nn.Sequential(
-                nn.Linear(channel_sz, (ActDims.resource * self.amount_head_dim), bias=True),
-                nn.Unflatten(1, (ActDims.resource, self.amount_head_dim)),
+            "resource": nn.Sequential(
+                nn.Linear(channel_sz, ActDims.resource, bias=True),
+                layer_norm_1d(ActDims.resource)
             ),
-            "repeat":
-            nn.Linear(channel_sz, ActDims.repeat, bias=True),
+            "amount": nn.Sequential(
+                nn.Linear(channel_sz, ActDims.resource * self.amount_head_dim, bias=True),
+                nn.Unflatten(1, (ActDims.resource, self.amount_head_dim)),
+                layer_norm_2d(ActDims.resource)
+            ),
+            "repeat": nn.Sequential(
+                nn.Linear(channel_sz, ActDims.repeat, bias=True),
+                layer_norm_1d(ActDims.repeat)
+            )
         })
 
-        self.unit_act_dig = nn.ModuleDict({"repeat": nn.Linear(channel_sz, ActDims.repeat, bias=True)})
+        self.unit_act_dig = nn.ModuleDict({
+            "repeat": nn.Sequential(
+                nn.Linear(channel_sz, ActDims.repeat, bias=True),
+                layer_norm_1d(ActDims.repeat)
+            )
+        })
 
-        self.unit_act_self_destruct = nn.ModuleDict({"repeat": nn.Linear(channel_sz, ActDims.repeat, bias=True)})
+        self.unit_act_self_destruct = nn.ModuleDict({
+            "repeat": nn.Sequential(
+                nn.Linear(channel_sz, ActDims.repeat, bias=True),
+                layer_norm_1d(ActDims.repeat)
+            )
+        })
 
         self.unit_act_recharge = nn.ModuleDict({
-            "amount": nn.Linear(channel_sz, ActDims.amount, bias=True),
-            "repeat": nn.Linear(channel_sz, ActDims.repeat, bias=True),
+            "amount": nn.Sequential(
+                nn.Linear(channel_sz, ActDims.amount, bias=True),
+                layer_norm_1d(ActDims.amount)
+            ),
+            "repeat": nn.Sequential(
+                nn.Linear(channel_sz, ActDims.repeat, bias=True),
+                layer_norm_1d(ActDims.repeat)
+            )
         })
 
     def bid_actor(self, x, va, action=None):
@@ -156,35 +201,24 @@ class ActorHead(nn.Module):
 
         if mask.any():
             location_logp, location, location_entropy = sample_from_categorical(
-                self.spawn.logits(x).flatten(1)[mask],
+                self.spawn["logits"](x).flatten(1)[mask],
                 va.flatten(1)[mask],
-                action and action["location"][mask],
+                action and action["location"][mask]
             )
 
-            if self.spawn_distribution == "categorical":
-                sample_amount_fn = lambda logits, action: sample_from_categorical(
-                    logits, torch.tensor(True, device=x.device), action)
-            elif self.spawn_distribution == "beta":
-                sample_amount_fn = sample_from_beta
-            elif self.spawn_distribution == "normal":
-                sample_amount_fn = sample_from_normal
-            elif self.spawn_distribution == "script":
-                sample_amount_fn = lambda logits, action: (
-                    torch.zeros((), device=logits.device),
-                    torch.zeros((), device=logits.device),
-                    torch.zeros((), device=logits.device),
+            def sample_amount_fn(logits, action):
+                return sample_from_categorical(
+                    logits, torch.tensor(True, device=x.device), action
                 )
-            else:
-                raise NotImplementedError
 
             water_logp, water, water_entropy = sample_amount_fn(
-                self.spawn.water(x).flatten(-2)[mask, ..., location],
-                action and action["water"][mask],
+                self.spawn["water"](x).flatten(-2)[mask, ..., location],
+                action and action["water"][mask]
             )
 
             metal_logp, metal, metal_entropy = sample_amount_fn(
-                self.spawn.metal(x).flatten(-2)[mask, ..., location],
-                action and action["metal"][mask],
+                self.spawn["metal"](x).flatten(-2)[mask, ..., location],
+                action and action["metal"][mask]
             )
 
             logp[mask] += water_logp + metal_logp + location_logp
@@ -209,7 +243,7 @@ class ActorHead(nn.Module):
         act_type_logp, act_type, act_type_entropy = sample_from_categorical(
             self.unit_act_type(x),
             va['act_type'],
-            action[:, UnitActChannel.TYPE] if action is not None else None,
+            action[:, UnitActChannel.TYPE] if action is not None else None
         )
         logp = act_type_logp
         entropy = act_type_entropy
@@ -236,12 +270,12 @@ class ActorHead(nn.Module):
             output_action[mask] = move_action
 
         return logp, output_action, entropy
-    
+
     def unit_actor_bc(self, x, va, action=None):
         loss = sample_from_categorical_bc(
             self.unit_act_type(x),
             va['act_type'],
-            action[:, UnitActChannel.TYPE] if action is not None else None,
+            action[:, UnitActChannel.TYPE] if action is not None else None
         )
         act_type = action[:, UnitActChannel.TYPE]
         actors = [
@@ -255,7 +289,7 @@ class ActorHead(nn.Module):
         ]
         total_loss = torch.tensor(0.)
         for type, actor in zip(UnitActType, actors):
-            if type.name.lower()=='do_nothing':
+            if type.name.lower() == 'do_nothing':
                 continue
             mask = (act_type == type)
             loss = actor(
@@ -276,59 +310,54 @@ class ActorHead(nn.Module):
         entropy = torch.zeros(n_units, device=x.device)
         output_action = torch.zeros((n_units, len(UnitActChannel)), device=x.device)
 
-        # logits
         params = {name: layer(x) for name, layer in self.unit_act_move.items()}
 
-        # action type
         output_action[:, UnitActChannel.TYPE] = UnitActType.MOVE
         output_action[:, UnitActChannel.N] = 1
 
-        # direction
         direction_va = va.flatten(2).any(dim=-1)
         direction_logp, direction, direction_entropy = sample_from_categorical(
             params['direction'],
             direction_va,
-            action[:, UnitActChannel.DIRECTION] if action is not None else None,
+            action[:, UnitActChannel.DIRECTION] if action is not None else None
         )
         logp += direction_logp
         entropy += direction_entropy
         output_action[:, UnitActChannel.DIRECTION] = direction
 
-        # repeat
         repeat_va = va[unit_idx, direction]
         repeat_logp, repeat, repeat_entropy = sample_from_categorical(
             params['repeat'],
             repeat_va,
-            action[:, UnitActChannel.REPEAT] if action is not None else None,
+            action[:, UnitActChannel.REPEAT] if action is not None else None
         )
         logp += repeat_logp
         entropy += repeat_entropy
         output_action[:, UnitActChannel.REPEAT] = repeat
 
         return logp, output_action, entropy
-    
+
     def move_actor_bc(self, x, va, action=None):
         n_units = x.shape[0]
         unit_idx = torch.arange(n_units, device=x.device)
         total_loss = torch.tensor(0.)
-        # logits
         params = {name: layer(x) for name, layer in self.unit_act_move.items()}
-        # direction
+
         direction_va = va.flatten(2).any(dim=-1)
         loss = sample_from_categorical_bc(
             params['direction'],
             direction_va,
-            action[:, UnitActChannel.DIRECTION],
+            action[:, UnitActChannel.DIRECTION]
         )
         if loss:
             total_loss = total_loss + loss
         direction = action[:, UnitActChannel.DIRECTION].long()
-        # repeat
+
         repeat_va = va[unit_idx, direction]
         loss = sample_from_categorical_bc(
             params['repeat'],
             repeat_va,
-            action[:, UnitActChannel.REPEAT].long(),
+            action[:, UnitActChannel.REPEAT].long()
         )
         if loss:
             total_loss = total_loss + loss
@@ -342,47 +371,42 @@ class ActorHead(nn.Module):
         entropy = torch.zeros(n_units, device=x.device)
         output_action = torch.zeros((n_units, len(UnitActChannel)), device=x.device)
 
-        # logits
         params = {name: layer(x) for name, layer in self.unit_act_transfer.items()}
 
-        # action type
         output_action[:, UnitActChannel.TYPE] = UnitActType.TRANSFER
         output_action[:, UnitActChannel.N] = 1
 
-        # direction
         direction_va = va.flatten(2).any(-1)
         direction_logp, direction, direction_entropy = sample_from_categorical(
             params['direction'],
             direction_va,
-            action[:, UnitActChannel.DIRECTION] if action is not None else None,
+            action[:, UnitActChannel.DIRECTION] if action is not None else None
         )
         logp += direction_logp
         entropy += direction_entropy
         output_action[:, UnitActChannel.DIRECTION] = direction
 
-        # resource
         resource_va = va[unit_idx, direction].flatten(2).any(-1)
         resource_logp, resource, resource_entropy = sample_from_categorical(
             params['resource'][unit_idx, direction],
             resource_va,
-            action[:, UnitActChannel.RESOURCE] if action is not None else None,
+            action[:, UnitActChannel.RESOURCE] if action is not None else None
         )
         logp += resource_logp
         entropy += resource_entropy
         output_action[:, UnitActChannel.RESOURCE] = resource
 
-        # amount
         params_amount = params['amount'][unit_idx, direction, resource]
         if ModelParam.amount_distribution == 'categorical':
             amount_logp, amount, amount_entropy = sample_from_categorical(
                 params_amount,
                 torch.tensor(True, device=x.device),
-                action[:, UnitActChannel.AMOUNT] if action is not None else None,
+                action[:, UnitActChannel.AMOUNT] if action is not None else None
             )
         elif ModelParam.amount_distribution == 'beta':
             amount_logp, amount, amount_entropy = sample_from_beta(
                 params_amount,
-                action[:, UnitActChannel.AMOUNT] if action is not None else None,
+                action[:, UnitActChannel.AMOUNT] if action is not None else None
             )
         else:
             raise ValueError('Unknown amount distribution')
@@ -390,61 +414,58 @@ class ActorHead(nn.Module):
         entropy += amount_entropy
         output_action[:, UnitActChannel.AMOUNT] = amount
 
-        # repeat
         repeat_va = va[unit_idx, direction, resource]
         repeat_logp, repeat, repeat_entropy = sample_from_categorical(
             params['repeat'],
             repeat_va,
-            action[:, UnitActChannel.REPEAT] if action is not None else None,
+            action[:, UnitActChannel.REPEAT] if action is not None else None
         )
         logp += repeat_logp
         entropy += repeat_entropy
         output_action[:, UnitActChannel.REPEAT] = repeat
 
         return logp, output_action, entropy
-    
+
     def transfer_actor_bc(self, x, va, action=None):
         n_units = x.shape[0]
         unit_idx = torch.arange(n_units, device=x.device)
         total_loss = torch.tensor(0.)
-        # logits
         params = {name: layer(x) for name, layer in self.unit_act_transfer.items()}
 
-        # direction
         direction_va = va.flatten(2).any(-1)
         loss = sample_from_categorical_bc(
             params['direction'],
             direction_va,
-            action[:, UnitActChannel.DIRECTION],
+            action[:, UnitActChannel.DIRECTION]
         )
         if loss:
             total_loss = total_loss + loss
         direction = action[:, UnitActChannel.DIRECTION].long()
-        # resource
+
         resource_va = va[unit_idx, direction].flatten(2).any(-1)
         loss = sample_from_categorical_bc(
             params['resource'][unit_idx, direction],
             resource_va,
-            action[:, UnitActChannel.RESOURCE],
+            action[:, UnitActChannel.RESOURCE]
         )
         if loss:
             total_loss = total_loss + loss
         resource = action[:, UnitActChannel.RESOURCE].long()
-        # amount
+
         params_amount = params['amount'][unit_idx, direction, resource]
         loss = sample_from_categorical_bc(
             params_amount,
             torch.tensor(True, device=x.device),
-            action[:, UnitActChannel.AMOUNT] if action is not None else None,
+            action[:, UnitActChannel.AMOUNT] if action is not None else None
         )
         if loss:
             total_loss = total_loss + loss
-        # repeat
+
         repeat_va = va[unit_idx, direction, resource]
         loss = sample_from_categorical_bc(
             params['repeat'],
             repeat_va,
-            action[:, UnitActChannel.REPEAT],
+            action[:, UnitActChannel.REPEAT]
         )
         if loss:
             total_loss = total_loss + loss
@@ -459,36 +480,32 @@ class ActorHead(nn.Module):
         entropy = torch.zeros(n_units, device=x.device)
         output_action = torch.zeros((n_units, len(UnitActChannel)), device=x.device)
 
-        # logits
         params = {name: layer(x) for name, layer in self.unit_act_pickup.items()}
 
-        # action type
         output_action[:, UnitActChannel.TYPE] = UnitActType.PICKUP
         output_action[:, UnitActChannel.N] = 1
 
-        # resource
         resource_va = va.flatten(2).any(-1)
         resource_logp, resource, resource_entropy = sample_from_categorical(
             params['resource'],
             resource_va,
-            action[:, UnitActChannel.RESOURCE] if action is not None else None,
+            action[:, UnitActChannel.RESOURCE] if action is not None else None
         )
         logp += resource_logp
         entropy += resource_entropy
         output_action[:, UnitActChannel.RESOURCE] = resource
 
-        # amount
         params_amount = params['amount'][unit_idx, resource]
         if ModelParam.amount_distribution == 'categorical':
             amount_logp, amount, amount_entropy = sample_from_categorical(
                 params_amount,
                 torch.tensor(True, device=x.device),
-                action[:, UnitActChannel.AMOUNT] if action is not None else None,
+                action[:, UnitActChannel.AMOUNT] if action is not None else None
             )
         elif ModelParam.amount_distribution == 'beta':
             amount_logp, amount, amount_entropy = sample_from_beta(
                 params_amount,
-                action[:, UnitActChannel.AMOUNT] if action is not None else None,
+                action[:, UnitActChannel.AMOUNT] if action is not None else None
             )
         else:
             raise ValueError('Unknown amount distribution')
@@ -496,57 +513,53 @@ class ActorHead(nn.Module):
         entropy += amount_entropy
         output_action[:, UnitActChannel.AMOUNT] = amount
 
-        # repeat
         repeat_va = va[unit_idx, resource]
         repeat_logp, repeat, repeat_entropy = sample_from_categorical(
             params['repeat'],
             repeat_va,
-            action[:, UnitActChannel.REPEAT] if action is not None else None,
+            action[:, UnitActChannel.REPEAT] if action is not None else None
         )
         logp += repeat_logp
         entropy += repeat_entropy
         output_action[:, UnitActChannel.REPEAT] = repeat
 
         return logp, output_action, entropy
-    
+
     def pickup_actor_bc(self, x, va, action=None):
         total_loss = torch.tensor(0.)
         n_units = x.shape[0]
         unit_idx = torch.arange(n_units, device=x.device)
-        # logits
         params = {name: layer(x) for name, layer in self.unit_act_pickup.items()}
 
-        # resource
         resource_va = va.flatten(2).any(-1)
         loss = sample_from_categorical_bc(
             params['resource'],
             resource_va,
-            action[:, UnitActChannel.RESOURCE],
+            action[:, UnitActChannel.RESOURCE]
         )
         if loss:
             total_loss = total_loss + loss
         resource = action[:, UnitActChannel.RESOURCE].long()
 
-        # amount
         params_amount = params['amount'][unit_idx, resource]
         loss = sample_from_categorical_bc(
-                params_amount,
-                torch.tensor(True, device=x.device),
-                action[:, UnitActChannel.AMOUNT] if action is not None else None,
-            )
-        if loss:
-            total_loss = total_loss + loss
-        # repeat
-        repeat_va = va[unit_idx, resource]
-        loss = sample_from_categorical_bc(
-            params['repeat'],
-            repeat_va,
-            action[:, UnitActChannel.REPEAT] if action is not None else None,
+            params_amount,
+            torch.tensor(True, device=x.device),
+            action[:, UnitActChannel.AMOUNT] if action is not None else None
         )
         if loss:
             total_loss = total_loss + loss
 
-        return loss
+        repeat_va = va[unit_idx, resource]
+        loss = sample_from_categorical_bc(
+            params['repeat'],
+            repeat_va,
+            action[:, UnitActChannel.REPEAT] if action is not None else None
+        )
+        if loss:
+            total_loss = total_loss + loss
+
+        return total_loss
 
     def dig_actor(self, x, va, action=None):
         n_units = x.shape[0]
@@ -554,36 +567,32 @@ class ActorHead(nn.Module):
         entropy = torch.zeros(n_units, device=x.device)
         output_action = torch.zeros((n_units, len(UnitActChannel)), device=x.device)
 
-        # logits
         params = {name: layer(x) for name, layer in self.unit_act_dig.items()}
 
-        # action type
         output_action[:, UnitActChannel.TYPE] = UnitActType.DIG
         output_action[:, UnitActChannel.N] = 1
 
-        # repeat
         repeat_va = va
         repeat_logp, repeat, repeat_entropy = sample_from_categorical(
             params['repeat'],
             repeat_va,
-            action[:, UnitActChannel.REPEAT] if action is not None else None,
+            action[:, UnitActChannel.REPEAT] if action is not None else None
         )
         logp += repeat_logp
         entropy += repeat_entropy
         output_action[:, UnitActChannel.REPEAT] = repeat
 
         return logp, output_action, entropy
-    
+
     def dig_actor_bc(self, x, va, action=None):
         total_loss = torch.tensor(0.)
-        params = {name: layer(x) for name, layer in self.unit_act_dig.items()}
+        params = {name: layer(x) for name in self.unit_act_dig.items()}
 
-        # repeat
         repeat_va = va
         loss = sample_from_categorical_bc(
             params['repeat'],
             repeat_va,
-            action[:, UnitActChannel.REPEAT],
+            action[:, UnitActChannel.REPEAT]
         )
         if loss:
             total_loss = total_loss + loss
@@ -596,36 +605,32 @@ class ActorHead(nn.Module):
         entropy = torch.zeros(n_units, device=x.device)
         output_action = torch.zeros((n_units, len(UnitActChannel)), device=x.device)
 
-        # logits
         params = {name: layer(x) for name, layer in self.unit_act_self_destruct.items()}
 
-        # action type
         output_action[:, UnitActChannel.TYPE] = UnitActType.SELF_DESTRUCT
         output_action[:, UnitActChannel.N] = 1
 
-        # repeat
         repeat_va = va
         repeat_logp, repeat, repeat_entropy = sample_from_categorical(
             params['repeat'],
             repeat_va,
-            action[:, UnitActChannel.REPEAT] if action is not None else None,
+            action[:, UnitActChannel.REPEAT] if action is not None else None
         )
         logp += repeat_logp
         entropy += repeat_entropy
         output_action[:, UnitActChannel.REPEAT] = repeat
 
         return logp, output_action, entropy
-    
+
     def self_destruct_actor_bc(self, x, va, action=None):
         total_loss = torch.tensor(0.)
-        # logits
         params = {name: layer(x) for name, layer in self.unit_act_self_destruct.items()}
-        # repeat
+
         repeat_va = va
         loss = sample_from_categorical_bc(
             params['repeat'],
             repeat_va,
-            action[:, UnitActChannel.REPEAT],
+            action[:, UnitActChannel.REPEAT]
         )
         if loss:
             total_loss = total_loss + loss
@@ -638,37 +643,32 @@ class ActorHead(nn.Module):
         entropy = torch.zeros(n_units, device=x.device)
         output_action = torch.zeros((n_units, len(UnitActChannel)), device=x.device)
 
-        # logits
         params = {name: layer(x) for name, layer in self.unit_act_recharge.items()}
 
-        # action type
         output_action[:, UnitActChannel.TYPE] = UnitActType.RECHARGE
         output_action[:, UnitActChannel.N] = 1
 
-        # repeat
         repeat_va = va
         repeat_logp, repeat, repeat_entropy = sample_from_categorical(
             params['repeat'],
             repeat_va,
-            action[:, UnitActChannel.REPEAT] if action is not None else None,
+            action[:, UnitActChannel.REPEAT] if action is not None else None
         )
         logp += repeat_logp
         entropy += repeat_entropy
         output_action[:, UnitActChannel.REPEAT] = repeat
 
         return logp, output_action, entropy
-    
+
     def recharge_actor_bc(self, x, va, action=None):
         total_loss = torch.tensor(0.)
-        # logits
         params = {name: layer(x) for name, layer in self.unit_act_recharge.items()}
 
-        # repeat
         repeat_va = va
         loss = sample_from_categorical_bc(
             params['repeat'],
             repeat_va,
-            action[:, UnitActChannel.REPEAT],
+            action[:, UnitActChannel.REPEAT]
         )
         if loss:
             total_loss = total_loss + loss
@@ -681,12 +681,10 @@ class ActorHead(nn.Module):
         entropy = torch.zeros(n_units, device=x.device)
         output_action = torch.zeros((n_units, len(UnitActChannel)), device=x.device)
 
-        # action type
         output_action[:, UnitActChannel.TYPE] = UnitActType.DO_NOTHING
 
         return logp, output_action, entropy
 
-    # RL training 
     def forward(self, x, va, action=None):
         B, _, H, W = x.shape
 
@@ -703,7 +701,6 @@ class ActorHead(nn.Module):
             map[pos[0], ..., pos[1], pos[2]] = emb
             return map
 
-        # factory actor
         factory_pos = torch.where(va['factory_act'].any(1))
         factory_emb = _gather_from_map(x, factory_pos)
         factory_va = _gather_from_map(va['factory_act'], factory_pos)
@@ -712,13 +709,12 @@ class ActorHead(nn.Module):
         factory_logp, factory_action, factory_entropy = self.factory_actor(
             factory_emb,
             factory_va,
-            factory_action,
+            factory_action
         )
         logp.scatter_add_(0, factory_pos[0], factory_logp)
         entropy.scatter_add_(0, factory_pos[0], factory_entropy)
         output_action['factory_act'] = _put_into_map(factory_action, factory_pos)
 
-        # unit actor
         unit_act_type_va = torch.stack(
             [
                 va['move'].flatten(1, 2).any(1),
@@ -727,9 +723,9 @@ class ActorHead(nn.Module):
                 va['dig'].any(1),
                 va['self_destruct'].any(1),
                 va['recharge'].any(1),
-                va['do_nothing'],
+                va['do_nothing']
             ],
-            axis=1,
+            axis=1
         )
         unit_pos = torch.where(unit_act_type_va.any(1))
         unit_emb = _gather_from_map(x, unit_pos)
@@ -741,18 +737,18 @@ class ActorHead(nn.Module):
             'dig': _gather_from_map(va['dig'], unit_pos),
             'self_destruct': _gather_from_map(va['self_destruct'], unit_pos),
             'recharge': _gather_from_map(va['recharge'], unit_pos),
-            'do_nothing': _gather_from_map(va['do_nothing'], unit_pos),
+            'do_nothing': _gather_from_map(va['do_nothing'], unit_pos)
         }
         unit_action = action and _gather_from_map(action['unit_act'], unit_pos)
         unit_logp, unit_action, unit_entropy = self.unit_actor(
             unit_emb,
             unit_va,
-            unit_action,
+            unit_action
         )
         logp.scatter_add_(0, unit_pos[0], unit_logp)
         entropy.scatter_add_(0, unit_pos[0], unit_entropy)
         output_action['unit_act'] = _put_into_map(unit_action, unit_pos)
-        # early step
+
         if not EnvParam.rule_based_early_step:
             bid_action = action and action['bid']
             bid_logp, bid_action, bid_entropy = self.bid_actor(x, va['bid'], bid_action)
@@ -768,7 +764,6 @@ class ActorHead(nn.Module):
 
         return logp, output_action, entropy
 
-    # behavior cloning
     def bc(self, x, va, action):
         B, _, H, W = x.shape
         total_loss = torch.tensor(0.)
@@ -776,7 +771,6 @@ class ActorHead(nn.Module):
         def _gather_from_map(x, pos):
             return x[pos[0], ..., pos[1], pos[2]]
 
-        # factory actor
         factory_pos = torch.where(va['factory_act'].any(1))
         factory_emb = _gather_from_map(x, factory_pos)
         factory_va = _gather_from_map(va['factory_act'], factory_pos)
@@ -785,12 +779,11 @@ class ActorHead(nn.Module):
         loss = self.factory_actor_bc(
             factory_emb,
             factory_va,
-            factory_action,
+            factory_action
         )
         if loss:
             total_loss = total_loss + loss
 
-        # unit actor
         unit_act_type_va = torch.stack(
             [
                 va['move'].flatten(1, 2).any(1),
@@ -799,9 +792,9 @@ class ActorHead(nn.Module):
                 va['dig'].any(1),
                 va['self_destruct'].any(1),
                 va['recharge'].any(1),
-                va['do_nothing'],
+                va['do_nothing']
             ],
-            axis=1,
+            axis=1
         )
         unit_pos = torch.where(unit_act_type_va.any(1))
         unit_emb = _gather_from_map(x, unit_pos)
@@ -813,13 +806,13 @@ class ActorHead(nn.Module):
             'dig': _gather_from_map(va['dig'], unit_pos),
             'self_destruct': _gather_from_map(va['self_destruct'], unit_pos),
             'recharge': _gather_from_map(va['recharge'], unit_pos),
-            'do_nothing': _gather_from_map(va['do_nothing'], unit_pos),
+            'do_nothing': _gather_from_map(va['do_nothing'], unit_pos)
         }
         unit_action = _gather_from_map(action['unit_act'], unit_pos)
         loss = self.unit_actor_bc(
             unit_emb,
             unit_va,
-            unit_action,
+            unit_action
         )
         if loss:
             total_loss = total_loss + loss
