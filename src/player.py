@@ -130,11 +130,25 @@ class Player():
 
                 spawn_loc = np.unravel_index(np.argmax(score), score.shape)
 
-                # random spawn location
+                
+                k = 200
+                ice_log_weight = 1
+                ore_log_weight = 0.5
+                rubble_weight = 0.1
                 score = sum([
-                    np.log(orig_valid_spawns_mask + np.finfo(np.float64).tiny) * 1000,
+                    np.log(ice_sum + 0.2) * ice_log_weight,
+                    np.log(ore_sum + 0.2) * ore_log_weight,
+                    np.log(rubble_sum + 1) * rubble_weight,
+                    -np.log(factory_occupancy_map + 0.2),
+                    np.log(orig_valid_spawns_mask + np.finfo(np.float64).tiny),
                 ])
-                spawn_loc = [np.random.randint(H), np.random.randint(W)]
+                # get top k scores and coordinates
+                topk_idx = np.argsort(score.flat)[-k:]
+                topk_score = score.flat[topk_idx]
+                pi = scipy.special.softmax(topk_score)
+                idx = np.random.choice(topk_idx, p=pi)
+                spawn_loc = [idx // W, idx % W]
+
 
                 while True:
                     i, j = spawn_loc
