@@ -129,6 +129,13 @@ class Player():
                 ])
 
                 spawn_loc = np.unravel_index(np.argmax(score), score.shape)
+
+                # random spawn location
+                score = sum([
+                    np.log(orig_valid_spawns_mask + np.finfo(np.float64).tiny) * 1000,
+                ])
+                spawn_loc = [np.random.randint(H), np.random.randint(W)]
+
                 while True:
                     i, j = spawn_loc
                     cur_score = score[i, j]
