@@ -191,19 +191,19 @@ class DashNet(nn.Module):
 
         super(DashNet, self).__init__()
 
-        self.init_conv = MyConv2d("init", 16, 64, kernel_size=3, stride=1, padding="same", batch_norm=USE_BATCH_NORM, spectral_norm=USE_SPECTRAL_NORM, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed)
+        #self.init_conv = MyConv2d("init", 16, 64, kernel_size=3, stride=1, padding="same", batch_norm=USE_BATCH_NORM, spectral_norm=USE_SPECTRAL_NORM, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed)
 
-        self.res_block1 = ResidualBlock("res_block1", 64, 64, use_se=True, seed=seed)
+        #self.res_block1 = ResidualBlock("res_block1", 64, 64, use_se=True, seed=seed)
         #self.res_block2 = ResidualBlock("res_block2", 64, 64, use_se=True, seed=seed)
         #self.res_block3 = ResidualBlock("res_block3", 64, 64, use_se=True, seed=seed)
         #self.res_block4 = ResidualBlock("res_block4", 64, 64, use_se=True, seed=seed)
 
-        self.final_conv = MyConv2d("final", 64, 16, kernel_size=3, stride=1, padding="same", batch_norm=USE_BATCH_NORM, spectral_norm=USE_SPECTRAL_NORM, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed)
+        self.final_conv = MyConv2d("final", 64, 64, kernel_size=3, stride=1, padding="same", batch_norm=USE_BATCH_NORM, spectral_norm=USE_SPECTRAL_NORM, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed)
 
     def forward(self, x):
-        x = self.init_conv(x)
+        #x = self.init_conv(x)
 
-        x = self.res_block1(x)
+        #x = self.res_block1(x)
         #x = self.res_block2(x)
         #x = self.res_block3(x)
         #x = self.res_block4(x)
@@ -366,9 +366,9 @@ class CustomExtractor(nn.Module):
         #policy_net: List[nn.Module] = [nn.Identity()]
         policy_net: List[nn.Module] = [DashNet()]
         value_net: List[nn.Module] = [
-            #nn.Conv2d(feature_dim, feature_dim, kernel_size=3, stride=1, padding=1),
-            #nn.BatchNorm2d(feature_dim),
-            #activation_fn(),
+            nn.Conv2d(feature_dim, feature_dim, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(feature_dim),
+            activation_fn(),
             nn.AdaptiveAvgPool2d(1),
             nn.Flatten(),
         ]
