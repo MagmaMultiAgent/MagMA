@@ -198,7 +198,7 @@ class DashNet(nn.Module):
         #self.res_block3 = ResidualBlock("res_block3", 64, 64, use_se=True, seed=seed)
         #self.res_block4 = ResidualBlock("res_block4", 64, 64, use_se=True, seed=seed)
 
-        self.final_conv = MyConv2d("final", 64, 64, kernel_size=3, stride=1, padding="same", batch_norm=USE_BATCH_NORM, spectral_norm=USE_SPECTRAL_NORM, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed)
+        self.final_conv = MyConv2d("final", 16, 16, kernel_size=3, stride=1, padding="same", batch_norm=USE_BATCH_NORM, spectral_norm=USE_SPECTRAL_NORM, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed)
 
     def forward(self, x):
         #x = self.init_conv(x)
