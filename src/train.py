@@ -48,7 +48,7 @@ def parse_args():
         "-n",
         "--n-envs",
         type=int,
-        default=16,
+        default=32,
         help="Number of parallel envs to run. Note that the rollout \
         size is configured separately and invariant to this value",
     )
@@ -260,7 +260,7 @@ def main(args):
         env,
         n_steps=rollout_steps // args.n_envs,
         batch_size=512,
-        learning_rate=2e-4,
+        learning_rate=1e-4,
         policy_kwargs=policy_kwargs_unit,
         verbose=1,
         n_epochs=10,
@@ -270,6 +270,7 @@ def main(args):
         vf_coef=0.5,
         ent_coef=0.001,
         max_grad_norm=0.5,
+        normalize_advantage=True,
         tensorboard_log=osp.join(args.log_path),
     )
 

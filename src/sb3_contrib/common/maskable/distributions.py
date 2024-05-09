@@ -57,7 +57,8 @@ class MaskableCategorical(Categorical):
             device = self.logits.device
             self.masks = th.as_tensor(masks, dtype=th.bool, device=device).reshape(self.logits.shape)
             HUGE_NEG = th.tensor(-1e8, dtype=self.logits.dtype, device=device)
-            logits = th.where(self.masks, self._original_logits, HUGE_NEG)
+            logits = self._original_logits.clone()
+            logits[~self.masks] = HUGE_NEG 
         else:
             self.masks = None
             logits = self._original_logits
@@ -124,8 +125,8 @@ class MaskableCategoricalDistribution(MaskableDistribution):
     ) -> SelfMaskableCategoricalDistribution:
         # Restructure shape to align with logits
 
-        reshaped_logits = action_logits.view(-1, self.action_dim)
-        self.distribution = MaskableCategorical(logits=reshaped_logits)
+        #reshaped_logits = action_logits.view(-1, self.action_dim)
+        self.distribution = MaskableCategorical(logits=action_logits)
         return self
 
     def log_prob(self, actions: th.Tensor) -> th.Tensor:

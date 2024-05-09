@@ -48,14 +48,44 @@ weight_scale = 0.01
 init_leaky_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('leaky_relu'), weight_scale)
 init_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('relu'), weight_scale)
 init_sigmoid_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('sigmoid'), weight_scale)
-init_value_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 0.01, weight_scale)
-init_actor_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, 0.01, weight_scale)
 
 USE_BATCH_NORM = True
-USE_LAYER_NORM = False
+USE_LAYER_NORM = True
 USE_SPECTRAL_NORM = True
 
-def MyConv2d(name, in_channels, out_channels, kernel_size=1, stride=1, padding="same", bias=True, dilation=1, spectral_norm=False, batch_norm=False, layer_norm=False, activation="leaky_relu", init_fn=None, seed=None):
+def MyConv2d_Transpose(name, in_channels, out_channels, kernel_size=1, stride=1, padding="same", bias=True, dilation=1, spectral_norm=USE_SPECTRAL_NORM, batch_norm=USE_BATCH_NORM, layer_norm=USE_LAYER_NORM, activation="leaky_relu", init_fn=None, seed=None):
+    if seed is None:
+        print(f"No seed provided for {name}")
+        seed = int(time.time())
+
+    name = name + "_conv2d_transpose"
+
+    activation = get_activation(activation)
+
+    seed_init(seed, name)
+    layer = nn.ConvTranspose2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias, dilation=dilation, output_padding=1)
+
+    if spectral_norm:
+        layer = nn.utils.spectral_norm(layer)
+
+    if init_fn is not None:
+        seed_init(seed, name, "_init")
+        layer = init_fn(layer)
+    
+    if batch_norm:
+        seed_init(seed, name, "_batch_norm")
+        layer = nn.Sequential(layer, nn.BatchNorm2d(out_channels))
+    
+    if layer_norm:
+        seed_init(seed, name, "_layer_norm")
+        layer = nn.Sequential(layer, nn.GroupNorm(1, out_channels))
+
+    if activation is not None:
+        layer = nn.Sequential(layer, activation)
+
+    return layer
+
+def MyConv2d(name, in_channels, out_channels, kernel_size=1, stride=1, padding="same", bias=True, dilation=1, spectral_norm=USE_SPECTRAL_NORM, batch_norm=USE_BATCH_NORM, layer_norm=USE_LAYER_NORM, activation="leaky_relu", init_fn=None, seed=None):
     if seed is None:
         print(f"No seed provided for {name}")
         seed = int(time.time())
@@ -87,7 +117,7 @@ def MyConv2d(name, in_channels, out_channels, kernel_size=1, stride=1, padding="
 
     return layer
 
-def MyLinear(name, in_features, out_features, bias=True, spectral_norm=False, batch_norm=False, layer_norm=False, activation="leaky_relu", init_fn=None, seed=None):
+def MyLinear(name, in_features, out_features, bias=True, spectral_norm=USE_SPECTRAL_NORM, batch_norm=USE_BATCH_NORM, layer_norm=USE_LAYER_NORM, activation="leaky_relu", init_fn=None, seed=None):
     if seed is None:
         print(f"No seed provided for {name}", file=sys.stderr)
         seed = int(time.time())
@@ -119,19 +149,22 @@ def MyLinear(name, in_features, out_features, bias=True, spectral_norm=False, ba
 
     return layer
 
-def Conv1x1(name, in_channels, out_channels, bias=True, spectral_norm=False, batch_norm=False, layer_norm=False, activation="leaky_relu", init_fn=None, seed=None):
+def Conv3x3Transpose(name, in_channels, out_channels, bias=True, spectral_norm=USE_SPECTRAL_NORM, batch_norm=USE_BATCH_NORM, layer_norm=USE_LAYER_NORM, activation="leaky_relu", init_fn=None, seed=None):
+    return MyConv2d_Transpose(name, in_channels, out_channels, kernel_size=3, stride=2, padding=1, bias=bias, spectral_norm=spectral_norm, batch_norm=batch_norm, layer_norm=layer_norm, activation=activation, init_fn=init_fn, seed=seed)
+
+def Conv1x1(name, in_channels, out_channels, bias=True, spectral_norm=USE_SPECTRAL_NORM, batch_norm=USE_BATCH_NORM, layer_norm=USE_LAYER_NORM, activation="leaky_relu", init_fn=None, seed=None):
     return MyConv2d(name, in_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=bias, spectral_norm=spectral_norm, batch_norm=batch_norm, layer_norm=layer_norm, activation=activation, init_fn=init_fn, seed=seed)
 
-def Conv3x3(name, in_channels, out_channels, bias=True, spectral_norm=False, batch_norm=False, layer_norm=False, activation="leaky_relu", init_fn=None, seed=None):
+def Conv3x3(name, in_channels, out_channels, bias=True, spectral_norm=USE_SPECTRAL_NORM, batch_norm=USE_BATCH_NORM, layer_norm=USE_LAYER_NORM, activation="leaky_relu", init_fn=None, seed=None):
     return MyConv2d(name, in_channels, out_channels, kernel_size=3, stride=1, padding="same", bias=bias, spectral_norm=spectral_norm, batch_norm=batch_norm, layer_norm=layer_norm, activation=activation, init_fn=init_fn, seed=seed)
 
-def Conv3x3_2(name, in_channels, out_channels, bias=True, spectral_norm=False, batch_norm=False, layer_norm=False, activation="leaky_relu", init_fn=None, seed=None):
+def Conv3x3_2(name, in_channels, out_channels, bias=True, spectral_norm=USE_SPECTRAL_NORM, batch_norm=USE_BATCH_NORM, layer_norm=USE_LAYER_NORM, activation="leaky_relu", init_fn=None, seed=None):
     return MyConv2d(name, in_channels, out_channels, kernel_size=3, stride=2, padding=1, bias=bias, spectral_norm=spectral_norm, batch_norm=batch_norm, layer_norm=layer_norm, activation=activation, init_fn=init_fn, seed=seed)
 
-def Conv3x3_d(name, in_channels, out_channels, dilation = 2, padding = 2, bias=True, spectral_norm=False, batch_norm=False, layer_norm=False, activation="leaky_relu", init_fn=None, seed=None):
+def Conv3x3_d(name, in_channels, out_channels, dilation = 2, padding = 2, bias=True, spectral_norm=USE_SPECTRAL_NORM, batch_norm=USE_BATCH_NORM, layer_norm=USE_LAYER_NORM, activation="leaky_relu", init_fn=None, seed=None):
     return MyConv2d(name, in_channels, out_channels, kernel_size=3, stride=1, padding=padding, bias=bias, dilation=dilation, spectral_norm=spectral_norm, batch_norm=batch_norm, layer_norm=layer_norm, activation=activation, init_fn=init_fn, seed=seed)
 
-def Conv5x5(name, in_channels, out_channels, bias=True, spectral_norm=False, batch_norm=False, layer_norm=False, activation="leaky_relu", init_fn=None, seed=None):
+def Conv5x5(name, in_channels, out_channels, bias=True, spectral_norm=USE_SPECTRAL_NORM, batch_norm=USE_BATCH_NORM, layer_norm=USE_LAYER_NORM, activation="leaky_relu", init_fn=None, seed=None):
     return MyConv2d(name, in_channels, out_channels, kernel_size=5, stride=1, padding="same", bias=bias, spectral_norm=spectral_norm, batch_norm=batch_norm, layer_norm=layer_norm, activation=activation, init_fn=init_fn, seed=seed)
 
 class SqueezeExcitation(nn.Module):
@@ -182,7 +215,7 @@ class DownsampleBlock(nn.Module):
     def __init__(self, name, in_channels, out_channels, use_se=True, seed=None):
         super(DownsampleBlock, self).__init__()
         self.block = nn.Sequential(
-            ResidualBlock(name + "_res", in_channels, out_channels, use_se=True, seed=seed),
+            ResidualBlock(name + "_res", in_channels, out_channels, use_se=use_se, seed=seed),
             Conv3x3_2(name + "_down", out_channels, out_channels, bias=(not USE_BATCH_NORM), spectral_norm=USE_SPECTRAL_NORM, batch_norm=USE_BATCH_NORM, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed)
         )
 
@@ -193,10 +226,8 @@ class UpsampleBlock(nn.Module):
     def __init__(self, name, in_channels, out_channels, use_se=True, seed=None):
         super(UpsampleBlock, self).__init__()
         self.block = nn.Sequential(
-            nn.ConvTranspose2d(in_channels, out_channels, kernel_size=3, stride=2, padding=1, output_padding=1),
-            nn.BatchNorm2d(out_channels),
-            nn.LeakyReLU(inplace=True),
-            ResidualBlock(name + "_res", out_channels, out_channels, use_se=True, seed=seed)
+            Conv3x3Transpose(name + "_up", in_channels, out_channels, bias=(not USE_BATCH_NORM), spectral_norm=USE_SPECTRAL_NORM, batch_norm=USE_BATCH_NORM, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed),
+            ResidualBlock(name + "_res", out_channels, out_channels, use_se=use_se, seed=seed)
         )
 
     def forward(self, x):
@@ -300,9 +331,13 @@ class BottleNet(BaseFeaturesExtractor):
         self.up4 = UpsampleBlock("up4", num_bottleneck_channels, 128, use_se=True, seed=seed)
         self.up3 = UpsampleBlock("up3", 128, 64, use_se=True, seed=seed)
         self.up2 = UpsampleBlock("up2", 64, 32, use_se=True, seed=seed)
-        self.up1 = UpsampleBlock("up1", 32, output_channels, use_se=True, seed=seed)
+        self.up1 = UpsampleBlock("up1", 32, output_channels, use_se=False, seed=seed)
 
     def forward(self, x):
+
+        def layer_mean(tensor, name):
+            mean_val = torch.mean(tensor, dim=1)
+            print(f"{name} mean values (row-wise):\n{mean_val}")
 
         cnn_features = x['map']
         global_features = x['global']
@@ -321,5 +356,4 @@ class BottleNet(BaseFeaturesExtractor):
         u3 = self.up3(u4 + d3)
         u2 = self.up2(u3 + d2)
         u1 = self.up1(u2 + d1)
-
         return u1

@@ -95,6 +95,7 @@ class MaskableActorCriticPolicy(BasePolicy):
             else:
                 net_arch = dict(pi=[64, 64], vf=[64, 64])
 
+        self.hidden_value_layers = [1024, 512, 128, 1]
         self.net_arch = net_arch
         self.activation_fn = activation_fn
         self.ortho_init = ortho_init
@@ -227,7 +228,14 @@ class MaskableActorCriticPolicy(BasePolicy):
         self._build_mlp_extractor()
 
         self.action_net = self.action_dist.proba_distribution_net(latent_dim=self.mlp_extractor.latent_dim_pi)
-        self.value_net = nn.Linear(self.mlp_extractor.latent_dim_vf, 1)
+        layers = []
+
+        layers.append(nn.Linear(self.mlp_extractor.latent_dim_pi, self.hidden_value_layers[0]))
+        layers.append(self.activation_fn())
+        for i in range(1, len(self.hidden_value_layers)):
+            layers.append(nn.Linear(self.hidden_value_layers[i - 1], self.hidden_value_layers[i]))
+            layers.append(self.activation_fn())
+        self.value_net = nn.Sequential(*layers)
 
         # Init weights: use orthogonal initialization
         # with small initial weight for the output
