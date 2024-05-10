@@ -97,7 +97,7 @@ class MaskableEvalCallback(EvalCallback):
                 )
 
             mean_reward, std_reward = np.mean(episode_rewards), np.std(episode_rewards)
-            mean_ep_length, std_ep_length = np.mean(episode_lengths), np.std(episode_lengths)
+            mean_ep_length, _ = np.mean(episode_lengths), np.std(episode_lengths)
             mean_ice_dug, std_ice_dug = np.mean(episode_ice_dug), np.std(episode_ice_dug)
             mean_ice_transferred, std_ice_transferred = np.mean(episode_ice_transferred), np.std(episode_ice_transferred)
             mean_water_collected, std_water_collected = np.mean(episode_water_collected), np.std(episode_water_collected)
@@ -113,14 +113,17 @@ class MaskableEvalCallback(EvalCallback):
             for i, env_water in enumerate(self.water_collected[-1]):
                 self.logger.record(f"eval/water_collected_env_{i}", env_water)
 
-            self.logger.record("eval/mean_reward", float(mean_reward))
             self.logger.record("eval/mean_ep_length", mean_ep_length)
+            self.logger.record("eval/mean_reward", float(mean_reward))
             self.logger.record("eval/mean_ice_dug", mean_ice_dug)
-            self.logger.record("eval/std_reward", float(std_reward))
-            self.logger.record("eval/std_ice_transferred", float(std_ice_transferred))
             self.logger.record("eval/mean_ice_transferred", mean_ice_transferred)
-            self.logger.record("eval/std_water_collected", float(std_water_collected))
             self.logger.record("eval/mean_water_collected", mean_water_collected)
+            
+            self.logger.record("eval/std_reward", float(std_reward))
+            self.logger.record("eval/std_ice_dug", float(std_ice_dug))
+            self.logger.record("eval/std_ice_transferred", float(std_ice_transferred))
+            self.logger.record("eval/std_water_collected", float(std_water_collected))
+            
 
             if len(self._is_success_buffer) > 0:
                 success_rate = np.mean(self._is_success_buffer)

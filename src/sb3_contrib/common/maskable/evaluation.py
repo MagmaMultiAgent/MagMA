@@ -137,14 +137,14 @@ def evaluate_policy(
                             # has been wrapped with it. Use those rewards instead.
                             episode_rewards.append(info["episode"]["r"])
                             episode_lengths.append(info["episode"]["l"])
+                            episode_ice_dug.append(info["metrics"]["ice_dug"])
+                            episode_ice_transfered.append(info["metrics"]["ice_transferred"])
+                            episode_water_collected.append(info["metrics"]["water_produced"])
                             # Only increment at the real end of an episode
                             episode_counts[i] += 1
                     else:
                         episode_rewards.append(current_rewards[i])
                         episode_lengths.append(current_lengths[i])
-                        episode_ice_dug.append(info["metrics"]["ice_dug"])
-                        episode_ice_transfered.append(info["metrics"]["ice_transferred"])
-                        episode_water_collected.append(info["metrics"]["water_produced"])
                         episode_counts[i] += 1
                     current_rewards[i] = 0
                     current_lengths[i] = 0

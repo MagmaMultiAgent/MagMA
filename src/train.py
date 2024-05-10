@@ -20,7 +20,7 @@ from stable_baselines3.common.evaluation import evaluate_policy
 from wrappers.reward_wrapper import EarlyRewardParserWrapper
 from wrappers.monitor_wrapper import Monitor
 from stable_baselines3.common.utils import set_random_seed
-from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecVideoRecorder
+from stable_baselines3.common.vec_env import SubprocVecEnv,VecMonitor
 from stable_baselines3.ppo import PPO
 from sb3_contrib.ppo_mask import MaskablePPO
 from controller.controller import MultiUnitController
@@ -196,6 +196,7 @@ def train(args, env_id, model: PPO):
     seeding.set_seed(args.seed)
     eval_environments = [make_env(env_id, i, max_episode_steps=args.eval_max_episode_steps, seed=args.eval_seed) for i in range(args.eval_num)]
     eval_env = SubprocVecEnv(eval_environments)
+    eval_env = VecMonitor(eval_env)
     eval_env.reset()
     eval_callback = MaskableEvalCallback(
         eval_env,
@@ -233,6 +234,7 @@ def main(args):
     environments = [make_env(env_id, i, max_episode_steps=args.max_episode_steps, seed=args.seed) for i in range(args.n_envs)]
 
     env = SubprocVecEnv(environments)
+    env = VecMonitor(env)
     env.reset()
 
     if args.net == "bottle":
