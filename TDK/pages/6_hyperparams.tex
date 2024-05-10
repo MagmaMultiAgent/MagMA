@@ -1,0 +1,191 @@
+\chapter{Hyperparameters}
+\label{appx:hyperparams}
+
+\section{Single Unit Testbench}
+\label{app:a}
+
+\begin{table}[htbp]
+    \centering
+    \begin{tabular}{|c|c|c|c|c|c|c|c|c|}
+        \hline
+        \textbf{Hyperparameter} & \textbf{ARS} & \textbf{A2C} & \textbf{DQN} & \textbf{PPO} & \textbf{QR-DQN} & \textbf{R-PPO} & \textbf{TRPO} & \textbf{MPPO} \\
+        \hline
+        policy & MLP & MLP & MLP & MLP & MLP & MLP & MLP & MLP \\
+        \hline
+        learning\_rate & 2e-2 & 7e-4 & 3e-4 & 3e-4 & 7e-4 & 3e-4 & 1e-4 & 3e-4 \\
+        \hline
+        n\_steps & - & 50 & - & 50 & - & 50 & 50 & 50 \\
+        \hline
+        batch\_size & - & 800 & 800 & 800 & 800 & 800 & 800 & 800 \\
+        \hline
+        n\_epochs & - & - & - & 10 & - & 10 & - & 10 \\
+        \hline
+        gamma & - & 0.99 & 0.99 & 0.99 & 0.99 & 0.99 & 0.99 & 0.99 \\
+        \hline
+        gae\_lambda & - & 0.95 & - & 0.95 & - & 0.95 & 0.95 & 0.95 \\
+        \hline
+        tau & - & - & 0.95 & - & 0.95 & - & - & - \\
+        \hline
+        ent\_coef & - & 0.0 & - & 0.0 & - & 0.0 & - & 0.0 \\
+        \hline
+        vf\_coef & - & 0.5 & - & 0.5 & - & 0.5 & - & 0.5 \\
+        \hline
+        exp\_fraction & - & - & 0.1 & - & 0.01 & - & - & - \\
+        \hline
+        exp\_initial\_eps & - & - & 1.0 & - & 1.0 & - & - & - \\
+        \hline
+        exp\_final\_eps & - & - & 0.05 & - & 0.1 & - & - & - \\
+        \hline
+        clip\_range & - & - & - & 0.2 & - & 0.2 & - & 0.2 \\
+        \hline
+        target\_kl & - & - & - & 0.05 & - & 0.05 & 0.05 & 0.05 \\
+        \hline
+        net\_params & \begin{tabular}{@{}c@{}}128 \\ 128\end{tabular} & \begin{tabular}{@{}c@{}}128 \\ 128\end{tabular} & \begin{tabular}{@{}c@{}}128 \\ 128\end{tabular} & \begin{tabular}{@{}c@{}}128 \\ 128\end{tabular} & \begin{tabular}{@{}c@{}}128 \\ 128\end{tabular} & \begin{tabular}{@{}c@{}}128 \\ 128\end{tabular} & \begin{tabular}{@{}c@{}}128 \\ 128\end{tabular} & \begin{tabular}{@{}c@{}}128 \\ 128\end{tabular} \\
+        \hline
+    \end{tabular}
+    \captionsetup{justification=justified, singlelinecheck=false, width=1\linewidth, labelfont=bf} 
+    \caption{The table displays key hyperparameters utilized in the single unit benchmark study. It's important to note that for the R-PPO algorithm, the value 128 denotes the hidden size of the LSTM layer, whereas for the other algorithms, 128 refers to the size of the linear projection layer.}
+    \label{tab:single-agent-hyperparameters}
+\end{table}
+
+\section{Monolithic Approach}
+\label{app:b}
+
+\begin{table}[H]
+    \begin{tabularx}{\textwidth}{|X|C{3.8cm}|C{3.8cm}|}
+        \hline
+        \multicolumn{1}{|Y|}{\textbf{Hyperparameter}} & \textbf{Monolithic Training} & \textbf{Comparison With Other Methods} \\
+        \hline
+        \hline
+        policy & MLP & MLP \\
+        \hline
+        number of trainable parameters & X & X \\
+        \hline
+        shared actor and value embeddings & false & false \\
+        \hline
+        \hline
+        algorithm & M-PPO & M-PPO \\
+        \hline
+        optimizer & Adam & Adam \\
+        \hline
+        weight decay & false & false \\
+        \hline
+        learning rate & 2e-4 & 2e-4 \\
+        \hline
+        max episode length & 256 & 1000 \\
+        \hline
+        parallel environments & 32 & 8 \\
+        \hline
+        rollout steps & 8,192 & 8,192 \\
+        \hline
+        mini-batch size & 1024 & 1024 \\
+        \hline
+        epochs per train cycle & 10 & 10 \\
+        \hline
+        train until N steps & 204,800 & 204,800 \\
+        \hline
+        gamma & 0.99 & 0.99 \\
+        \hline
+        GAE lambda & 0.95 & 0.95 \\
+        \hline
+        entropy coefficient & 1e-3 & 1e-3 \\
+        \hline
+        value coefficient & 0.5 & 0.5 \\
+        \hline
+        gradient normalization & true & true \\
+        \hline
+        maximum gradient norm & 0.5 & 0.5 \\
+        \hline
+        clip range & 0.2 & 0.2 \\
+        \hline
+        clip value loss & true & true \\
+        \hline
+        target KL & none & none \\
+        \hline
+        \hline
+        runs per test & 3 & 3 \\
+        \hline
+        evaluation environments & 12 & 12 \\
+        \hline
+        evaluation after every N train cycles & 1 & 1 \\
+        \hline
+    \end{tabularx}
+    \captionsetup{justification=justified, singlelinecheck=false, width=1\linewidth, labelfont=bf} 
+    \caption{Table containing all key hyperparameters utilized in the monolithic approach tests. The \textbdd{Monolithic Training} hyperparameters were used in \autoref{sec:monolithic-approach}, \autoref{sec:monolithic-approach-results}, while  the "Comparison With Other Methods" hyperparameters were only used in \autoref{subsec:comparison}.}
+    \label{tab:mono-approach-hyperparameters}
+\end{table}
+
+\section{Hybrid Approach}
+\label{app:c}
+
+\begin{table}[H]
+    \begin{tabularx}{\textwidth}{|X|C{3.8cm}|C{3.8cm}|}
+        \hline
+        \multicolumn{1}{|Y|}{\textbf{Hyperparameter}} & \textbf{Trajectory Separation Test} & \textbf{Comparison With Other Methods} \\
+        \hline
+        \hline
+        policy & MLP & MLP \\
+        \hline
+        number of trainable parameters & 208,457 & 209,033 \\
+        \hline
+        shared actor and value embeddings & false & false \\
+        \hline
+        \hline
+        algorithm & M-PPO & M-PPO \\
+        \hline
+        optimizer & Adam & Adam \\
+        \hline
+        weight decay & false & false \\
+        \hline
+        learning rate & 2e-4 & 2e-4 \\
+        \hline
+        max episode length & 256 & 1000 \\
+        \hline
+        parallel environments & 16 & 4 \\
+        \hline
+        rollout steps & 4,096 & 4,096 \\
+        \hline
+        mini-batch size & 512 & 512 \\
+        \hline
+        epochs per train cycle & 10 & 10 \\
+        \hline
+        train until N steps & 102,400 & 102,400 \\
+        \hline
+        gamma & 0.99 & 0.99 \\
+        \hline
+        GAE lambda & 0.95 & 0.95 \\
+        \hline
+        entropy coefficient & 1e-3 & 1e-3 \\
+        \hline
+        value coefficient & 0.5 & 0.5 \\
+        \hline
+        gradient normalization & true & true \\
+        \hline
+        maximum gradient norm & 0.5 & 0.5 \\
+        \hline
+        clip range & 0.2 & 0.2 \\
+        \hline
+        clip value loss & true & true \\
+        \hline
+        target KL & none & none \\
+        \hline
+        \hline
+        runs per test & 3 & 3 \\
+        \hline
+        evaluation environments & 12 & 12 \\
+        \hline
+        evaluation after every N train cycles & 1 & 1 \\
+        \hline
+    \end{tabularx}
+    \captionsetup{justification=justified, singlelinecheck=false, width=1\linewidth, labelfont=bf} 
+    \caption{Table containing all key hyperparameters utilized in the hybrid approach tests. The \textbdd{Trajectory Separation Test} hyperparameters were used in \autoref{sec:trajectory-separation}, \autoref{subsec:trajec_reduc}, \autoref{subsec:methodcomp} and \autoref{subsec:ablation}, while  the "Comparison With Other Methods" hyperparameters were only used in \autoref{subsec:comparison}.}
+    \label{tab:hybrid-approach-hyperparameters}
+\end{table}
+
+
+\noindent TAMAS: \\
+- Monolithic Results \\
+
+
+\noindent GERI: \\
+- Credit assignment in background \\

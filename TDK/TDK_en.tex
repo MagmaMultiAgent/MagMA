@@ -1,0 +1,124 @@
+\documentclass[
+	%parspace, % Add vertical space between paragraphs
+	%noindent, % No indentation of first lines in each paragraph
+	%nohyp, % No hypenation of words
+	%twoside, % Double sided format
+	%draft, % Quicker draft compilation without rendering images
+	%final, % Set final to hide todos
+]{classes/TDK_en}[2023/04/10]
+
+
+\title{Scalable Distributed Reinforcement Learning in Multi-Agent Environments}
+\date{2024}
+
+% Author(s)' metadata
+\author{Magyar Gergely}
+\degree{Computer Science MSc}
+\period{4. grade}
+\coauthor{Takács Tamás}
+\codegree{Computer Science MSc}
+\coperiod{4. grade}
+
+% Superivsor(s)' metadata
+\supervisor{Gulyás László}
+\affiliation{Associate Professor}
+
+% University's metadata
+\university{Eötvös Loránd University}
+\faculty{Faculty of Informatics}
+\department{Dept. of Artificial Intelligence}
+\city{Budapest}
+\logo{elte_cimer_szines}
+
+% Add bibliography file
+\addbibresource{bibliography/TDK_en.bib}
+
+\setcounter{secnumdepth}{3}
+
+% The document
+\begin{document}
+
+% Set document language
+%\documentlang{hungarian}
+\documentlang{english}
+
+% List of todos (not in the final document)
+%\listoftodos[\todolabel]
+%\cleardoublepage
+
+% Cover and title page (mandatory)
+\makecover
+\cleardoublepage
+\maketitle
+
+% Table of contents (mandatory)
+\hypersetup{linkcolor=black}
+\tableofcontents
+\hypersetup{linkcolor=deepblue}
+\cleardoublepage
+
+\input{pages/0_abstract.tex}
+\cleardoublepage
+
+% Main content
+\input{pages/1_intro.tex}
+\cleardoublepage
+
+\input{pages/2_methods.tex}
+\cleardoublepage
+
+\input{pages/3_results.tex}
+\cleardoublepage
+
+\input{pages/4_discussion.tex}
+\cleardoublepage
+
+\input{pages/5_conclusion.tex}
+\cleardoublepage
+
+% Acknowledgements (optional) - in case your thesis received funding or would like to express special thanks to someone
+\chapter*{\acklabel}
+\addcontentsline{toc}{chapter}{\acklabel}
+
+\noindent This work was supported by the \textbdd{Institute for Business Cooperation Scholarship} under grants \textbdd{\#E111SIVE}. We extend our gratitude to our supervisor, \textbdd{László Gulyás}, for his extensive efforts, patience, and invaluable guidance, which were crucial throughout this project. We also thank \textbdd{Eötvös Loránd University and the Department of Artificial Intelligence} for providing the resources and environment essential for this project's development.
+
+% Appendices (optional) - useful for detailed information in long tables, many and/or large figures, etc.
+\appendix
+\input{pages/6_hyperparams.tex}
+\input{pages/6-1_implementation}
+
+\cleardoublepage
+
+% Bibliography (mandatory)
+\phantomsection
+\addcontentsline{toc}{chapter}{\biblabel}
+\printbibliography[title=\biblabel]
+\cleardoublepage
+
+% List of figures (optional) - useful over 3-5 figures
+\phantomsection
+\addcontentsline{toc}{chapter}{\lstfigurelabel}
+\listoffigures
+\cleardoublepage
+
+% List of tables (optional) - useful over 3-5 tables
+\phantomsection
+\addcontentsline{toc}{chapter}{\lsttablelabel}
+\listoftables
+\cleardoublepage
+
+% List of algorithms
+\phantomsection
+\addcontentsline{toc}{chapter}{\lstalgorithmlabel}
+\listofalgorithms
+\cleardoublepage
+
+% List of symbols (optional)
+
+\printnomenclature
+
+% Have to put this at the end
+\cleardoublepage
+\input{pages/7_workdistrib.tex}
+
+\end{document}

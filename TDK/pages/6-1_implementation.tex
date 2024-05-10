@@ -1,0 +1,28 @@
+\chapter{Tools Used and Other Implementation Details}
+\label{appx:impl_details}
+
+\noindent Our initial approach started with integrating the Lux Environment (\textcolor{deepblue}{\cite{lux-ai-season-2}}) directly into an easy-to-manage development environment through containerization. For this process, we went with the most popular option, \textbdd{Docker} (\textcolor{deepblue}{\cite{merkel2014docker}}). For our initial setup, we selected two distinct Ubuntu configurations: a CPU-only version for debugging (\textbdd{ubuntu:latest}) and another with NVIDIA CUDA support (\textbdd{nvidia/cuda:12.2.0-base-ubuntu20.04}) for training purposes. However, the computational demands of our experiments increased to the point where it became completely unfeasible to conduct runs locally. Thus, we transitioned to cloud-based training, utilizing a \textbdd{Google Colab's Pro} subscription (\textcolor{deepblue}{\cite{Bisong2019}}) to train on GPUs with increased memory sizes. The rationale for containerization was to increase transparency and ensure compatibility across devices. Moreover, it aimed to facilitate future development and future integration with cloud services for training. This approach significantly reduced our research overhead associated with running experiments by utilizing \textbdd{VSCode} (\textcolor{deepblue}{\cite{VSCode}}) and its DevContainer tool.
+
+\bigskip
+
+\noindent All code development was carried out on local machines, with code security managed through \textbdd{Git} Source Control and hosted on \textbdd{GitHub}. The Lux Environment was accessible in two forms: as a package installable via \textbdd{pip} (\textcolor{deepblue}{\cite{luxai_s2-pip}}) or through its raw source code (\textcolor{deepblue}{\cite{luxai_s2-source}}). To maintain consistency and minimize disruptions in our research, we opted to pin the version of the Lux Environment to the iteration current as of the last competition in March 2023 (\textcolor{deepblue}{\cite{lux-ai-season-2}}). Therefore, instead of using the pip package, we downloaded the source code to make it always available offline.
+
+\bigskip
+
+\noindent The engine was mandatory for both the development and the evaluation of actions to determine their correctness. It managed the stepping of the environment, making sure each step produced a stable state and provided consistent updates. Moreover, the engine was responsible for sending the fully visible environmental state to our client solution in JSON format through the default output stream (stdout). Because information exchange exhausted the two most used data streams on our system, debugging only became possible with the utilization of logger packages. As the engine was developed exclusively in \textbdd{Python} (\textcolor{deepblue}{\cite{Python380}}), we naturally also chose Python for our implementation to maintain compatibility and evade serialization issues.
+
+\bigskip
+
+\noindent To ensure transparency and reproducibility in our research, we have implemented automated testing using \textbdd{PyTest} and static code analysis. Our Docker images are uploaded to \textbdd{Docker Hub} and \textbdd{GitHub Docker Registry}, and all documentation is accessible through the source code. The Docker images can be accessed through: \url{https://hub.docker.com/r/ranuon98/luxai_gpu}.
+
+\bigskip
+
+\noindent We have also used AI tools like \textbdd{GitHub CoPilot} (\textcolor{deepblue}{\cite{github-copilot}}) to speed up development, \textbdd{Grammarly} (\textcolor{deepblue}{\cite{Grammarly}}) for grammar checking, and \textbdd{ChatGPT} (\textcolor{deepblue}{\cite{chatgpt}}) to help with phrasing.
+
+\bigskip
+
+\noindent As the starting point for the development of our \textbdd{hybrid model} (\autoref{sec:hybrid-approach}), we have branched out of a Github repository called \textbdd{Luxai-s2-Baseline} by \textbdd{RoboEden} (\cite{luxai_s2-baseline-source}), which we found recommended in the Github repository of the \textbdd{Lux AI Challenge season 2} competition (\cite{luxais2_neurips_23}).
+
+\bigskip
+
+\noindent The code, training visualizations, evaluation results, issues, and a project wiki are publicly available at: \url{https://github.com/MagmaMultiAgent}

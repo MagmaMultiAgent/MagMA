@@ -1,0 +1,167 @@
+\chapter{Discussion}
+\label{ch:disc}
+
+\noindent In the results sections, we presented extensive charts, data, and convergence metrics, offering a \textbdd{data-driven analysis} of the limitations in multi-agent reinforcement learning and potential solutions. However, our discussion chapter aims to provide a \textbdd{broader perspective} on our research journey, encompassing pivotal transitions and stages, along with novel insights and challenges encountered. We wrap up each section with concise \textbdd{recommendations for constructing robust systems} and cautionary notes on \textbdd{practices to avoid}.
+
+\begin{itemize}
+
+\item \autoref{ch:disc-diverse-domains} examines the \textbdd{adaptability of RL algorithms} across tasks and their effectiveness in multi-agent settings.
+\item \autoref{ch:disc-dictatorship-failure} analyzes the \textbdd{inability of dictatorial approaches to converge} in complex, dynamic environments where global views may not suffice.
+\item \autoref{ch:disc-beyond-one-mind} investigates the \textbdd{transition to a multi-scale environment} overview and its implications on individuality and agent performance.
+\item \autoref{ch:disc-init-is-all-you-need} discusses the critical \textbdd{role of initialization and regularization} in deep RL, highlighting their impact on convergence and avoidance of local optima.
+\item \autoref{ch:disc-paying-for-performance} explores the \textbdd{trade-offs of model complexity and training time}, particularly in the context of Lux AI competitions where submissions often prioritize deep neural nets without sufficient consideration of problem-solving approaches.
+\item \autoref{ch:disc-singular-to-spectrum} analyzes the \textbdd{transferability of learned behaviors} in MARL systems, focusing on the dynamics of alignment and reward shaping and their implications on agent performance.
+
+\end{itemize}
+
+\section{Diverse Domains, Diverse Algorithms}
+\label{ch:disc-diverse-domains}
+
+\noindent We argue that a \textbdd{one-size-fits-all algorithm does not exist} in the context of reinforcement learning, particularly in multi-agent environments (\cite{liu2024jointppo}). Typically, when a new technique or algorithm emerges in reinforcement learning, it is tested within a specific task or a set of similar environments. These are designed for single-agent settings, simplifying the problem space by avoiding dynamic entity cardinalities, credit assignment burdens, and trajectory separation issues. Our benchmark study of novel RL algorithms highlights potential issues in their applicability to fuzzy tasks and complex environments, such as Lux AI (\autoref{sec:environment}).
+
+\bigskip
+
+\noindent Augmented Random Search (\autoref{sec:ars}) tends to underperform as the number of learnable parameters in a neural network increases. In environments like Lux, which require extensive state space representations and larger networks to learn input-output mappings, the \textbdd{usability of derivation-free methods degrades}. Neuroevolution is still an evolving subfield of AI, making architectural searches inefficient for our purposes; employing domain knowledge and prior insights proves more effective.
+
+\bigskip
+
+\noindent In our benchmark study, TRPO (\autoref{sec:trpo}) and A2C (\autoref{sec:a2c}) delivered similar results, illustrating the necessity for PPO’s development. Given the sparsity of positive actions in such environments, \textbdd{TRPO and A2C are not regulative enough} with the magnitude of policy updates. PPO addresses this with an advanced clipping mechanism that trims extensive updates at a hyperparameter-defined threshold, preventing detrimental changes and maintaining the direction of beneficial updates.
+
+\bigskip
+
+\noindent The comparison between M-PPO and standard PPO clearly shows that \textbdd{invalid action masking significantly enhances the convergence speed of the algorithms}. This improvement is consistent across most environments tested in the literature, as it introduces domain-specific knowledge into the learning model (\cite{Huang_2022}). To illustrate, consider teaching a child to bicycle down an alleyway with the promise of a reward at the end but failing to mention the need to avoid obstacles that could cause a fall and potentially prolong the journey. With invalid action masking, it's like explicitly instructing that colliding with obstacles is prohibited because it never leads to positive rewards.
+
+\bigskip
+
+\noindent Recurrent PPO (\autoref{sec:rppo}) is particularly effective in scenarios where interdependencies between environmental steps are crucial for decision-making, such as in Partially Observable Markov Decision Processes (POMDPs), where agents sense only a local area of the environment. This perceptional handicap generates a trajectory that significantly enhances an agent's decision-making capabilities. However, in our study, the impact of interdependencies between steps is minimized due to the fully observable nature of the environment. Given that resources, units, and factories are always visible, a single state of the environment provides sufficient information for making decisions. In our case, the recurrent nature of LSTMs and their reliance on sequence-based input can lead to noise from past observations, which results in a worse performance than approaches that do not incorporate historical data. \textbdd{R-PPO}, however, \textbdd{could be utilized for generating action queues}, which we did not use in our study. A recurrent policy could plan a sequence of action autoregressively, reducing the frequency of action queue updates and lowering the power costs of the units. This specialized application was beyond the scope of our current benchmark study but remains a promising area for future research.
+
+\bigskip
+
+\noindent Regarding DQNs (\autoref{sec:dqn}; \autoref{sec:qrdqn}), it is evident that learning the full distribution over returns provides significantly better results, especially in environments where future rewards are sparse and estimating a mean could distort the true value of an action in a given state. Utilizing a quantization method on a fixed uniform distribution can better capture the actual value and future impact of choosing an action $a$ in state $s$. However, this approach comes with substantial computational costs, which limit our ability to conduct further tests. QR-DQN remains a promising candidate for our proposed hybrid method in the future.
+
+\bigskip
+
+\noindent In conclusion, PPO provides an ideal parallelizable framework due to its fixed rollout sizes and effective trajectory separation. Our hybrid approach aims to extend these capabilities to fully adapt it for multi-agent domains, leading us to designate it as \textbdd{MA-PPO}.
+
+\section{The Failure of Dictatorship in Multi-Agent Societies}
+\label{ch:disc-dictatorship-failure}
+
+\noindent In a dictatorship, one person or a small group holds absolute power without constitutional limitations (\cite{VocabularyDictatorship}). In the realm of multi-agent systems, this concept translates to a social dynamic where one entity dictates rules and decisions without input from others. As discussed in \autoref{sec:monolithic-approach}, we referred to this dynamic as \textbdd{direct input}, where individual entity actions impact the model's behavior at either an individual or group level through their trajectories. However, in our monolithic solution, trajectory separation is absent, and entities are perceived as a singular entity rather than individual contributors. This phenomenon, we termed \textbdd{Multi-Agent Dictatorship}, characterizes this approach.
+
+\bigskip
+
+\noindent Looking at the results in \autoref{sec:monolithic-approach-results}, a significant degradation in model performance is evident, with the model failing to grasp the necessary behaviors in the environment. Even in instances where it managed to accumulate a larger sum of rewards due to exploratory ice collection or transfer to a factory, it struggled to reinforce this behavior. One might question why this is the case. When the model observes a global increase in ice at one of the factories and receives a reward, it \textbdd{should theoretically converge} towards this behavior. However, \textbdd{in the monolithic approach, this is not the case}. Our environment is sparse, with the exploration space scaling exponentially as the agent progresses through an episode. Despite running 32 environments with an episode length of 256 steps each, totaling 8k step samples (\autoref{sec:monolithic-approach-training}), and an average of around 20 units on the map per step, \textbdd{beneficial actions are exceedingly rare}. Even when an agent does discover a highly beneficial move, it typically involves just one unit on the map, while the rest are engaged in non-beneficial actions. Paradoxically, this can lead to a \textbdd{reinforcement of suboptimal behavior}, as the single unit's beneficial action contributes to the global reward of the system, reinforcing the actions of all units, including those that did not contribute positively to the outcome.
+
+\bigskip
+
+\noindent Another bottleneck arises from the single trajectory approach (\autoref{sec:multi-agent-environment}), where the environment's trajectory is one long sequence. In this setup, the death of a unit does not impact the trajectory length, as termination only occurs when all factories of one player are destroyed. However, the death of a unit is highly detrimental because any subsequent beneficial actions taken by other units can lead to \textbdd{reinforcement of the deceased unit's past actions}. This creates another paradoxical situation where the monolithic approach cannot adequately explain the reinforcement dynamics, especially in cases involving the creation or destruction of units. This phenomenon is exacerbated by how the total accumulated reward throughout a rollout is calculated. As a result, we observe peculiar interactions and reinforcement of actions, even when units die or are created. In some cases, a newly created unit can \textbdd{inherit reinforcement from a past action} executed by a different unit, despite the newly created unit not yet contributing positively to the environment.
+
+\bigskip
+
+\noindent Additional bottlenecks arise from the single value head (\autoref{sec:mono-network-actor-critic}), which contributes to the global perspective on the environment by calculating a single value over all states. This approach becomes \textbdd{highly sparse}, considering that only a small percentage of the total map is occupied by entities, typically ranging from 1 to 2 percent (20 units on average + 4 factory locations). Similarly, using a single critic is suboptimal because we aim to have multiple agents performing various tasks in the environment. Moreover, relying solely on a single actor head is \textbdd{insufficient to capture the complexity} of multi-agent interactions. Furthermore, the feature extractor of the network (\autoref{sec:monolithic-network}), particularly a U-net architecture, \textbdd{requires significantly more data} than what is available in our 200k-step training scenario to learn the class segmentation of units on the map (e.g., distinguishing between diggers and rechargers). The limited data, coupled with incorrect reinforcements and weight updates by the PPO algorithm, can degrade the quality of updates and lead to \textbdd{divergence}.
+
+\bigskip
+
+\noindent While a dictatorial PPO approach may seem easier to implement, it ultimately proves \textbdd{ineffective} in multi-agent systems due to its inability to account for individuality and the nuanced interactions among agents.
+
+\section{Beyond One Mind}
+\label{ch:disc-beyond-one-mind}
+
+\noindent What is an agent? This one question haunted us throughout our work. When looking at existing solutions for the Lux AI environment, virtually all approaches relied on a single idea. Create a single-brain model that outputs an action for every entity on the board (\cite{chen2023emergent}, \cite{ferdinand}). This did not look like a truly multi-agent solution to us since there was only one real agent with a very complex action space. We wondered why everyone gravitated towards this idea instead of a more traditional multi-agent control approach. We think this architecture became popular for a couple of reasons. First, it solves, or at least mitigates the credit assignment problem since there is effectively a single agent. Second, the 2D grid map can be easily interpreted by a convolutional network, which also can output actions in the same shape. Third, since the number of entities constantly changes, letting one agent manage the whole team simultaneously is much simpler.
+
+\bigskip
+
+\noindent Upon closer examination, we realized, there is more to this architecture than a monolithic, single-brain model. If we keep the board's shape at each layer, we can interpret this network as predicting the entities' actions from their local environment's observation through convolutional filters. This is important since if we used some bottleneck to represent the environment's global state, the network would have difficulty capturing and using every relevant information. However, if we use local information through convolutions and at no point change the size of the board, the model can focus on the specific entity's localized observations. Localized observations result in needing to understand much less about the whole game to output an action for a single entity. Using residual connections helps even more since the features do not need to be entirely remapped at every layer, allowing the network to capture important information around the entity. This is why we started using the term "hybrid architecture" to differentiate it from simple monolithic architecture. We think this change matters a lot and should be studied more.
+
+\bigskip
+
+\noindent Even though the hybrid architecture can, in theory, allow a smaller model to solve the task by using localized observations, we still do not consider this a multi-agent solution. There is a single agent, the team itself, who can take an action with every single active entity. For this composite action, it receives a single reward value. The problem is that there is no way to tell which particular action resulted in that reward, so all of it would get reinforced or punished simultaneously. We solved this with our technique called \textbdd{trajectory separation} (\autoref{subsec:grouping}). With it, we can treat every entity as a separate trajectory and massively improve the performance of our model. With this implementation, we can call entities agents since each entity can work separately from the other, using local observations and getting a unique reward value for their actions while keeping the optimization benefits of having a centralized model.
+
+
+\section{Initialization is All You Need}
+\label{ch:disc-init-is-all-you-need}
+
+\noindent Reproducibility has always been a problem in scientific research. In a 2016 survey, more than 1,500 scientists were questioned about the reproducibility of their research and the research of others. 70\% of them could not replicate other people's results, and 50\% could not even replicate their own findings (\cite{karbasi2023replicability}, \cite{Baker2016}). Unfortunately, this \textbdd{reproducibility crisis} is relevant in machine learning too, so much so that conferences have established so-called \textbdd{reproducibility challenges} (\cite{pwc_rc_2022}).
+
+\bigskip
+
+\noindent When it comes to reinforcement learning, reproducibility is especially hard. \cite{henderson2019deep} showed that environment stochasticity and randomness in the learning process, such as weight initialization, matters so much that even averaging together multiple runs with different random seeds can lead to misleading results. We also experienced a significant performance fluctuation during our initial experiments purely because of different random seeding. Having a differently initialized neural network meant that the initial preferred policies of the agents were different, which in turn led to different observed states in the environment, resulting in training trajectories that were very different from each other.
+
+\bigskip
+
+\noindent At first, we had trouble reproducing our results, even with the same seeds. We learned that many things depend on the state of the random generator. In our environments, we had to seed the random generator for Pytorch since that is the machine learning framework we used for training and Numpy since the Lux AI environment depended on it. Python's random generator also had to be seeded since simple things like the hash function are stochastic to prevent certain attacks (\cite{stackoverflow_answer_27522708}). We also learned that the convolutional layer's output in Pytorch with CUDA is not entirely deterministic since multiple convolution algorithms are benchmarked to find the fastest (\cite{pytorch_randomness}). This feature can be turned off, and doing so solved our issues. However, while turning off benchmarking and proper seeding solves our reproducibility issues, it is worth noting that convolutional layers used on GPUs with a multi-threaded setting will not result in the same outputs because addition on floating point numbers is not associative (\cite{oracle_goldberg}), resulting in very slight differences.
+
+\bigskip
+
+\noindent During our architecture search, we noticed a strange behavior. Modifying the order of layer definitions changed how quickly the model's training converged. In one such case, the initialization was so optimal that the entities learned to keep factories alive until the end of the game very early, while changing any one line in the model's structure caused the model not to learn anything. Changing the order of layer definitions even by one line meant that the random generator was at entirely different states when initializing the same parameters. It turns out that it is pretty standard to initialize the networks with orthogonal initialization, with the policy layers' weights scaled down in order to represent better a uniform distribution (\cite{shengyi2022the37implementation}), allowing each action to be explored with the same frequency. Some research suggests scaling down the output layers even more by a factor of 100. In \cite{andrychowicz2020matters}, they found that doing so increases performance by 66\% in one benchmark environment, which corresponds to what we experienced. A badly-initialized model means that the agent must first unlearn its inherent bad behavior. That is, if it can even experience beneficial actions. After scaling down the policy layers, the massive fluctuations in performance disappeared. However, there was still a noticeable difference between seeds. We looked at the PPO losses and saw that, in some cases, the value loss exploded. At that time, we used a shared embedding network for the actor and critic heads, and an exploding value loss meant that the value loss's gradient completely dominated the embedding network's weight updates, causing policy collapse. Scaling down the value network by the same factor solved this exploding loss issue. Having said that, the difference between seeds only got under control after we scaled down every single weight in the hidden layers. We are not sure why these tiny weights were necessary, mainly because our network already contains many regularization elements with batch norm (\autoref{subsec:batchnorm}), spectral norm (\autoref{subsec:spectralnorm}) and residual connections (\autoref{subsec:residual}).
+
+\section{Sometimes Less is More}
+\label{ch:disc-paying-for-performance}
+
+\noindent Looking at the submissions for the best performing reinforcement learning submissions in the Lux AI competition, we noticed how long it took to train them. The best submission was trained on 65 million envrionment steps (\cite{ferdinand}), just to learn rudemantary skills, for example collecting resources. The baseline solution that was provided by the organizers learned how to keep factories alive until the end of the game only after 1.4 million envrionment steps, and 2 days of constant training. Since we wanted to search through a lot of architectures, we knew that these training times would not work for us, because of both time and resource contraints. Therefore, we wanted to speed up the convergence of the models to as fast as possible.
+
+\bigskip
+
+\noindent We experimented with small, fully connected neural networks at first, with a lot of hand-engineered features. For example, the vector pointing towards the closest ice or factory. We could not achieve much success with this method, so we decided to stop using such features and, like many others, switch to a pixel-to-pixel (\cite{chen2023emergent}) convolutional arhictecture. We built the model from the bottom up, trying to be as small as possible, while still being able to learn our designated goals. We also tried changing the number of rollout steps, minibatch-size and the number of parallel environments. We found out that by reducing the maximum episode length by a factor of 4, the model could still learn to keep the factories alive until the original episode length, while being able to train much faster due to now having more environments running in parallel.
+
+\bigskip
+
+\noindent The largest boost in performance came from the introduction of our technique called \textbdd{trajectory separation} (\autoref{subsec:grouping}). After separating the rewards and the network outputs to entity level, we saw a huge boost in performance (\autoref{sec:trajectory-separation}). We did experiments comparing this approach to global trajectories and found that without this feature, the model can still converge to solving the problem, but much slower. This naturally makes us wonder what performance could be achieved with our approach, if we trained for the same time and step size as the leading submissions. In our opinion, working within constraints can be beneficial, in order to find new solutions.
+
+\begin{comment}
+\section{The Black Box Problem}
+\label{ch:disc-black-box-problem}
+
+\noindent In our research, we aimed to ensure \textbdd{explicability} by using a modular approach where we could clearly describe and assess the functionality of each component to verify its alignment with our objectives, often referred to as \textbdd{interpretability} in the literature (\cite{glanois2022survey}). For instance, if agents cluster without performing any actions, it could indicate that they have learned invalid actions. Similarly, if agents fail to mine for ice, this may suggest that our reward system requires refinement. These scenarios illustrate the principles of AI explainability (XAI) and interpretability, which focus on understanding AI behavior in isolated settings. Despite their significance, these terms lack clear definitions in current nomenclature and can vary widely across AI subdomains, heavily dependent on the system's specific inputs and outputs (\cite{puiutta2020explainable}; \cite{9194697}; \cite{heuillet2020explainability}). Interpretability focuses on a deep, mechanical understanding of the model, its reward architecture, or the RL algorithm, detailing the internal mechanics. Conversely, explainability offers a more functional perspective, providing a model-agnostic view of the outputs of a model while serving as an external tool that examines the model's actions and attempts to explain its behaviors (\cite{glanois2022survey}).
+
+\bigskip
+
+\noindent Neural networks are notoriously difficult to understand due to their gray-box nature (\cite{zahavy2017graying}), with simpler machine learning models like decision trees or small linear layers being more interpretable. Extensive studies have been conducted to decompose such models, revealing why a CNN backbone with pixel cross-attention is significantly more complex for human comprehension than a straightforward linear regression model (\cite{glanois2022survey}). Deep RL algorithms, known for their need for substantial data to train, often overfit their training environments and exhibit low generalization capabilities (\cite{zhang2018study}). 
+
+\bigskip
+
+\noindent We \textbdd{encountered challenges with both interpretability and explainability} in our work. Although Explainable AI includes subfields like intelligibility, comprehensibility, transparency, and understandability, we observed significant overlap among these concepts in our research (\cite{glanois2022survey}). 
+
+\bigskip
+
+\noindent Our ventures through interpretability required us to evaluate our reward structure to ensure its alignment with our objectives. In AI terms, this involves questioning whether we are \textbdd{aligning the agent's behavior toward our goals} or overlooking critical components. We also examined our feature representation: does it make sense? For instance, should an agent trained to focus on diplomatic activities such as ice collection need information about enemy units on the map? In reinforcement learning, feature selection methods are less applicable because the data used for learning can be highly varied based on what the end user considers relevant. Inputs might include images, keyboard interactions, global information, sounds, or any other outputs from the environment, which often leads to a surplus of data, much of which may not be valuable. Traditional feature selection methods also struggle due to the end-to-end nature of the training and the \textbdd{absence of clear supervised or unsupervised categorizations} of RL in general. Decisions about which features to use are less about statistical methods, such as correlation matrices or chi-square tests, and more about the system's explainability. This limitation creates a complex \textbdd{interdependency}: to determine if our setup of features and input data is sensible, the model itself must be explainable. Paradoxically, one might assume that if a model is explainable, it should also be interpretable, leading us to an issue we gracefully named the \textbdd{Black Box Problem in Multi-Agent Reinforcement Learning}. Interestingly, this notion of co-dependence is reminiscent of actor-critic methods, where the actor and critic components must maintain a balance, ensuring that neither dominates the other (\autoref{sec:a2c}).
+
+\bigskip
+
+\noindent Additional interpretability measures must be considered when selecting the action space and implementing invalid action masking, which inherently restricts action choices and, as one might guess, also functions as a hyperparameter (\autoref{subsec:M-PPO}). Deciding on the neural architecture in Deep RL, such as in PPO (\autoref{sec:ppo}), involves determining how trajectories should be divided among agents, how advantages and log probabilities should be computed, and whether the model should include multiple actors, multiple critics, or potentially both. These decisions add further layers of complexity and require careful consideration to ensure interpretability.
+
+\bigskip
+
+\noindent \textbdd{Rewards also function as hyperparameters in reinforcement learning} and can be particularly challenging to interpret in complex multi-agent architectures. In a single-agent system, a reward increment (e.g., an increase by 5) indicates agent performance, allowing us to trace back through our credit assignment system to determine which actions or combinations of actions contributed to that increase. Reward metrics and plots can thus be instrumental in evaluating model performance. However, in multi-agent systems, where reward signals and trajectories are often globalized, interpreting rewards becomes ambigous. Our hybrid approach (\autoref{sec:hybrid-approach}) significantly improves the explainability of multi-agent PPO by localizing reward signals to individual entities. While this does not entirely demystify the system, it creates understanding on an entity level, making it easier to identify how specific actions influence the rewards of specific agents.
+
+\bigskip
+
+\noindent Inherent randomness in initialization also poses a significant challenge to explainability and reproducibility in reinforcement learning (\cite{jang2021entropyaware}). Models are hypersensitive to slight parameter changes, and something as simple as altering the position of a line in the PyTorch network code could trigger a superior seed, causing rapid convergence. While this might appear valuable, it undermines the reliability of the results, as success depends heavily on specific initial conditions rather than the inherent robustness of the model. Ironically, one could suggest that Deep RL might be tackled by searching for an optimal seed, assuming the model, state representation, and reward architecture align perfectly with the environment's goals. However, such an algorithm, while theoretically amusing, highlights the impracticality and unpredictability of relying on good initial conditions for consistent outcomes in Deep RL.
+
+\bigskip
+
+\noindent The \textbdd{Black Box problem} is a real issue, and this becomes even more evident when attempting to experiment with and understand the outcomes produced by Deep RL models. We recommend following a structured approach when designing such systems, ensuring that all modular components align with the intentions of the set goals to help shine a light on the internal mechanisms of these complex models.
+
+\end{comment}
+
+\section{Journey from Singular to Spectrum}
+\label{ch:disc-singular-to-spectrum}
+
+\noindent Transferring domain knowledge from specific domains has been shown to reduce sample efficiency in Reinforcement Learning algorithms (\cite{huang2023robust}). In our case, starting with the simple tasks of ice gathering and water generation for factories covers only a fraction of the potential activities in the Lux environment, which also includes ore collection, rubble destruction, enemy unit destruction, and resource sabotage. This approach to learning multiple dissimilar tasks in the same environment is known as \textbdd{Multi-Task RL (MT-RL)} (\cite{electronics9091363}) while teaching an agent to apply learned knowledge from one task to another is termed \textbdd{Transfer RL} (\cite{Lazaric2012}; \cite{TFLearning}; \cite{10172347}).
+
+\bigskip
+
+\noindent Both MT-RL and Transfer RL come with challenges. MT-RL often requires a weighting framework because not all tasks are equally important, and Transfer RL can struggle when the learned task is substantially different from the new target task (\cite{deramo2024sharing}; \cite{brunskill2013sample}). However, even tasks as distinct as enemy unit sabotage and ice collection share some similarities, such as basic movement patterns in the environment.
+
+\bigskip
+
+\noindent Implementing these methods involves detailed processes like proper checkpointing, resetting annealing hyperparameters, and updating reward signals. One approach could involve learning a source and a target network concurrently, with the source network acting as a regularizer for the target network (\cite{huang2023robust}). This process allows the target network to converge on a new task while maintaining relevance to the source domain. Due to its complexity and time demands, a Multi-Task learning framework remains a prospective area for future exploration in our research.
+
+\bigskip
+
+\noindent To expand from focusing on a single task to addressing a broader spectrum of activities, we retained the same configuration—using the same state representation, network architecture, and credit assignment system—but we also \textbdd{introduced rewards for new behaviors} (\autoref{subsec:comparison}). For instance, we began rewarding units for clearing rubble next to factories and for factories watering lichen around themselves. This approach effectively aligns the system to new goals within the environment but requires learning from scratch, which is a significant drawback.
+
+\bigskip
+
+\noindent This strategy could be further extended to include additional tasks, each requiring a new training phase from scratch. Alternatively, one could adjust the alignment of agents through invalid action masking; however, \textbdd{we recommend employing established retraining or continual training methods} from the literature, applied appropriately.
+
