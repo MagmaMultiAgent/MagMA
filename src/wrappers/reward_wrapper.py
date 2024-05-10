@@ -58,6 +58,10 @@ class EarlyRewardParserWrapper(gym.Wrapper):
 
         action = {agent: action}
         obs, _, termination, truncation, info = self.env.step(action)
+
+        termination_status = termination[agent] if isinstance(termination, dict) else termination
+        truncation_status = truncation[agent] if isinstance(truncation, dict) else truncation
+
         obs = obs[agent]
 
         metrics = self._get_info(agent, self.env.state.stats[agent], self.env.state)
@@ -66,7 +70,7 @@ class EarlyRewardParserWrapper(gym.Wrapper):
         self.prev_step_metrics = copy.deepcopy(metrics)
 
         info["metrics"] = metrics
-        return obs, reward, termination[agent], truncation[agent], info
+        return obs, reward, termination_status, truncation_status, info
     
     def _get_info(self, player: str, stats: StatsStateDict , state: kit.kit.GameState):
 
