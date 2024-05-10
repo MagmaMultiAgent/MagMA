@@ -1,11 +1,11 @@
 import sys
 import time
 from collections import deque
-from typing import Any, Dict, Optional, Tuple, Type, TypeVar, Union
+from typing import Any, ClassVar, Dict, Optional, Tuple, Type, TypeVar, Union
 
 import numpy as np
 import torch as th
-from gym import spaces
+from gymnasium import spaces
 from stable_baselines3.common import utils
 from stable_baselines3.common.buffers import RolloutBuffer
 from stable_baselines3.common.callbacks import BaseCallback, CallbackList, ConvertCallback, ProgressBarCallback
@@ -58,6 +58,8 @@ class MaskablePPO(OnPolicyAlgorithm):
         because the clipping is not enough to prevent large update
         see issue #213 (cf https://github.com/hill-a/stable-baselines/issues/213)
         By default, there is no limit on the kl div.
+    :param stats_window_size: Window size for the rollout logging, specifying the number of episodes to average
+        the reported success rate, mean episode length, and mean reward over
     :param tensorboard_log: the log location for tensorboard (if None, no logging)
     :param policy_kwargs: additional arguments to be passed to the policy on creation
     :param verbose: the verbosity level: 0 no output, 1 info, 2 debug
@@ -67,7 +69,7 @@ class MaskablePPO(OnPolicyAlgorithm):
     :param _init_setup_model: Whether or not to build the network at the creation of the instance
     """
 
-    policy_aliases: Dict[str, Type[BasePolicy]] = {
+    policy_aliases: ClassVar[Dict[str, Type[BasePolicy]]] = {
         "MlpPolicy": MlpPolicy,
         "CnnPolicy": CnnPolicy,
         "MultiInputPolicy": MultiInputPolicy,
@@ -90,6 +92,7 @@ class MaskablePPO(OnPolicyAlgorithm):
         vf_coef: float = 0.5,
         max_grad_norm: float = 0.5,
         target_kl: Optional[float] = None,
+        stats_window_size: int = 100,
         tensorboard_log: Optional[str] = None,
         policy_kwargs: Optional[Dict[str, Any]] = None,
         verbose: int = 0,
@@ -109,6 +112,7 @@ class MaskablePPO(OnPolicyAlgorithm):
             max_grad_norm=max_grad_norm,
             use_sde=False,
             sde_sample_freq=-1,
+            stats_window_size=stats_window_size,
             tensorboard_log=tensorboard_log,
             policy_kwargs=policy_kwargs,
             verbose=verbose,
@@ -218,8 +222,8 @@ class MaskablePPO(OnPolicyAlgorithm):
         self.start_time = time.time_ns()
         if self.ep_info_buffer is None or reset_num_timesteps:
             # Initialize buffers if they don't exist, or reinitialize if resetting counters
-            self.ep_info_buffer = deque(maxlen=100)
-            self.ep_success_buffer = deque(maxlen=100)
+            self.ep_info_buffer = deque(maxlen=self._stats_window_size)
+            self.ep_success_buffer = deque(maxlen=self._stats_window_size)
 
         if reset_num_timesteps:
             self.num_timesteps = 0
@@ -228,6 +232,7 @@ class MaskablePPO(OnPolicyAlgorithm):
             # Make sure training timesteps are ahead of the internal counter
             total_timesteps += self.num_timesteps
         self._total_timesteps = total_timesteps
+        self._num_timesteps_at_start = self.num_timesteps
 
         # Avoid resetting the environment when calling ``.learn()`` consecutive times
         if reset_num_timesteps or self._last_obs is None:
@@ -310,9 +315,9 @@ class MaskablePPO(OnPolicyAlgorithm):
             self._update_info_buffer(infos)
             n_steps += 1
 
-            if isinstance(self.action_space, spaces.Discrete):
+            # if isinstance(self.action_space, spaces.Discrete):
                 # Reshape in case of discrete action
-                actions = actions.reshape(-1, 1)
+                # actions = actions.reshape(-1, 1)
 
             # Handle timeout by bootstraping with value function
             # see GitHub issue #633
@@ -461,13 +466,6 @@ class MaskablePPO(OnPolicyAlgorithm):
                     log_ratio = log_prob - rollout_data.old_log_prob
                     approx_kl_div = th.mean((th.exp(log_ratio) - 1) - log_ratio).cpu().numpy()
                     approx_kl_divs.append(approx_kl_div)
-
-                if self.target_kl is not None and approx_kl_div > 1.5 * self.target_kl:
-                    continue_training = False
-                    if self.verbose >= 1:
-                        print(f"Early stopping at step {epoch} due to reaching max kl: {approx_kl_div:.2f}")
-                    break
-
                 # Optimization step
                 self.policy.optimizer.zero_grad()
                 loss.backward()

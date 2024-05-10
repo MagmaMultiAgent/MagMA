@@ -5,7 +5,7 @@ from collections import OrderedDict
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
-from gym import spaces
+from gymnasium import spaces
 
 from stable_baselines3.common.preprocessing import check_for_nested_spaces
 from stable_baselines3.common.vec_env.base_vec_env import VecEnvObs
@@ -62,10 +62,10 @@ def obs_space_info(obs_space: spaces.Space) -> Tuple[List[str], Dict[Any, Tuple[
         assert isinstance(obs_space.spaces, OrderedDict), "Dict space must have ordered subspaces"
         subspaces = obs_space.spaces
     elif isinstance(obs_space, spaces.Tuple):
-        subspaces = {i: space for i, space in enumerate(obs_space.spaces)}
+        subspaces = {i: space for i, space in enumerate(obs_space.spaces)}  # type: ignore[assignment]
     else:
         assert not hasattr(obs_space, "spaces"), f"Unsupported structured space '{type(obs_space)}'"
-        subspaces = {None: obs_space}
+        subspaces = {None: obs_space}  # type: ignore[assignment]
     keys = []
     shapes = {}
     dtypes = {}

@@ -7,10 +7,9 @@ are packages not available during the competition running (ATM)
 import copy
 import argparse
 import os.path as osp
-import gym
+import gymnasium as gym
 import torch as th
 from torch import nn
-from gym.wrappers import TimeLimit
 from luxai_s2.state import StatsStateDict
 from luxai_s2.utils.heuristics.factory_placement import place_near_random_ice
 from stable_baselines3.common.callbacks import BaseCallback, EvalCallback
@@ -24,51 +23,6 @@ from sb3_contrib.ppo_mask import MaskablePPO
 from wrappers.controllers import SimpleUnitDiscreteController
 from wrappers.obs_wrappers import SimpleUnitObservationWrapper
 from wrappers.sb3_action_mask import SB3InvalidActionWrapper
-
-class CustomCNN(BaseFeaturesExtractor):
-    """
-    Custom CNN for extracting features from the observation space
-    """
-    def __init__(self, observation_space: gym.Space, features_dim: int = 0) -> None:
-        """
-        Initializes the CNN
-        """
-
-        super().__init__(observation_space, features_dim)
-
-        self.cnn = nn.Sequential(
-            nn.Conv1d(in_channels=1, out_channels=32, kernel_size=3),
-            nn.MaxPool1d(kernel_size=2),
-            nn.ReLU(),
-        )
-
-        with th.no_grad():
-            n_flatten = self._get_flattened_size(observation_space)
-
-        self.fully_conv = nn.Sequential(
-            nn.Linear(n_flatten, 128),
-            nn.ReLU(),
-            nn.Linear(128, features_dim),
-        )
-
-    def _get_flattened_size(self, observation_space: gym.Space) -> int:
-        """
-        Returns the size of the flattened output of the CNN
-        """
-
-        dummy_input = th.zeros(1, 1, observation_space.shape[0])
-        cnn_output = self.cnn(dummy_input)
-        return cnn_output.view(1, -1).shape[1]
-
-    def forward(self, observations: th.Tensor) -> th.Tensor:
-        '''
-        Forward pass of the CNN
-        '''
-        observations = observations.unsqueeze(1)
-        cnn_output = self.cnn(observations)
-        flattened = cnn_output.view(cnn_output.size(0), -1)
-        return self.fully_conv(flattened)
-
 
 class CustomEnvWrapper(gym.Wrapper):
     """
@@ -97,9 +51,13 @@ class CustomEnvWrapper(gym.Wrapper):
             factory.cargo.water = 1000
 
         action = {agent: action}
-        obs, _, done, info = self.env.step(action)
+        obs, _, termination, truncation, info = self.env.step(action)
+        done = dict()
+        for k in termination:
+            done[k] = termination[k] | truncation[k]
+
         obs = obs[agent]
-        done = done[agent]
+
 
         stats: StatsStateDict = self.env.state.stats[agent]
 
@@ -125,16 +83,16 @@ class CustomEnvWrapper(gym.Wrapper):
             reward = ice_dug_this_step / 100 + water_produced_this_step
 
         self.prev_step_metrics = copy.deepcopy(metrics)
-        return obs, reward, done, info
+        return obs, reward, termination[agent], truncation[agent], info
 
     def reset(self, **kwargs):
         """
         Resets the environment
         """
 
-        obs = self.env.reset(**kwargs)["player_0"]
+        obs, reset_info = self.env.reset(**kwargs)
         self.prev_step_metrics = None
-        return obs
+        return obs["player_0"], reset_info
 
 def parse_args():
     """
@@ -152,7 +110,7 @@ def parse_args():
         "-n",
         "--n-envs",
         type=int,
-        default=16,
+        default=1,
         help="Number of parallel envs to run. Note that the rollout \
         size is configured separately and invariant to this value",
     )
@@ -200,7 +158,7 @@ def make_env(env_id: str, rank: int, seed: int = 0, max_episode_steps=100):
         Initializes the environment
         """
 
-        env = gym.make(env_id, verbose=0, collect_stats=True, MAX_FACTORIES=2)
+        env = gym.make(env_id, verbose=1, collect_stats=True, disable_env_checker=True, max_episode_steps=max_episode_steps)
 
         env = SB3InvalidActionWrapper(
             env,
@@ -212,10 +170,7 @@ def make_env(env_id: str, rank: int, seed: int = 0, max_episode_steps=100):
             env
         )
         env = CustomEnvWrapper(env)
-        env = TimeLimit(
-            env, max_episode_steps=max_episode_steps
-        )
-        env = Monitor(env)
+        #env = Monitor(env)
         env.reset(seed=seed + rank)
         set_random_seed(seed)
         return env
@@ -289,8 +244,7 @@ def train(args, env_id, model: PPO, invalid_action_masking):
     """
 
     eval_environments = [make_env(env_id, i, max_episode_steps=1000) for i in range(4)]
-    eval_env = DummyVecEnv(eval_environments) if invalid_action_masking \
-        else SubprocVecEnv(eval_environments)
+    eval_env = SubprocVecEnv(eval_environments)
     eval_env.reset()
     eval_callback = EvalCallback(
         eval_env,
@@ -322,19 +276,13 @@ def main(args):
 
     environments = [make_env(env_id, i, max_episode_steps=args.max_episode_steps) \
                     for i in range(args.n_envs)]
-    env = DummyVecEnv(environments) if invalid_action_masking \
-        else SubprocVecEnv(environments)
+    env = SubprocVecEnv(environments)
     env.reset()
 
-    policy_kwargs = {
-        "features_extractor_class": CustomCNN,
-        "features_extractor_kwargs": {
-            "features_dim": 128
-            }
-        }
+    policy_kwargs = dict(net_arch=(128, 128))
     rollout_steps = 4000
-    model = MaskablePPO(
-        "CnnPolicy",
+    model = PPO(
+        "MlpPolicy",
         env,
         n_steps=rollout_steps // args.n_envs,
         batch_size=800,

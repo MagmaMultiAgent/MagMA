@@ -1,7 +1,7 @@
-from typing import Any, Dict, Optional, Type, TypeVar, Union
+from typing import Any, ClassVar, Dict, Optional, Type, TypeVar, Union
 
 import torch as th
-from gym import spaces
+from gymnasium import spaces
 from torch.nn import functional as F
 
 from stable_baselines3.common.on_policy_algorithm import OnPolicyAlgorithm
@@ -29,7 +29,7 @@ class A2C(OnPolicyAlgorithm):
     :param n_steps: The number of steps to run for each environment per update
         (i.e. batch size is n_steps * n_env where n_env is number of environment copies running in parallel)
     :param gamma: Discount factor
-    :param gae_lambda: Factor for trade-off of bias vs variance for Generalized Advantage Estimator
+    :param gae_lambda: Factor for trade-off of bias vs variance for Generalized Advantage Estimator.
         Equivalent to classic advantage when set to 1.
     :param ent_coef: Entropy coefficient for the loss calculation
     :param vf_coef: Value function coefficient for the loss calculation
@@ -42,6 +42,8 @@ class A2C(OnPolicyAlgorithm):
     :param sde_sample_freq: Sample a new noise matrix every n steps when using gSDE
         Default: -1 (only sample at the beginning of the rollout)
     :param normalize_advantage: Whether to normalize or not the advantage
+    :param stats_window_size: Window size for the rollout logging, specifying the number of episodes to average
+        the reported success rate, mean episode length, and mean reward over
     :param tensorboard_log: the log location for tensorboard (if None, no logging)
     :param policy_kwargs: additional arguments to be passed to the policy on creation
     :param verbose: Verbosity level: 0 for no output, 1 for info messages (such as device or wrappers used), 2 for
@@ -52,7 +54,7 @@ class A2C(OnPolicyAlgorithm):
     :param _init_setup_model: Whether or not to build the network at the creation of the instance
     """
 
-    policy_aliases: Dict[str, Type[BasePolicy]] = {
+    policy_aliases: ClassVar[Dict[str, Type[BasePolicy]]] = {
         "MlpPolicy": ActorCriticPolicy,
         "CnnPolicy": ActorCriticCnnPolicy,
         "MultiInputPolicy": MultiInputActorCriticPolicy,
@@ -74,6 +76,7 @@ class A2C(OnPolicyAlgorithm):
         use_sde: bool = False,
         sde_sample_freq: int = -1,
         normalize_advantage: bool = False,
+        stats_window_size: int = 100,
         tensorboard_log: Optional[str] = None,
         policy_kwargs: Optional[Dict[str, Any]] = None,
         verbose: int = 0,
@@ -81,7 +84,6 @@ class A2C(OnPolicyAlgorithm):
         device: Union[th.device, str] = "auto",
         _init_setup_model: bool = True,
     ):
-
         super().__init__(
             policy,
             env,
@@ -94,6 +96,7 @@ class A2C(OnPolicyAlgorithm):
             max_grad_norm=max_grad_norm,
             use_sde=use_sde,
             sde_sample_freq=sde_sample_freq,
+            stats_window_size=stats_window_size,
             tensorboard_log=tensorboard_log,
             policy_kwargs=policy_kwargs,
             verbose=verbose,
@@ -132,7 +135,6 @@ class A2C(OnPolicyAlgorithm):
 
         # This will only loop once (get all data in one go)
         for rollout_data in self.rollout_buffer.get(batch_size=None):
-
             actions = rollout_data.actions
             if isinstance(self.action_space, spaces.Discrete):
                 # Convert discrete action from float to long
@@ -189,7 +191,6 @@ class A2C(OnPolicyAlgorithm):
         reset_num_timesteps: bool = True,
         progress_bar: bool = False,
     ) -> SelfA2C:
-
         return super().learn(
             total_timesteps=total_timesteps,
             callback=callback,

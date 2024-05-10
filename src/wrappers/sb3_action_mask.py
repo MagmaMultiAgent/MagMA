@@ -4,7 +4,7 @@ for use with stable-baselines3
 """
 import copy
 from typing import Dict, Callable
-import gym
+import gymnasium as gym
 from luxai_s2.env import LuxAI_S2
 from luxai_s2.state import ObservationStateDict, StatsStateDict
 from luxai_s2.wrappers import SB3Wrapper

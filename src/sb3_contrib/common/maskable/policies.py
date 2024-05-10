@@ -4,19 +4,23 @@ from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import numpy as np
 import torch as th
-from gym import spaces
+from gymnasium import spaces
 from stable_baselines3.common.policies import BasePolicy
 from stable_baselines3.common.torch_layers import (
     BaseFeaturesExtractor,
     CombinedExtractor,
     FlattenExtractor,
     MlpExtractor,
+    CustomExtractor,
     NatureCNN,
 )
 from stable_baselines3.common.type_aliases import Schedule
 from torch import nn
 
 from sb3_contrib.common.maskable.distributions import MaskableDistribution, make_masked_proba_distribution
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 class MaskableActorCriticPolicy(BasePolicy):
@@ -47,8 +51,7 @@ class MaskableActorCriticPolicy(BasePolicy):
         observation_space: spaces.Space,
         action_space: spaces.Space,
         lr_schedule: Schedule,
-        # TODO(antonin): update type annotation when we remove shared network support
-        net_arch: Union[List[int], Dict[str, List[int]], List[Dict[str, List[int]]], None] = None,
+        net_arch: Optional[Union[List[int], Dict[str, List[int]]]] = None,
         activation_fn: Type[nn.Module] = nn.Tanh,
         ortho_init: bool = True,
         features_extractor_class: Type[BaseFeaturesExtractor] = FlattenExtractor,
@@ -75,22 +78,15 @@ class MaskableActorCriticPolicy(BasePolicy):
             normalize_images=normalize_images,
             squash_output=False,
         )
-
-        # Convert [dict()] to dict() as shared network are deprecated
-        if isinstance(net_arch, list) and len(net_arch) > 0:
-            if isinstance(net_arch[0], dict):
-                warnings.warn(
-                    (
-                        "As shared layers in the mlp_extractor are deprecated and will be removed in SB3 v1.8.0, "
-                        "you should now pass directly a dictionary and not a list "
-                        "(net_arch=dict(pi=..., vf=...) instead of net_arch=[dict(pi=..., vf=...)])"
-                    ),
-                )
-                net_arch = net_arch[0]
-            else:
-                # Note: deprecation warning will be emitted
-                # by the MlpExtractor constructor
-                pass
+        if isinstance(net_arch, list) and len(net_arch) > 0 and isinstance(net_arch[0], dict):
+            warnings.warn(
+                (
+                    "As shared layers in the mlp_extractor are removed since SB3 v1.8.0, "
+                    "you should now pass directly a dictionary and not a list "
+                    "(net_arch=dict(pi=..., vf=...) instead of net_arch=[dict(pi=..., vf=...)])"
+                ),
+            )
+            net_arch = net_arch[0]
 
         # Default network architecture, from stable-baselines
         if net_arch is None:
@@ -99,6 +95,7 @@ class MaskableActorCriticPolicy(BasePolicy):
             else:
                 net_arch = dict(pi=[64, 64], vf=[64, 64])
 
+        self.hidden_value_layers = [1024, 512, 128, 1]
         self.net_arch = net_arch
         self.activation_fn = activation_fn
         self.ortho_init = ortho_init
@@ -112,12 +109,6 @@ class MaskableActorCriticPolicy(BasePolicy):
         else:
             self.pi_features_extractor = self.features_extractor
             self.vf_features_extractor = self.make_features_extractor()
-            # if the features extractor is not shared, there cannot be shared layers in the mlp_extractor
-            # TODO(antonin): update the check once we change net_arch behavior
-            if isinstance(net_arch, list) and len(net_arch) > 0:
-                raise ValueError(
-                    "Error: if the features extractor is not shared, there cannot be shared layers in the mlp_extractor"
-                )
 
         # Action distribution
         self.action_dist = make_masked_proba_distribution(action_space)
@@ -144,15 +135,41 @@ class MaskableActorCriticPolicy(BasePolicy):
             latent_pi, latent_vf = self.mlp_extractor(features)
         else:
             pi_features, vf_features = features
-            latent_pi = self.mlp_extractor.forward_actor(pi_features)
-            latent_vf = self.mlp_extractor.forward_critic(vf_features)
-        # Evaluate the values for the given observations
+            latent_pi: th.Tensor = self.mlp_extractor.forward_actor(pi_features)
+            latent_vf: th.Tensor = self.mlp_extractor.forward_critic(vf_features)
+
         values = self.value_net(latent_vf)
+
+        latent_shape = latent_pi.shape
+        assert len(latent_shape) == 4
+
+        if action_masks is not None:
+            assert latent_shape == action_masks.shape
+
+        batch_size, action_channels, height, width = latent_shape
+
+        latent_pi = latent_pi.permute(0, 2, 3, 1)
+        latent_pi = latent_pi.reshape(-1, action_channels)
+        assert latent_pi.shape[0] == batch_size * height * width
+        
+        if action_masks is not None:
+            action_masks = np.transpose(action_masks, (0, 2, 3, 1))
+
+            action_masks = action_masks.reshape(-1, action_channels)
+
+            assert latent_pi.shape == action_masks.shape
+
         distribution = self._get_action_dist_from_latent(latent_pi)
         if action_masks is not None:
             distribution.apply_masking(action_masks)
         actions = distribution.get_actions(deterministic=deterministic)
         log_prob = distribution.log_prob(actions)
+        #log_prob = log_prob * (actions != 15)
+        actions = actions.reshape(batch_size, height, width)
+        actions = actions.permute(0, 1, 2)
+        log_prob = log_prob.view(batch_size, height, width)
+        log_prob = log_prob.permute(0, 1, 2)
+        log_prob = log_prob.sum(axis=[1,2])
         return actions, values, log_prob
 
     def extract_features(self, obs: th.Tensor) -> Union[th.Tensor, Tuple[th.Tensor, th.Tensor]]:
@@ -193,11 +210,12 @@ class MaskableActorCriticPolicy(BasePolicy):
         # Note: If net_arch is None and some features extractor is used,
         #       net_arch here is an empty list and mlp_extractor does not
         #       really contain any layers (acts like an identity module).
-        self.mlp_extractor = MlpExtractor(
+        self.mlp_extractor = CustomExtractor(
             self.features_dim,
             net_arch=self.net_arch,
             activation_fn=self.activation_fn,
             device=self.device,
+            obs_shape = self.observation_space['map'].shape[1],
         )
 
     def _build(self, lr_schedule: Schedule) -> None:
@@ -210,7 +228,14 @@ class MaskableActorCriticPolicy(BasePolicy):
         self._build_mlp_extractor()
 
         self.action_net = self.action_dist.proba_distribution_net(latent_dim=self.mlp_extractor.latent_dim_pi)
-        self.value_net = nn.Linear(self.mlp_extractor.latent_dim_vf, 1)
+        layers = []
+
+        layers.append(nn.Linear(self.mlp_extractor.latent_dim_pi, self.hidden_value_layers[0]))
+        layers.append(self.activation_fn())
+        for i in range(1, len(self.hidden_value_layers)):
+            layers.append(nn.Linear(self.hidden_value_layers[i - 1], self.hidden_value_layers[i]))
+            layers.append(self.activation_fn())
+        self.value_net = nn.Sequential(*layers)
 
         # Init weights: use orthogonal initialization
         # with small initial weight for the output
@@ -262,7 +287,11 @@ class MaskableActorCriticPolicy(BasePolicy):
         :param action_masks: Action masks to apply to the action distribution
         :return: Taken action according to the policy
         """
-        return self.get_distribution(observation, action_masks).get_actions(deterministic=deterministic)
+        distribution, batch_size, height, width = self.get_distribution(observation, action_masks)
+        actions = distribution.get_actions(deterministic=deterministic)
+        actions = actions.reshape(batch_size, height, width)
+        actions = actions.permute(0, 1, 2)
+        return actions
 
     def predict(
         self,
@@ -284,12 +313,6 @@ class MaskableActorCriticPolicy(BasePolicy):
         :return: the model's action and the next state
             (used in recurrent policies)
         """
-        # TODO (GH/1): add support for RNN policies
-        # if state is None:
-        #     state = self.initial_state
-        # if episode_start is None:
-        #     episode_start = [False for _ in range(self.n_envs)]
-
         # Switch to eval mode (this affects batch norm / dropout)
         self.set_training_mode(False)
 
@@ -339,12 +362,41 @@ class MaskableActorCriticPolicy(BasePolicy):
             latent_pi = self.mlp_extractor.forward_actor(pi_features)
             latent_vf = self.mlp_extractor.forward_critic(vf_features)
 
+        latent_shape = latent_pi.shape
+        assert len(latent_shape) == 4
+        
+        batch_size, action_channels, height, width = latent_shape
+
+        if action_masks is not None:
+            assert action_masks.shape == (batch_size * height * width, action_channels)
+
+        latent_pi = latent_pi.permute(0, 2, 3, 1)
+        latent_pi = latent_pi.reshape(-1, action_channels)
+
+        assert latent_pi.shape[0] == batch_size * height * width
+
+        if action_masks is not None:
+            assert latent_pi.shape == action_masks.shape
+
         distribution = self._get_action_dist_from_latent(latent_pi)
         if action_masks is not None:
-            distribution.apply_masking(action_masks)
+            distribution.apply_masking(action_masks, eval = True)
+
         log_prob = distribution.log_prob(actions)
+
+        #log_prob = log_prob * (actions != 15)
+        entropy = distribution.entropy()
+        #entropy = entropy * (actions != 15)
+        
+        entropy = entropy.view(batch_size, height, width)
+        actions = actions.reshape(batch_size, height, width)
+        actions = actions.permute(0, 1, 2)
+        log_prob = log_prob.view(batch_size, height, width)
+        log_prob = log_prob.permute(0, 1, 2)
+        entropy = entropy.permute(0, 1, 2)
+        log_prob = log_prob.sum(axis=[1,2])
         values = self.value_net(latent_vf)
-        return values, log_prob, distribution.entropy()
+        return values, log_prob, entropy
 
     def get_distribution(self, obs: th.Tensor, action_masks: Optional[np.ndarray] = None) -> MaskableDistribution:
         """
@@ -354,12 +406,23 @@ class MaskableActorCriticPolicy(BasePolicy):
         :param action_masks: Actions' mask
         :return: the action distribution.
         """
-        features = super().extract_features(obs, self.pi_features_extractor)
-        latent_pi = self.mlp_extractor.forward_actor(features)
+        features = self.extract_features(obs)
+        if self.share_features_extractor:
+            latent_pi, _ = self.mlp_extractor(features)
+        else:
+            pi_features, _ = features
+            latent_pi = self.mlp_extractor.forward_actor(pi_features)
+        batch_size, action_channels, height, width = latent_pi.shape
+
+
+        latent_pi = latent_pi.permute(0, 2, 3, 1)
+        latent_pi = latent_pi.reshape(-1, action_channels)
+        assert latent_pi.shape[0] == batch_size * height * width
         distribution = self._get_action_dist_from_latent(latent_pi)
         if action_masks is not None:
             distribution.apply_masking(action_masks)
-        return distribution
+
+        return distribution, batch_size, height, width
 
     def predict_values(self, obs: th.Tensor) -> th.Tensor:
         """
@@ -401,8 +464,7 @@ class MaskableActorCriticCnnPolicy(MaskableActorCriticPolicy):
         observation_space: spaces.Space,
         action_space: spaces.Space,
         lr_schedule: Schedule,
-        # TODO(antonin): update type annotation when we remove shared network support
-        net_arch: Union[List[int], Dict[str, List[int]], List[Dict[str, List[int]]], None] = None,
+        net_arch: Optional[Union[List[int], Dict[str, List[int]]]] = None,
         activation_fn: Type[nn.Module] = nn.Tanh,
         ortho_init: bool = True,
         features_extractor_class: Type[BaseFeaturesExtractor] = NatureCNN,
@@ -456,8 +518,7 @@ class MaskableMultiInputActorCriticPolicy(MaskableActorCriticPolicy):
         observation_space: spaces.Dict,
         action_space: spaces.Space,
         lr_schedule: Schedule,
-        # TODO(antonin): update type annotation when we remove shared network support
-        net_arch: Union[List[int], Dict[str, List[int]], List[Dict[str, List[int]]], None] = None,
+        net_arch: Optional[Union[List[int], Dict[str, List[int]]]] = None,
         activation_fn: Type[nn.Module] = nn.Tanh,
         ortho_init: bool = True,
         features_extractor_class: Type[BaseFeaturesExtractor] = CombinedExtractor,

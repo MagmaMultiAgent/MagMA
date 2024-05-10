@@ -1,9 +1,9 @@
 from typing import Callable, Dict
 
-import gym
+import gymnasium as gym
 import numpy as np
 import numpy.typing as npt
-from gym import spaces
+from gymnasium import spaces
 
 import luxai_s2.env
 from luxai_s2.env import LuxAI_S2
@@ -13,6 +13,9 @@ from luxai_s2.utils import my_turn_to_place_factory
 from luxai_s2.wrappers.controllers import (
     Controller,
 )
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 class SB3Wrapper(gym.Wrapper):
@@ -46,6 +49,9 @@ class SB3Wrapper(gym.Wrapper):
             A controller that parameterizes the action space into something more usable and converts parameterized actions to lux actions.
             See luxai_s2/wrappers/controllers.py for available controllers and how to make your own
         """
+        logger.info(f"Creating {self.__class__.__name__}")
+        self.logger = logging.getLogger(f"{__name__}_{id(self)}")
+
         gym.Wrapper.__init__(self, env)
         self.env = env
         
@@ -80,7 +86,8 @@ class SB3Wrapper(gym.Wrapper):
         self.prev_obs = None
 
     def step(self, action: Dict[str, npt.NDArray]):
-        
+        self.logger.debug(f"Stepping environment with action\n{action}")
+
         # here, for each agent in the game we translate their action into a Lux S2 action
         lux_action = dict()
         for agent in self.env.agents:
@@ -92,21 +99,22 @@ class SB3Wrapper(gym.Wrapper):
                 lux_action[agent] = dict()
         
         # lux_action is now a dict mapping agent name to an action
-        obs, reward, done, info = self.env.step(lux_action)
+        obs, reward, terminated, truncated, info = self.env.step(lux_action)
         self.prev_obs = obs
-        return obs, reward, done, info
+        return obs, reward, terminated, truncated, info
 
     def reset(self, **kwargs):
+        self.logger.debug("Resetting")
         # we upgrade the reset function here
         
         # we call the original reset function first
-        obs = self.env.reset(**kwargs)
+        obs, _ = self.env.reset(**kwargs)
         
         # then use the bid policy to go through the bidding phase
         action = dict()
         for agent in self.env.agents:
             action[agent] = self.bid_policy(agent, obs[agent])
-        obs, _, _, _ = self.env.step(action)
+        obs, _, _, _, _ = self.env.step(action)
         
         # while real_env_steps < 0, we are in the factory placement phase
         # so we use the factory placement policy to step through this
@@ -120,7 +128,8 @@ class SB3Wrapper(gym.Wrapper):
                     action[agent] = self.factory_placement_policy(agent, obs[agent])
                 else:
                     action[agent] = dict()
-            obs, _, _, _ = self.env.step(action)
+            obs, _, _, _, _ = self.env.step(action)
         self.prev_obs = obs
-        
-        return obs
+        for agent in self.env.agents:
+            assert obs[agent]["teams"][agent]["factories_to_place"] == 0
+        return obs, {}

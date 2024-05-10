@@ -2,10 +2,9 @@
 Wrapper for Observation Space
 """
 from typing import Any, Dict
-import gym
+import gymnasium as gym
 import numpy as np
 import numpy.typing as npt
-from gym import spaces
 
 class SimpleUnitObservationWrapper(gym.ObservationWrapper):
     """
@@ -28,7 +27,7 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
         """
 
         super().__init__(env)
-        self.observation_space = spaces.Box(-999, 999, shape=(13,))
+        self.observation_space = gym.spaces.Box(-999, 999, shape=(13,))
 
     def observation(self, obs):
         """

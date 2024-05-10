@@ -3,7 +3,7 @@ Module responsible for creating a wrapper for stable baselines"
 """
 
 from typing import Callable, Dict
-import gym
+import gymnasium as gym
 import numpy as np
 import numpy.typing as npt
 from luxai_s2.env import LuxAI_S2

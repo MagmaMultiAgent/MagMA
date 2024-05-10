@@ -1,8 +1,8 @@
-from typing import Dict, Union
+from typing import Dict, List, Optional, Tuple, Union
 
-import gym
+import gymnasium as gym
 import numpy as np
-from gym import spaces
+from gymnasium import spaces
 
 from stable_baselines3.common.type_aliases import GymStepReturn
 
@@ -73,7 +73,7 @@ class SimpleMultiObsEnv(gym.Env):
         self.init_possible_transitions()
 
         self.num_col = num_col
-        self.state_mapping = []
+        self.state_mapping: List[Dict[str, np.ndarray]] = []
         self.init_state_mapping(num_col, num_row)
 
         self.max_state = len(self.state_mapping) - 1
@@ -121,20 +121,18 @@ class SimpleMultiObsEnv(gym.Env):
         self.right_possible = [0, 1, 2, 12, 13, 14]
         self.up_possible = [4, 8, 12, 7, 11, 15]
 
-    def step(self, action: Union[int, float, np.ndarray]) -> GymStepReturn:
+    def step(self, action: Union[int, np.ndarray]) -> GymStepReturn:
         """
         Run one timestep of the environment's dynamics. When end of
         episode is reached, you are responsible for calling `reset()`
         to reset this environment's state.
-        Accepts an action and returns a tuple (observation, reward, done, info).
+        Accepts an action and returns a tuple (observation, reward, terminated, truncated, info).
 
         :param action:
-        :return: tuple (observation, reward, done, info).
+        :return: tuple (observation, reward, terminated, truncated, info).
         """
         if not self.discrete_actions:
-            action = np.argmax(action)
-        else:
-            action = int(action)
+            action = np.argmax(action)  # type: ignore[assignment]
 
         self.count += 1
 
@@ -153,11 +151,12 @@ class SimpleMultiObsEnv(gym.Env):
 
         got_to_end = self.state == self.max_state
         reward = 1 if got_to_end else reward
-        done = self.count > self.max_count or got_to_end
+        truncated = self.count > self.max_count
+        terminated = got_to_end
 
         self.log = f"Went {self.action2str[action]} in state {prev_state}, got to state {self.state}"
 
-        return self.get_state_mapping(), reward, done, {"got_to_end": got_to_end}
+        return self.get_state_mapping(), reward, terminated, truncated, {"got_to_end": got_to_end}
 
     def render(self, mode: str = "human") -> None:
         """
@@ -167,15 +166,18 @@ class SimpleMultiObsEnv(gym.Env):
         """
         print(self.log)
 
-    def reset(self) -> Dict[str, np.ndarray]:
+    def reset(self, *, seed: Optional[int] = None, options: Optional[Dict] = None) -> Tuple[Dict[str, np.ndarray], Dict]:
         """
         Resets the environment state and step count and returns reset observation.
 
+        :param seed:
         :return: observation dict {'vec': ..., 'img': ...}
         """
+        if seed is not None:
+            super().reset(seed=seed)
         self.count = 0
         if not self.random_start:
             self.state = 0
         else:
             self.state = np.random.randint(0, self.max_state)
-        return self.state_mapping[self.state]
+        return self.state_mapping[self.state], {}

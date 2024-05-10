@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import numpy as np
 import torch as th
-from gym import spaces
+from gymnasium import spaces
 from stable_baselines3.common.distributions import Distribution
 from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.common.torch_layers import (
@@ -66,8 +66,7 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
         observation_space: spaces.Space,
         action_space: spaces.Space,
         lr_schedule: Schedule,
-        # TODO(antonin): update type annotation when we remove shared network support
-        net_arch: Union[List[int], Dict[str, List[int]], List[Dict[str, List[int]]], None] = None,
+        net_arch: Optional[Union[List[int], Dict[str, List[int]]]] = None,
         activation_fn: Type[nn.Module] = nn.Tanh,
         ortho_init: bool = True,
         use_sde: bool = False,
@@ -390,7 +389,7 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
         observation, vectorized_env = self.obs_to_tensor(observation)
 
         if isinstance(observation, dict):
-            n_envs = observation[list(observation.keys())[0]].shape[0]
+            n_envs = observation[next(iter(observation.keys()))].shape[0]
         else:
             n_envs = observation.shape[0]
         # state : (n_layers, n_envs, dim)
@@ -476,8 +475,7 @@ class RecurrentActorCriticCnnPolicy(RecurrentActorCriticPolicy):
         observation_space: spaces.Space,
         action_space: spaces.Space,
         lr_schedule: Schedule,
-        # TODO(antonin): update type annotation when we remove shared network support
-        net_arch: Union[List[int], Dict[str, List[int]], List[Dict[str, List[int]]], None] = None,
+        net_arch: Optional[Union[List[int], Dict[str, List[int]]]] = None,
         activation_fn: Type[nn.Module] = nn.Tanh,
         ortho_init: bool = True,
         use_sde: bool = False,
@@ -567,8 +565,7 @@ class RecurrentMultiInputActorCriticPolicy(RecurrentActorCriticPolicy):
         observation_space: spaces.Space,
         action_space: spaces.Space,
         lr_schedule: Schedule,
-        # TODO(antonin): update type annotation when we remove shared network support
-        net_arch: Union[List[int], Dict[str, List[int]], List[Dict[str, List[int]]], None] = None,
+        net_arch: Optional[Union[List[int], Dict[str, List[int]]]] = None,
         activation_fn: Type[nn.Module] = nn.Tanh,
         ortho_init: bool = True,
         use_sde: bool = False,
