@@ -58,10 +58,6 @@ class EarlyRewardParserWrapper(gym.Wrapper):
 
         action = {agent: action}
         obs, _, termination, truncation, info = self.env.step(action)
-        done = dict()
-        for k in termination:
-            done[k] = termination[k] | truncation[k]
-
         obs = obs[agent]
 
         metrics = self._get_info(agent, self.env.state.stats[agent], self.env.state)
