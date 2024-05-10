@@ -6,7 +6,7 @@ from typing import Any, Dict
 import numpy as np
 import numpy.typing as npt
 from gymnasium import spaces
-import sys
+import math
 
 move_deltas = np.array([[0, -1], [1, 0], [0, 1], [-1, 0]])
 transfer_deltas = np.array([[0, 0], [0, -1], [1, 0], [0, 1], [-1, 0]])
@@ -296,6 +296,10 @@ class MultiUnitController(Controller):
         own_factories = shared_obs["factories"][own]
         enemy_factories = shared_obs["factories"][enemy]
         
+        def unit_move_cost(unit, target_pos):
+            rubble_at_target = shared_obs["board"]["rubble"][target_pos[0], target_pos[1]]
+            unit_type = unit["unit_type"]
+            return math.floor(self.env_cfg.ROBOTS[unit_type].MOVE_COST + self.env_cfg.ROBOTS[unit_type].RUBBLE_MOVEMENT_COST * rubble_at_target) + self.env_cfg.ROBOTS[unit_type].ACTION_QUEUE_POWER_COST
 
         # Create occupancy maps
         factory_occupancy_map = (
@@ -336,10 +340,17 @@ class MultiUnitController(Controller):
             # Go trough move directions
             for direction in range(len(move_deltas)):
                 # Target position
+
+                
                 target_pos = (x + move_deltas[direction][0], y + move_deltas[direction][1])
 
                 # Check if the target is out of bounds
                 if (target_pos[0] < 0 or target_pos[1] < 0 or target_pos[0] >= self.env_cfg.map_size or target_pos[1] >= self.env_cfg.map_size):
+                    action_mask[0 + direction, x, y] = False
+                    continue
+                
+                # Check if the unit has enough power to move to the target
+                if unit_move_cost(unit, target_pos) > unit["power"]:
                     action_mask[0 + direction, x, y] = False
                     continue
 
@@ -358,6 +369,8 @@ class MultiUnitController(Controller):
                 unit_there = player_occupancy_map[target_pos[0], target_pos[1]]
 
                 enemy_unit_there = target_pos in enemy_units_pos
+
+
 
                 # If there is factory there, we can't move there
                 if factory_at_pos or enemy_factory_at_pos:
@@ -410,8 +423,10 @@ class MultiUnitController(Controller):
                 + shared_obs["board"]["lichen"][x, y]
             )
 
-            if board_sum > 0:
-                action_mask[10, x , y] = True
+            # dig is only valid if on top of resource and has enough power
+            unit_type = unit["unit_type"]
+            if board_sum > 0 and unit["power"] >= (self.env_cfg.ROBOTS[unit_type].DIG_COST + self.env_cfg.ROBOTS[unit_type].ACTION_QUEUE_POWER_COST):
+                action_mask[10, x, y] = True
 
             # Pickup action is valid if there is power
             if on_top_of_factory:

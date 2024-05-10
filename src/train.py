@@ -30,6 +30,7 @@ from wrappers.utils import gaussian_ice_placement, bid_zero_to_not_waste
 from net.bottleneck_net import BottleNet
 from net.dash_net import DashNet
 import torch as th
+import numpy as np
 th.autograd.set_detect_anomaly(True)
 
 def parse_args():
@@ -48,7 +49,7 @@ def parse_args():
         "-n",
         "--n-envs",
         type=int,
-        default=32,
+        default=1,
         help="Number of parallel envs to run. Note that the rollout \
         size is configured separately and invariant to this value",
     )
@@ -154,8 +155,9 @@ def make_env(env_id: str, rank: int, max_episode_steps: int = 256, seed: int = 4
         )
         env = EarlyRewardParserWrapper(env)
         env = Monitor(env)
-        env.reset(seed=seed + rank)
-        set_random_seed(seed)
+        new_seed = np.random.SeedSequence(seed).generate_state(1).item() + rank
+        env.reset(seed=new_seed)
+        set_random_seed(new_seed)
         return env
 
     return _init
