@@ -386,11 +386,18 @@ class MaskableActorCriticPolicy(BasePolicy):
         
         log_prob = distribution.log_prob(actions)
         
+        actions = actions.reshape(batch_size, height, width)
+        actions = actions.permute(0, 1, 2)
         log_prob = log_prob.view(batch_size, height, width)
         log_prob = log_prob.permute(0, 1, 2)
+        log_prob = log_prob * (actions != 15)
+        entropy = distribution.entropy()
+        entropy = entropy.view(batch_size, height, width)
+        entropy = entropy.permute(0, 1, 2)
+        entropy = entropy * (actions != 15)
         log_prob = log_prob.sum(axis=[1,2])
         values = self.value_net(latent_vf)
-        return values, log_prob, distribution.entropy()
+        return values, log_prob, entropy
 
     def get_distribution(self, obs: th.Tensor, action_masks: Optional[np.ndarray] = None) -> MaskableDistribution:
         """
