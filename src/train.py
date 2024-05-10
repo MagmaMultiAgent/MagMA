@@ -1,4 +1,4 @@
-# %%writefile src/train.py
+%%writefile src/train.py
 
 import argparse
 import os
@@ -23,10 +23,9 @@ import tree
 from utils import save_args, save_model, cal_mean_return, make_env
 import gc
 from pprint import pprint
+import copy
 
 import seeding
-
-import copy
 
 import logging
 logging.basicConfig(level=logging.DEBUG,
@@ -91,6 +90,8 @@ def parse_args():
         help="the name of this experiment")
     parser.add_argument("--seed", type=int, default=42,
         help="seed of the experiment")
+    parser.add_argument("--eval-seed", type=int, default=0,
+        help="seed of the eval environments")
     parser.add_argument("--torch-deterministic", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="if toggled, `torch.backends.cudnn.deterministic=False`")
     parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
@@ -103,13 +104,13 @@ def parse_args():
     # Algorithm specific arguments
     parser.add_argument("--env-id", type=str, default="LuxAI_S2-v0",
         help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=10000000,
+    parser.add_argument("--total-timesteps", type=int, default=106496,
         help="total timesteps of the experiments")
     parser.add_argument("--learning-rate", type=float, default=2e-4,
         help="the learning rate of the optimizer")
-    parser.add_argument("--num-envs", type=int, default=32,
+    parser.add_argument("--num-envs", type=int, default=16,
         help="the number of parallel game environments")
-    parser.add_argument("--num-steps", type=int, default=512,
+    parser.add_argument("--num-steps", type=int, default=256,
         help="the number of steps to run in each environment per policy rollout")
     parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggle learning rate annealing for policy and value networks")
@@ -117,9 +118,9 @@ def parse_args():
         help="the discount factor gamma")
     parser.add_argument("--gae-lambda", type=float, default=0.95,
         help="the lambda for the general advantage estimation")
-    parser.add_argument("--train-num-collect", type=int, default=16384,
+    parser.add_argument("--train-num-collect", type=int, default=4096,
         help="the number of data collections in training process")
-    parser.add_argument("--num-minibatches", type=int, default=32,
+    parser.add_argument("--num-minibatches", type=int, default=8,
         help="the number of mini-batches")
     parser.add_argument("--update-epochs", type=int, default=10,
         help="the K epochs to update the policy")
@@ -137,15 +138,15 @@ def parse_args():
         help="the maximum norm for the gradient clipping")
     parser.add_argument("--target-kl", type=float, default=None,
         help="the target KL divergence threshold")
-    parser.add_argument("--save-interval", type=int, default=65536,
+    parser.add_argument("--save-interval", type=int, default=4096,
         help="global step interval to save model")
     parser.add_argument("--load-model-path", type=str, default=None,
         help="path for pretrained model loading")
     parser.add_argument("--replay-dir", type=str, default=None,
         help="replay dirs to reset state")
-    parser.add_argument("--evaluate-interval", type=int, default=65536,
+    parser.add_argument("--evaluate-interval", type=int, default=4096,
         help="evaluation steps")
-    parser.add_argument("--evaluate-num", type=int, default=16,
+    parser.add_argument("--evaluate-num", type=int, default=12,
         help="evaluation numbers")
 
     args = parser.parse_args()
@@ -154,13 +155,12 @@ def parse_args():
         args.seed = 42
 
     # Test arguments
-    if True:
-        args.num_steps = 50
-        args.num_envs = 1
+    if False:
+        args.num_steps = 500
+        args.num_envs = 2
         args.train_num_collect = args.num_envs*args.num_steps
         args.evaluate_interval = None
         args.save_interval = None
-        args.evaluate_num = 2
 
     # Reward per entity
     args.max_entity_number = 500
@@ -219,11 +219,6 @@ def create_model(device: Union[torch.device, str], load_model_path: Union[str, N
         print('load successfully')
 
     optimizer = optim.Adam(agent.parameters(), lr=learning_rate, eps=1e-5)
-
-    # get parameter count of agent
-    param_count = sum([p.numel() for p in agent.parameters() if p.requires_grad])
-    print(f"Agent parameter count: {param_count}")
-
     return agent, optimizer
 
 
@@ -262,7 +257,7 @@ def sample_action_for_player(agent: Net, obs: TensorPerKey, valid_action: Tensor
         obs['unit_feature'].to(device),
         obs['location_feature'].to(device),
         tree.map_structure(lambda x: x.to(device), valid_action),
-        None if forced_action is None else tree.map_structure(lambda x: x.to(device), forced_action)
+        None if forced_action is None else tree.map_structure(lambda x: x.to(device), forced_action),
     )
 
     return logprob, value, action, entropy
@@ -334,6 +329,7 @@ def calculate_returns(envs: LuxSyncVectorEnv,
                 delta = rewards[player][t] + gamma * nextvalues * nextnonterminal - values[player][t]
                 advantages[player][t] = lastgaelam = delta + gamma * gae_lambda * nextnonterminal * lastgaelam
             returns[player] = advantages[player] + values[player]
+
     return returns, advantages
 
 
@@ -348,23 +344,54 @@ def calculate_loss(advantages: torch.Tensor,
                    clip_vloss: bool,
                    clip_coef: float,
                    ent_coef: float,
-                   vf_coef: float,
-                   valid_samples: torch.Tensor
+                   vf_coef: float
                    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """
     Calculate the loss
     """
     newvalue = newvalue.view(-1, max_entity_number)
 
-    top_ind = torch.topk(advantages, 4, dim=1).indices
-    advantages = torch.gather(advantages, 1, top_ind)
-    returns = torch.gather(returns, 1, top_ind)
-    values = torch.gather(values, 1, top_ind)
-    newvalue = torch.gather(newvalue, 1, top_ind)
-    entropy = torch.gather(entropy, 1, top_ind)
-    ratio = torch.gather(ratio, 1, top_ind)
-    
-    mb_logprobs = torch.gather(mb_logprobs, 1, top_ind)
+    if False:
+        # top 10 rows need to be separated
+        _advantages = advantages[:, :10]
+        _returns = returns[:, :10]
+        _values = values[:, :10]
+        _newvalue = newvalue[:, :10]
+        _entropy = entropy[:, :10]
+        _ratio = ratio[:, :10]
+        _mb_logprobs = mb_logprobs[:, :10]
+
+        advantages = advantages[:, 10:]
+        returns = returns[:, 10:]
+        values = values[:, 10:]
+        newvalue = newvalue[:, 10:]
+        entropy = entropy[:, 10:]
+        ratio = ratio[:, 10:]
+        mb_logprobs = mb_logprobs[:, 10:]
+
+        # random tensor
+        random_tensor = torch.rand_like(advantages)
+        # set to zero where mb_logprobs is zero
+        random_tensor = random_tensor * (mb_logprobs != 0).float()
+
+        top_ind = torch.topk(advantages, 2, dim=1).indices
+        advantages = torch.gather(advantages, 1, top_ind)
+        returns = torch.gather(returns, 1, top_ind)
+        values = torch.gather(values, 1, top_ind)
+        newvalue = torch.gather(newvalue, 1, top_ind)
+        entropy = torch.gather(entropy, 1, top_ind)
+        ratio = torch.gather(ratio, 1, top_ind)
+        mb_logprobs = torch.gather(mb_logprobs, 1, top_ind)
+
+        # append
+        advantages = torch.cat([_advantages, advantages], dim=1)
+        returns = torch.cat([_returns, returns], dim=1)
+        values = torch.cat([_values, values], dim=1)
+        newvalue = torch.cat([_newvalue, newvalue], dim=1)
+        entropy = torch.cat([_entropy, entropy], dim=1)
+        ratio = torch.cat([_ratio, ratio], dim=1)
+        mb_logprobs = torch.cat([_mb_logprobs, mb_logprobs], dim=1)
+
     valid_samples = torch.where(mb_logprobs != 0)
 
     advantages = advantages[valid_samples]
@@ -522,19 +549,29 @@ def eval2(agent: torch.nn.Module, envs: LuxSyncVectorEnv, writer, seed: int = 0,
 
             # Save info
             for key in log_from_global_info:
-                save_key = f"sum_{key}"
-                
                 for env_id in range(num_envs):
                     if not first_episode[env_id]:
                         continue
+
+                    save_key = f"sum_{key}"
 
                     if save_key not in global_info_save_own[env_id]:
                         global_info_save_own[env_id][save_key] = 0
                     if save_key not in global_info_save_enemy[env_id]:
                         global_info_save_enemy[env_id][save_key] = 0
-                    
+
                     global_info_save_own[env_id][save_key] += info[f"player_{own}"][env_id][key]
                     global_info_save_enemy[env_id][save_key] += info[f"player_{enemy}"][env_id][key]
+
+                    save_key = f"last_{key}"
+
+                    if save_key not in global_info_save_own[env_id]:
+                        global_info_save_own[env_id][save_key] = 0
+                    if save_key not in global_info_save_enemy[env_id]:
+                        global_info_save_enemy[env_id][save_key] = 0
+
+                    global_info_save_own[env_id][save_key] = info[f"player_{own}"][env_id][key]
+                    global_info_save_enemy[env_id][save_key] = info[f"player_{enemy}"][env_id][key]
 
             done = terminated | truncation
             # all entities done for a player, at least one player is done
@@ -577,6 +614,8 @@ def eval2(agent: torch.nn.Module, envs: LuxSyncVectorEnv, writer, seed: int = 0,
             "avg_episode_length": eval_results["avg_episode_length"],
             "total_ice_transfered": eval_results["avg_info_total"]["sum_ice_transfered"],
             "total_ice_mined": eval_results["avg_info_total"]["sum_ice_mined"],
+            "total_lichen_grown": eval_results["avg_info_total"]["sum_lichen_grown"],
+            "last_lichen_count": eval_results["avg_info_total"]["last_lichen_count"],
         })
     agent.train()
 
@@ -585,7 +624,8 @@ def main(args, model_device, store_device):
     player_id = 0
     enemy_id = 1 - player_id
     player = f'player_{player_id}'
-    run_name = 'standard_icein_allemb16x2_small1x1_large5x5d2_agr4_comb16_val41_noun_perunit_rub_8k_fp_e001_am_test'
+    run_name = f'PUT_RUN_NAME_HERE_seed{args.seed}_{args.eval_seed}'
+    print(run_name)
     save_path = f'/content/drive/MyDrive/Lux/MA/results/{run_name}/'
     if not os.path.exists(save_path):
         os.makedirs(save_path)
@@ -627,7 +667,7 @@ def main(args, model_device, store_device):
     num_updates = args.total_timesteps // args.batch_size
 
     # Evaluate at the beggining
-    # eval2(agent, eval_envs, writer, seed=0, num_envs=args.evaluate_num, device=model_device, global_step=global_step)
+    eval2(agent, eval_envs, writer, seed=args.eval_seed, num_envs=args.evaluate_num, device=model_device, global_step=global_step)
 
     # Init value stores for PPO
     # Store the value on 'store_device' (cpu)
@@ -642,8 +682,9 @@ def main(args, model_device, store_device):
     logger.info("Starting train")
     last_seed = args.seed
     for update in range(1, num_updates + 1):
-        
+
         logger.info(f"Update {update} / {num_updates}")
+
         new_seed = np.random.SeedSequence(last_seed).generate_state(2)
         last_seed = new_seed[0].item()
         new_seed = new_seed[1].item()
@@ -874,7 +915,7 @@ def main(args, model_device, store_device):
                             writer.add_scalar(f"losses/bias_norm_{player_id}", total_bias_norm, global_step)
                             total_weight_norm_total += total_weight_norm
                             total_bias_norm_total += total_bias_norm
-                    
+
                     if LOG:
                         v_loss_total /= 2
                         pg_loss_total /= 2
@@ -936,14 +977,14 @@ def main(args, model_device, store_device):
 
             # Evaluate initially
             if args.evaluate_interval and (global_step - last_eval_step) >= args.evaluate_interval:
-                # eval2(agent, eval_envs, writer, seed=0, num_envs=args.evaluate_num, device=model_device, global_step=global_step)
+                eval2(agent, eval_envs, writer, seed=args.eval_seed, num_envs=args.evaluate_num, device=model_device, global_step=global_step)
                 last_eval_step = global_step
 
             # Save model
             if args.save_interval and (global_step - last_save_model_step) >= args.save_interval:
                 save_model(agent, save_path+f'model_{global_step}.pth')
                 last_save_model_step = global_step
-    
+
     envs.close()
     if LOG:
         writer.close()
