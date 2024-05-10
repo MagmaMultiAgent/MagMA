@@ -1,5 +1,5 @@
 from typing import Dict, List, Tuple, Union
-import gym
+import gymnasium as gym
 import copy
 import numpy as np
 from luxai_s2.state import StatsStateDict
