@@ -164,7 +164,7 @@ class MaskableActorCriticPolicy(BasePolicy):
             distribution.apply_masking(action_masks)
         actions = distribution.get_actions(deterministic=deterministic)
         log_prob = distribution.log_prob(actions)
-        log_prob = log_prob * (actions != 15)
+        #log_prob = log_prob * (actions != 15)
         actions = actions.reshape(batch_size, height, width)
         actions = actions.permute(0, 1, 2)
         log_prob = log_prob.view(batch_size, height, width)
@@ -384,9 +384,9 @@ class MaskableActorCriticPolicy(BasePolicy):
 
         log_prob = distribution.log_prob(actions)
 
-        log_prob = log_prob * (actions != 15)
+        #log_prob = log_prob * (actions != 15)
         entropy = distribution.entropy()
-        entropy = entropy * (actions != 15)
+        #entropy = entropy * (actions != 15)
         
         entropy = entropy.view(batch_size, height, width)
         actions = actions.reshape(batch_size, height, width)
