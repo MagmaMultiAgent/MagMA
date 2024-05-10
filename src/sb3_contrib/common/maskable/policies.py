@@ -162,12 +162,15 @@ class MaskableActorCriticPolicy(BasePolicy):
         if action_masks is not None:
             distribution.apply_masking(action_masks)
         actions = distribution.get_actions(deterministic=deterministic)
+
+
         log_prob = distribution.log_prob(actions)
         
         actions = actions.reshape(batch_size, height, width)
         actions = actions.permute(0, 1, 2)
         log_prob = log_prob.view(batch_size, height, width)
         log_prob = log_prob.permute(0, 1, 2)
+        log_prob = log_prob * (actions != 15)
         log_prob = log_prob.sum(axis=[1,2])
 
         return actions, values, log_prob

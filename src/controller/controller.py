@@ -89,7 +89,7 @@ class MultiUnitController(Controller):
         self.light_unit_build = 1
         self.heavy_unit_build = 1
         self.water_lichen = 1
-        self.fact_do_nothing = 1
+        self.do_nothing = 1
 
         self.move_dim_high = self.move_act_dims
         self.transfer_dim_high = self.move_dim_high + self.one_transfer_dim
@@ -99,9 +99,9 @@ class MultiUnitController(Controller):
         self.light_unit_build_dim_high = self.recharge_dim_high + self.light_unit_build
         self.heavy_unit_build_dim_high = self.light_unit_build_dim_high + self.heavy_unit_build
         self.water_lichen_dim_high = self.heavy_unit_build_dim_high + self.water_lichen
-        self.fact_do_nothing_dim_high = self.water_lichen_dim_high + self.fact_do_nothing
+        self.do_nothing_dim_high = self.water_lichen_dim_high + self.do_nothing
 
-        self.total_act_dims = self.fact_do_nothing_dim_high
+        self.total_act_dims = self.do_nothing_dim_high
         action_space = spaces.Discrete(self.total_act_dims)
         super().__init__(action_space)
 
@@ -216,7 +216,7 @@ class MultiUnitController(Controller):
         """
         Checks if the action id corresponds to a factory do nothing action
         """
-        return id < self.fact_do_nothing_dim_high
+        return id < self.do_nothing_dim_high
 
     def action_to_lux_action(
         self, agent: str, obs: Dict[str, Any], action: npt.NDArray
@@ -438,12 +438,12 @@ class MultiUnitController(Controller):
                 action_mask[:self.recharge_dim_high-1, :, :] = False # Can't do anything else if no power
 
             # do nothing is always valid for units too
-        action_mask[self.fact_do_nothing_dim_high - self.fact_do_nothing, :, :] = True
+        action_mask[self.do_nothing_dim_high - self.do_nothing, :, :] = True
 
-
+        indices = []
         for _, factory in own_factories.items():
             x, y = factory["pos"]
-
+            indices.append((x, y))
             unit_on_factory = (x, y) in own_units_pos
 
             # Light unit build is valid only if there is no unit on the factory
@@ -468,9 +468,10 @@ class MultiUnitController(Controller):
                 no_ice = (shared_obs["board"]["ice"][adj_x, adj_y] == 0)
                 no_ore = (shared_obs["board"]["ore"][adj_x, adj_y] == 0)
                 if (no_rubble & no_ice & no_ore).any():
-                    action_mask[self.water_lichen_dim_high - self.water_lichen, x, y] = True
+                    action_mask[self.water_lichen_dim_high - self.water_lichen, x, y] = False
 
             # Factory do nothing is always valid
-            action_mask[self.fact_do_nothing_dim_high - self.fact_do_nothing, x, y] = True
+            action_mask[self.do_nothing_dim_high - self.do_nothing, x, y] = True
+
 
         return action_mask
