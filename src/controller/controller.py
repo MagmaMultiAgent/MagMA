@@ -438,7 +438,7 @@ class MultiUnitController(Controller):
                 action_mask[:self.recharge_dim_high-1, :, :] = False # Can't do anything else if no power
 
             # do nothing is always valid for units too
-            action_mask[self.fact_do_nothing_dim_high - self.fact_do_nothing, x, y] = True
+        action_mask[self.fact_do_nothing_dim_high - self.fact_do_nothing, :, :] = True
 
 
         for _, factory in own_factories.items():
