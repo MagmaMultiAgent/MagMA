@@ -78,8 +78,7 @@ class MaskableRolloutBuffer(RolloutBuffer):
         :param action_masks: Masks applied to constrain the choice of possible actions.
         """
         if action_masks is not None:
-            self.action_masks[self.pos] = action_masks.reshape((self.n_envs, self.mask_dims))
-
+            self.action_masks[self.pos] = action_masks
         super().add(*args, **kwargs)
 
     def get(self, batch_size: Optional[int] = None) -> Generator[MaskableRolloutBufferSamples, None, None]:
@@ -109,6 +108,7 @@ class MaskableRolloutBuffer(RolloutBuffer):
             start_idx += batch_size
 
     def _get_samples(self, batch_inds: np.ndarray, env: Optional[VecNormalize] = None) -> MaskableRolloutBufferSamples:
+
         data = (
             self.observations[batch_inds],
             self.actions[batch_inds],
@@ -116,7 +116,7 @@ class MaskableRolloutBuffer(RolloutBuffer):
             self.log_probs[batch_inds].flatten(),
             self.advantages[batch_inds].flatten(),
             self.returns[batch_inds].flatten(),
-            self.action_masks[batch_inds].reshape(-1, self.mask_dims),
+            np.transpose(self.action_masks[batch_inds], (0, 2, 3, 1)).reshape(-1, self.mask_dims)
         )
         return MaskableRolloutBufferSamples(*map(self.to_torch, data))
 
@@ -181,8 +181,7 @@ class MaskableDictRolloutBuffer(DictRolloutBuffer):
         :param action_masks: Masks applied to constrain the choice of possible actions.
         """
         if action_masks is not None:
-            self.action_masks[self.pos] = action_masks.reshape((self.n_envs, self.mask_dims, self.obs_shape['map'][1], self.obs_shape['map'][1]))
-
+            self.action_masks[self.pos] = action_masks
         super().add(*args, **kwargs)
 
     def get(self, batch_size: Optional[int] = None) -> Generator[MaskableDictRolloutBufferSamples, None, None]:
@@ -216,5 +215,5 @@ class MaskableDictRolloutBuffer(DictRolloutBuffer):
             old_log_prob=self.to_torch(self.log_probs[batch_inds].flatten()),
             advantages=self.to_torch(self.advantages[batch_inds].flatten()),
             returns=self.to_torch(self.returns[batch_inds].flatten()),
-            action_masks=self.to_torch(self.action_masks[batch_inds].reshape(-1, self.mask_dims)),
+            action_masks=self.to_torch(np.transpose(self.action_masks[batch_inds], (0, 2, 3, 1)).reshape(-1, self.mask_dims)),
         )

@@ -330,9 +330,9 @@ class MultiUnitController(Controller):
         sorted_units = sorted(shared_obs["units"][agent].items(), reverse=True, key=(lambda x: (x[1]["unit_type"] == "HEAVY", x[1]["cargo"]["ice"], x[1]["power"])))
         for unit_id, unit in sorted_units:
             
-            action_mask[0:self.move_dim_high, :, :] = True
+            
             x, y = np.array(unit["pos"])
-
+            action_mask[0:4, x, y] = True
             # Go trough move directions
             for direction in range(len(move_deltas)):
                 # Target position
@@ -340,7 +340,7 @@ class MultiUnitController(Controller):
 
                 # Check if the target is out of bounds
                 if (target_pos[0] < 0 or target_pos[1] < 0 or target_pos[0] >= self.env_cfg.map_size or target_pos[1] >= self.env_cfg.map_size):
-                    action_mask[direction, :, :] = False
+                    action_mask[0 + direction, x, y] = False
                     continue
 
                 # Check if there is a factory at target
@@ -361,17 +361,17 @@ class MultiUnitController(Controller):
 
                 # If there is factory there, we can't move there
                 if factory_at_pos or enemy_factory_at_pos:
-                    action_mask[direction, :, :] = False
+                    action_mask[0 + direction, x, y] = False
                     continue
                 
                 # If there is a unit there, we can't move there
                 if unit_there != -1:
-                    action_mask[direction, :, :] = False
+                    action_mask[0 + direction, x, y] = False
                     continue
                 
                 # if the unit is not heavy, it can't move to a tile with an enemy unit
                 if unit["unit_type"] != "HEAVY" and enemy_unit_there:
-                    action_mask[direction, :, :] = False
+                    action_mask[0 + direction, x, y] = False
                     continue
 
             # Go trough transfer directions
@@ -395,10 +395,7 @@ class MultiUnitController(Controller):
                 if unit["cargo"]["ice"] > 0:
                     # If there is a factory there, we can transfer to it
                     if factory_there in shared_obs["teams"][agent]["factory_strains"]:
-                        action_mask[self.move_dim_high + trans_direction, :, :] = True
-                    # If there is a unit there, we can transfer to it
-                    if unit_there != -1 and not enemy_unit_there:
-                        action_mask[self.move_dim_high + trans_direction, :, :] = True
+                        action_mask[4 + trans_direction, x, y] = True
 
             factory_there = factory_occupancy_map[x, y]
             on_top_of_factory = (
@@ -414,31 +411,29 @@ class MultiUnitController(Controller):
             )
 
             if board_sum > 0:
-                action_mask[
-                    self.dig_dim_high - self.dig_act_dims : self.dig_dim_high, x , y
-                ] = True
+                action_mask[10, x , y] = True
 
             # Pickup action is valid if there is power
             if on_top_of_factory:
                 action_mask[
-                    self.pickup_dim_high - self.pickup_act_dims : self.pickup_dim_high, x, y
+                    9, x, y
                 ] = True
 
 
             # Recharge action is valid if the unit is not on top of a factory and the real_env_steps is greater than 30
             if shared_obs["real_env_steps"] % 40 > 30 and not on_top_of_factory:
                 action_mask[
-                    self.recharge_dim_high - self.recharge_act_dims : self.recharge_dim_high, x , y
+                    11, x , y
                 ] = True
 
             if unit["power"] <= 0:
                 action_mask[
-                    self.recharge_dim_high - self.recharge_act_dims : self.recharge_dim_high, x, y
+                    11, x, y
                 ] = True
-                action_mask[:self.recharge_dim_high-1, :, :] = False # Can't do anything else if no power
+                action_mask[:11, x, y] = False # Can't do anything else if no power
 
             # do nothing is always valid for units too
-        action_mask[self.do_nothing_dim_high - self.do_nothing, :, :] = True
+        action_mask[15, :, :] = True
 
         indices = []
         for _, factory in own_factories.items():
@@ -450,13 +445,13 @@ class MultiUnitController(Controller):
             if factory['cargo']['metal'] >= self.env_cfg.ROBOTS['LIGHT'].METAL_COST \
                 and factory['power'] >= self.env_cfg.ROBOTS['LIGHT'].POWER_COST \
                 and not unit_on_factory:
-                action_mask[self.light_unit_build_dim_high-self.light_unit_build_dim_high, x, y] = True
+                action_mask[12, x, y] = True
 
             # Heavy unit build is valid only if there is no unit on the factory
             if factory['cargo']['metal'] >= self.env_cfg.ROBOTS['HEAVY'].METAL_COST \
                 and factory['power'] >= self.env_cfg.ROBOTS['HEAVY'].POWER_COST \
                 and not unit_on_factory:
-                action_mask[self.heavy_unit_build_dim_high-self.heavy_unit_build_dim_high, x, y] = True
+                action_mask[13, x, y] = True
 
             # Water lichen is valid only if there is enough water and there is a free adjacent tile
             lichen_strains_size = np.sum(shared_obs["board"]["lichen"] == factory["strain_id"])
@@ -468,10 +463,6 @@ class MultiUnitController(Controller):
                 no_ice = (shared_obs["board"]["ice"][adj_x, adj_y] == 0)
                 no_ore = (shared_obs["board"]["ore"][adj_x, adj_y] == 0)
                 if (no_rubble & no_ice & no_ore).any():
-                    action_mask[self.water_lichen_dim_high - self.water_lichen, x, y] = False
-
-            # Factory do nothing is always valid
-            action_mask[self.do_nothing_dim_high - self.do_nothing, x, y] = True
-
+                    action_mask[14, x, y] = False
 
         return action_mask

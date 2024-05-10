@@ -152,27 +152,24 @@ class MaskableActorCriticPolicy(BasePolicy):
         latent_pi = latent_pi.reshape(-1, action_channels)
         assert latent_pi.shape[0] == batch_size * height * width
         
-
         if action_masks is not None:
-            action_masks = action_masks.T
+            action_masks = np.transpose(action_masks, (0, 2, 3, 1))
+
             action_masks = action_masks.reshape(-1, action_channels)
+
             assert latent_pi.shape == action_masks.shape
 
         distribution = self._get_action_dist_from_latent(latent_pi)
         if action_masks is not None:
             distribution.apply_masking(action_masks)
         actions = distribution.get_actions(deterministic=deterministic)
-
-
         log_prob = distribution.log_prob(actions)
-        
+        log_prob = log_prob * (actions != 15)
         actions = actions.reshape(batch_size, height, width)
         actions = actions.permute(0, 1, 2)
         log_prob = log_prob.view(batch_size, height, width)
         log_prob = log_prob.permute(0, 1, 2)
-        log_prob = log_prob * (actions != 15)
         log_prob = log_prob.sum(axis=[1,2])
-
         return actions, values, log_prob
 
     def extract_features(self, obs: th.Tensor) -> Union[th.Tensor, Tuple[th.Tensor, th.Tensor]]:
@@ -367,7 +364,7 @@ class MaskableActorCriticPolicy(BasePolicy):
 
         latent_shape = latent_pi.shape
         assert len(latent_shape) == 4
-
+        
         batch_size, action_channels, height, width = latent_shape
 
         if action_masks is not None:
@@ -375,6 +372,7 @@ class MaskableActorCriticPolicy(BasePolicy):
 
         latent_pi = latent_pi.permute(0, 2, 3, 1)
         latent_pi = latent_pi.reshape(-1, action_channels)
+
         assert latent_pi.shape[0] == batch_size * height * width
 
         if action_masks is not None:
@@ -382,19 +380,20 @@ class MaskableActorCriticPolicy(BasePolicy):
 
         distribution = self._get_action_dist_from_latent(latent_pi)
         if action_masks is not None:
-            distribution.apply_masking(action_masks)
-        
+            distribution.apply_masking(action_masks, eval = True)
+
         log_prob = distribution.log_prob(actions)
+
+        log_prob = log_prob * (actions != 15)
+        entropy = distribution.entropy()
+        entropy = entropy * (actions != 15)
         
+        entropy = entropy.view(batch_size, height, width)
         actions = actions.reshape(batch_size, height, width)
         actions = actions.permute(0, 1, 2)
         log_prob = log_prob.view(batch_size, height, width)
         log_prob = log_prob.permute(0, 1, 2)
-        log_prob = log_prob * (actions != 15)
-        entropy = distribution.entropy()
-        entropy = entropy.view(batch_size, height, width)
         entropy = entropy.permute(0, 1, 2)
-        entropy = entropy * (actions != 15)
         log_prob = log_prob.sum(axis=[1,2])
         values = self.value_net(latent_vf)
         return values, log_prob, entropy

@@ -43,7 +43,7 @@ class MaskableCategorical(Categorical):
         self._original_logits = self.logits
         self.apply_masking(masks)
 
-    def apply_masking(self, masks: Optional[np.ndarray]) -> None:
+    def apply_masking(self, masks: Optional[np.ndarray], eval:bool = False) -> None:
         """
         Eliminate ("mask out") chosen categorical outcomes by setting their probability to 0.
 
@@ -52,7 +52,6 @@ class MaskableCategorical(Categorical):
             to a large negative value, resulting in near 0 probability. If masks is None, any
             previously applied masking is removed, and the original logits are restored.
         """
-
         if masks is not None:
             device = self.logits.device
             self.masks = th.as_tensor(masks, dtype=th.bool, device=device).reshape(self.logits.shape)
@@ -65,7 +64,6 @@ class MaskableCategorical(Categorical):
 
         # Reinitialize with updated logits
         super().__init__(logits=logits)
-
         # self.probs may already be cached, so we must force an update
         self.probs = logits_to_probs(self.logits)
 
@@ -84,7 +82,7 @@ class MaskableCategorical(Categorical):
 
 class MaskableDistribution(Distribution, ABC):
     @abstractmethod
-    def apply_masking(self, masks: Optional[np.ndarray]) -> None:
+    def apply_masking(self, masks: Optional[np.ndarray], eval:bool = False ) -> None:
         """
         Eliminate ("mask out") chosen distribution outcomes by setting their probability to 0.
 
@@ -155,9 +153,9 @@ class MaskableCategoricalDistribution(MaskableDistribution):
         log_prob = self.log_prob(actions)
         return actions, log_prob
 
-    def apply_masking(self, masks: Optional[np.ndarray]) -> None:
+    def apply_masking(self, masks: Optional[np.ndarray], eval:bool = False) -> None:
         assert self.distribution is not None, "Must set distribution parameters"
-        self.distribution.apply_masking(masks)
+        self.distribution.apply_masking(masks, eval=eval)
 
 
 class MaskableMultiCategoricalDistribution(MaskableDistribution):
