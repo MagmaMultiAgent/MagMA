@@ -3,7 +3,7 @@ from typing import List, Optional, Tuple, TypeVar
 
 import numpy as np
 import torch as th
-from gym import spaces
+from gymnasium import spaces
 from stable_baselines3.common.distributions import Distribution
 from torch import nn
 from torch.distributions import Categorical
@@ -43,7 +43,7 @@ class MaskableCategorical(Categorical):
         self._original_logits = self.logits
         self.apply_masking(masks)
 
-    def apply_masking(self, masks: Optional[np.ndarray]) -> None:
+    def apply_masking(self, masks: Optional[np.ndarray], eval:bool = False) -> None:
         """
         Eliminate ("mask out") chosen categorical outcomes by setting their probability to 0.
 
@@ -52,20 +52,18 @@ class MaskableCategorical(Categorical):
             to a large negative value, resulting in near 0 probability. If masks is None, any
             previously applied masking is removed, and the original logits are restored.
         """
-
         if masks is not None:
             device = self.logits.device
             self.masks = th.as_tensor(masks, dtype=th.bool, device=device).reshape(self.logits.shape)
             HUGE_NEG = th.tensor(-1e8, dtype=self.logits.dtype, device=device)
-
-            logits = th.where(self.masks, self._original_logits, HUGE_NEG)
+            logits = self._original_logits.clone()
+            logits[~self.masks] = HUGE_NEG 
         else:
             self.masks = None
             logits = self._original_logits
 
         # Reinitialize with updated logits
         super().__init__(logits=logits)
-
         # self.probs may already be cached, so we must force an update
         self.probs = logits_to_probs(self.logits)
 
@@ -84,7 +82,7 @@ class MaskableCategorical(Categorical):
 
 class MaskableDistribution(Distribution, ABC):
     @abstractmethod
-    def apply_masking(self, masks: Optional[np.ndarray]) -> None:
+    def apply_masking(self, masks: Optional[np.ndarray], eval:bool = False ) -> None:
         """
         Eliminate ("mask out") chosen distribution outcomes by setting their probability to 0.
 
@@ -124,8 +122,9 @@ class MaskableCategoricalDistribution(MaskableDistribution):
         self: SelfMaskableCategoricalDistribution, action_logits: th.Tensor
     ) -> SelfMaskableCategoricalDistribution:
         # Restructure shape to align with logits
-        reshaped_logits = action_logits.view(-1, self.action_dim)
-        self.distribution = MaskableCategorical(logits=reshaped_logits)
+
+        #reshaped_logits = action_logits.view(-1, self.action_dim)
+        self.distribution = MaskableCategorical(logits=action_logits)
         return self
 
     def log_prob(self, actions: th.Tensor) -> th.Tensor:
@@ -154,9 +153,9 @@ class MaskableCategoricalDistribution(MaskableDistribution):
         log_prob = self.log_prob(actions)
         return actions, log_prob
 
-    def apply_masking(self, masks: Optional[np.ndarray]) -> None:
+    def apply_masking(self, masks: Optional[np.ndarray], eval:bool = False) -> None:
         assert self.distribution is not None, "Must set distribution parameters"
-        self.distribution.apply_masking(masks)
+        self.distribution.apply_masking(masks, eval=eval)
 
 
 class MaskableMultiCategoricalDistribution(MaskableDistribution):

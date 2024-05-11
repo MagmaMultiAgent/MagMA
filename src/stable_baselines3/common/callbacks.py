@@ -3,8 +3,10 @@ import warnings
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, List, Optional, Union
 
-import gym
+import gymnasium as gym
 import numpy as np
+
+from stable_baselines3.common.logger import Logger
 
 try:
     from tqdm import TqdmExperimentalWarning
@@ -29,10 +31,13 @@ class BaseCallback(ABC):
     :param verbose: Verbosity level: 0 for no output, 1 for info messages, 2 for debug messages
     """
 
+    # The RL model
+    # Type hint as string to avoid circular import
+    model: "base_class.BaseAlgorithm"
+    logger: Logger
+
     def __init__(self, verbose: int = 0):
         super().__init__()
-        # The RL model
-        self.model = None  # type: Optional[base_class.BaseAlgorithm]
         # An alias for self.model.get_env(), the environment used for training
         self.training_env = None  # type: Union[gym.Env, VecEnv, None]
         # Number of time the callback was called
@@ -42,7 +47,6 @@ class BaseCallback(ABC):
         self.verbose = verbose
         self.locals: Dict[str, Any] = {}
         self.globals: Dict[str, Any] = {}
-        self.logger = None
         # Sometimes, for event callback, it is useful
         # to have access to the parent object
         self.parent = None  # type: Optional[BaseCallback]
@@ -309,7 +313,7 @@ class ConvertCallback(BaseCallback):
     :param verbose: Verbosity level: 0 for no output, 1 for info messages, 2 for debug messages
     """
 
-    def __init__(self, callback: Callable[[Dict[str, Any], Dict[str, Any]], bool], verbose: int = 0):
+    def __init__(self, callback: Optional[Callable[[Dict[str, Any], Dict[str, Any]], bool]], verbose: int = 0):
         super().__init__(verbose)
         self.callback = callback
 
@@ -392,6 +396,9 @@ class EvalCallback(EventCallback):
         # For computing success rate
         self._is_success_buffer = []
         self.evaluations_successes = []
+        self.ice_dug = []
+        self.ice_transfered = []
+        self.water_collected = []
 
     def _init_callback(self) -> None:
         # Does not work in some corner cases, where the wrapper is not the same
@@ -425,11 +432,9 @@ class EvalCallback(EventCallback):
                 self._is_success_buffer.append(maybe_is_success)
 
     def _on_step(self) -> bool:
-
         continue_training = True
 
         if self.eval_freq > 0 and self.n_calls % self.eval_freq == 0:
-
             # Sync training and eval env if there is VecNormalize
             if self.model.get_vec_normalize_env() is not None:
                 try:
@@ -444,7 +449,7 @@ class EvalCallback(EventCallback):
             # Reset success rate buffer
             self._is_success_buffer = []
 
-            episode_rewards, episode_lengths = evaluate_policy(
+            episode_rewards, episode_lengths, episode_ice_dug, episode_ice_transferred, episode_water_collected = evaluate_policy(
                 self.model,
                 self.eval_env,
                 n_eval_episodes=self.n_eval_episodes,
@@ -459,6 +464,9 @@ class EvalCallback(EventCallback):
                 self.evaluations_timesteps.append(self.num_timesteps)
                 self.evaluations_results.append(episode_rewards)
                 self.evaluations_length.append(episode_lengths)
+                self.ice_dug.append(episode_ice_dug)
+                self.ice_transfered.append(episode_ice_transferred)
+                self.water_collected.append(episode_water_collected)
 
                 kwargs = {}
                 # Save success log if present
@@ -471,19 +479,39 @@ class EvalCallback(EventCallback):
                     timesteps=self.evaluations_timesteps,
                     results=self.evaluations_results,
                     ep_lengths=self.evaluations_length,
+                    ice_dug=self.ice_dug,
+                    ice_transfered=self.ice_transfered,
+                    water_collected=self.water_collected,
                     **kwargs,
                 )
 
             mean_reward, std_reward = np.mean(episode_rewards), np.std(episode_rewards)
-            mean_ep_length, std_ep_length = np.mean(episode_lengths), np.std(episode_lengths)
+            mean_ep_length, _ = np.mean(episode_lengths), np.std(episode_lengths)
+            mean_ice_dug, std_ice_dug = np.mean(episode_ice_dug), np.std(episode_ice_dug)
+            mean_ice_transferred, std_ice_transferred = np.mean(episode_ice_transferred), np.std(episode_ice_transferred)
+            mean_water_collected, std_water_collected = np.mean(episode_water_collected), np.std(episode_water_collected)
             self.last_mean_reward = mean_reward
 
-            if self.verbose >= 1:
-                print(f"Eval num_timesteps={self.num_timesteps}, " f"episode_reward={mean_reward:.2f} +/- {std_reward:.2f}")
-                print(f"Episode length: {mean_ep_length:.2f} +/- {std_ep_length:.2f}")
-            # Add to current Logger
-            self.logger.record("eval/mean_reward", float(mean_reward))
+            
+            for i, env_ice in enumerate(self.ice_dug[-1]):
+                self.logger.record(f"eval/ice_dug_env_{i}", env_ice)
+
+            for i, env_ice in enumerate(self.ice_transfered[-1]):
+                self.logger.record(f"eval/ice_transfered_env_{i}", env_ice)
+
+            for i, env_water in enumerate(self.water_collected[-1]):
+                self.logger.record(f"eval/water_collected_env_{i}", env_water)
+
             self.logger.record("eval/mean_ep_length", mean_ep_length)
+            self.logger.record("eval/mean_reward", float(mean_reward))
+            self.logger.record("eval/mean_ice_dug", mean_ice_dug)
+            self.logger.record("eval/mean_ice_transferred", mean_ice_transferred)
+            self.logger.record("eval/mean_water_collected", mean_water_collected)
+            
+            self.logger.record("eval/std_reward", float(std_reward))
+            self.logger.record("eval/std_ice_dug", float(std_ice_dug))
+            self.logger.record("eval/std_ice_transferred", float(std_ice_transferred))
+            self.logger.record("eval/std_water_collected", float(std_water_collected))
 
             if len(self._is_success_buffer) > 0:
                 success_rate = np.mean(self._is_success_buffer)
@@ -552,7 +580,7 @@ class StopTrainingOnRewardThreshold(BaseCallback):
 
 class EveryNTimesteps(EventCallback):
     """
-    Trigger a callback every ``n_steps`` timesteps
+    Trigger a callback every ``n_steps`` timesteps
 
     :param n_steps: Number of timesteps between two trigger.
     :param callback: Callback that will be called

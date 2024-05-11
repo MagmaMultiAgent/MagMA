@@ -1,7 +1,7 @@
 from typing import Any, Dict, List, Optional, Type
 
 import torch as th
-from gym import spaces
+from gymnasium import spaces
 from torch import nn
 
 from stable_baselines3.common.policies import BasePolicy
@@ -27,16 +27,18 @@ class QNetwork(BasePolicy):
          dividing by 255.0 (True by default)
     """
 
+    action_space: spaces.Discrete
+
     def __init__(
         self,
         observation_space: spaces.Space,
-        action_space: spaces.Space,
-        features_extractor: nn.Module,
+        action_space: spaces.Discrete,
+        features_extractor: BaseFeaturesExtractor,
         features_dim: int,
         net_arch: Optional[List[int]] = None,
         activation_fn: Type[nn.Module] = nn.ReLU,
         normalize_images: bool = True,
-    ):
+    ) -> None:
         super().__init__(
             observation_space,
             action_space,
@@ -49,9 +51,8 @@ class QNetwork(BasePolicy):
 
         self.net_arch = net_arch
         self.activation_fn = activation_fn
-        self.features_extractor = features_extractor
         self.features_dim = features_dim
-        action_dim = self.action_space.n  # number of actions
+        action_dim = int(self.action_space.n)  # number of actions
         q_net = create_mlp(self.features_dim, action_dim, self.net_arch, self.activation_fn)
         self.q_net = nn.Sequential(*q_net)
 
@@ -104,10 +105,13 @@ class DQNPolicy(BasePolicy):
         excluding the learning rate, to pass to the optimizer
     """
 
+    q_net: QNetwork
+    q_net_target: QNetwork
+
     def __init__(
         self,
         observation_space: spaces.Space,
-        action_space: spaces.Space,
+        action_space: spaces.Discrete,
         lr_schedule: Schedule,
         net_arch: Optional[List[int]] = None,
         activation_fn: Type[nn.Module] = nn.ReLU,
@@ -116,7 +120,7 @@ class DQNPolicy(BasePolicy):
         normalize_images: bool = True,
         optimizer_class: Type[th.optim.Optimizer] = th.optim.Adam,
         optimizer_kwargs: Optional[Dict[str, Any]] = None,
-    ):
+    ) -> None:
         super().__init__(
             observation_space,
             action_space,
@@ -144,7 +148,6 @@ class DQNPolicy(BasePolicy):
             "normalize_images": normalize_images,
         }
 
-        self.q_net, self.q_net_target = None, None
         self._build(lr_schedule)
 
     def _build(self, lr_schedule: Schedule) -> None:
@@ -163,7 +166,11 @@ class DQNPolicy(BasePolicy):
         self.q_net_target.set_training_mode(False)
 
         # Setup optimizer with initial learning rate
-        self.optimizer = self.optimizer_class(self.parameters(), lr=lr_schedule(1), **self.optimizer_kwargs)
+        self.optimizer = self.optimizer_class(  # type: ignore[call-arg]
+            self.parameters(),
+            lr=lr_schedule(1),
+            **self.optimizer_kwargs,
+        )
 
     def make_q_net(self) -> QNetwork:
         # Make sure we always have separate networks for features extractors etc
@@ -228,7 +235,7 @@ class CnnPolicy(DQNPolicy):
     def __init__(
         self,
         observation_space: spaces.Space,
-        action_space: spaces.Space,
+        action_space: spaces.Discrete,
         lr_schedule: Schedule,
         net_arch: Optional[List[int]] = None,
         activation_fn: Type[nn.Module] = nn.ReLU,
@@ -237,7 +244,7 @@ class CnnPolicy(DQNPolicy):
         normalize_images: bool = True,
         optimizer_class: Type[th.optim.Optimizer] = th.optim.Adam,
         optimizer_kwargs: Optional[Dict[str, Any]] = None,
-    ):
+    ) -> None:
         super().__init__(
             observation_space,
             action_space,
@@ -273,7 +280,7 @@ class MultiInputPolicy(DQNPolicy):
     def __init__(
         self,
         observation_space: spaces.Dict,
-        action_space: spaces.Space,
+        action_space: spaces.Discrete,
         lr_schedule: Schedule,
         net_arch: Optional[List[int]] = None,
         activation_fn: Type[nn.Module] = nn.ReLU,
@@ -282,7 +289,7 @@ class MultiInputPolicy(DQNPolicy):
         normalize_images: bool = True,
         optimizer_class: Type[th.optim.Optimizer] = th.optim.Adam,
         optimizer_kwargs: Optional[Dict[str, Any]] = None,
-    ):
+    ) -> None:
         super().__init__(
             observation_space,
             action_space,

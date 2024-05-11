@@ -5,16 +5,14 @@ import json
 import os
 import time
 from glob import glob
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, SupportsFloat, Tuple, Union
 
-import gym
-import numpy as np
+import gymnasium as gym
 import pandas
+from gymnasium.core import ActType, ObsType
 
-from stable_baselines3.common.type_aliases import GymObs, GymStepReturn
 
-
-class Monitor(gym.Wrapper):
+class Monitor(gym.Wrapper[ObsType, ActType, ObsType, ActType]):
     """
     A monitor wrapper for Gym environments, it is used to know the episode reward, length, time and other data.
 
@@ -41,27 +39,29 @@ class Monitor(gym.Wrapper):
     ):
         super().__init__(env=env)
         self.t_start = time.time()
+        self.results_writer = None
         if filename is not None:
+            env_id = env.spec.id if env.spec is not None else None
             self.results_writer = ResultsWriter(
                 filename,
-                header={"t_start": self.t_start, "env_id": env.spec and env.spec.id},
+                header={"t_start": self.t_start, "env_id": str(env_id)},
                 extra_keys=reset_keywords + info_keywords,
                 override_existing=override_existing,
             )
-        else:
-            self.results_writer = None
+
         self.reset_keywords = reset_keywords
         self.info_keywords = info_keywords
         self.allow_early_resets = allow_early_resets
-        self.rewards = None
+        self.rewards: List[float] = []
         self.needs_reset = True
-        self.episode_returns = []
-        self.episode_lengths = []
-        self.episode_times = []
+        self.episode_returns: List[float] = []
+        self.episode_lengths: List[int] = []
+        self.episode_times: List[float] = []
         self.total_steps = 0
-        self.current_reset_info = {}  # extra info about the current episode, that was passed in during reset()
+        # extra info about the current episode, that was passed in during reset()
+        self.current_reset_info: Dict[str, Any] = {}
 
-    def reset(self, **kwargs) -> GymObs:
+    def reset(self, **kwargs) -> Tuple[ObsType, Dict[str, Any]]:
         """
         Calls the Gym environment reset. Can only be called if the environment is over, or if allow_early_resets is True
 
@@ -82,18 +82,18 @@ class Monitor(gym.Wrapper):
             self.current_reset_info[key] = value
         return self.env.reset(**kwargs)
 
-    def step(self, action: Union[np.ndarray, int]) -> GymStepReturn:
+    def step(self, action: ActType) -> Tuple[ObsType, SupportsFloat, bool, bool, Dict[str, Any]]:
         """
         Step the environment with the given action
 
         :param action: the action
-        :return: observation, reward, done, information
+        :return: observation, reward, terminated, truncated, information
         """
         if self.needs_reset:
             raise RuntimeError("Tried to step environment that needs reset")
-        observation, reward, done, info = self.env.step(action)
-        self.rewards.append(reward)
-        if done:
+        observation, reward, terminated, truncated, info = self.env.step(action)
+        self.rewards.append(float(reward))
+        if terminated or truncated:
             self.needs_reset = True
             ep_rew = sum(self.rewards)
             ep_len = len(self.rewards)
@@ -108,7 +108,7 @@ class Monitor(gym.Wrapper):
                 self.results_writer.write_row(ep_info)
             info["episode"] = ep_info
         self.total_steps += 1
-        return observation, reward, done, info
+        return observation, reward, terminated, truncated, info
 
     def close(self) -> None:
         """
@@ -193,16 +193,18 @@ class ResultsWriter:
         mode = "w" if override_existing else "a"
         # Prevent newline issue on Windows, see GH issue #692
         self.file_handler = open(filename, f"{mode}t", newline="\n")
-        self.logger = csv.DictWriter(self.file_handler, fieldnames=("r", "l", "t") + extra_keys)
+        self.logger = csv.DictWriter(
+            self.file_handler, fieldnames=("r", "l", "t", *extra_keys)
+        )  # pytype: disable=wrong-arg-types
         if override_existing:
             self.file_handler.write(f"#{json.dumps(header)}\n")
             self.logger.writeheader()
 
         self.file_handler.flush()
 
-    def write_row(self, epinfo: Dict[str, Union[float, int]]) -> None:
+    def write_row(self, epinfo: Dict[str, float]) -> None:
         """
-        Close the file handler
+        Write row of monitor data to csv log file.
 
         :param epinfo: the information on episodic return, length, and time
         """

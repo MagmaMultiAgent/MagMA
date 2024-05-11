@@ -1,15 +1,217 @@
-import warnings
-from itertools import zip_longest
 from typing import Dict, List, Tuple, Type, Union
 
-import gym
+import gymnasium as gym
 import torch as th
-from gym import spaces
+from gymnasium import spaces
 from torch import nn
 
 from stable_baselines3.common.preprocessing import get_flattened_obs_dim, is_image_space
 from stable_baselines3.common.type_aliases import TensorDict
 from stable_baselines3.common.utils import get_device
+
+import torch.nn as nn
+import sys
+import time
+import hashlib
+
+used_names = set()
+def myHash(text: str) -> int:
+    text_bytes = text.encode('utf-8')
+    hash_str = hashlib.md5(text_bytes).hexdigest()
+    hash_int = int(hash_str, 16) % (10 ** 8)
+    return hash_int
+
+def seed_init(seed: int, name: str, salt: str = ""):
+    name = name + salt
+    if name in used_names:
+        raise ValueError(f"Name {name} already used")
+    else:
+        used_names.add(name)
+    
+    seed = myHash(f"seed{seed}_{name}")
+    th.manual_seed(seed)
+    th.cuda.manual_seed(seed)
+
+def get_activation(activation):
+    if activation == "relu":
+        activation = nn.ReLU()
+    elif activation == "leaky_relu":
+        activation = nn.LeakyReLU()
+    elif activation == "sigmoid":
+        activation = nn.Sigmoid()
+    elif activation == "tanh":
+        activation = nn.Tanh()
+    else:
+        activation = None
+    return activation
+
+def init_orthogonal(module, weight_init, bias_init, gain=1, scaling=1.0):
+    """Helper to initialize a layer weight and bias."""
+    weight_init(module.weight.data, gain=gain)
+    module.weight.data *= scaling
+    if module.bias is not None:
+        bias_init(module.bias.data)
+    return module
+
+weight_scale = 0.01
+init_leaky_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('leaky_relu'), weight_scale)
+init_relu_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('relu'), weight_scale)
+init_sigmoid_ = lambda m: init_orthogonal(m, nn.init.orthogonal_, nn.init.zeros_, nn.init.calculate_gain('sigmoid'), weight_scale)
+
+USE_BATCH_NORM = True
+USE_LAYER_NORM = True
+USE_SPECTRAL_NORM = True
+
+
+def MyConv2d(name, in_channels, out_channels, kernel_size=1, stride=1, padding="same", bias=True, dilation=1, spectral_norm=USE_SPECTRAL_NORM, batch_norm=USE_BATCH_NORM, layer_norm=USE_LAYER_NORM, activation="leaky_relu", init_fn=None, seed=None):
+    if seed is None:
+        print(f"No seed provided for {name}")
+        seed = int(time.time())
+
+    name = name + "_conv2d"
+
+    activation = get_activation(activation)
+
+    seed_init(seed, name)
+    layer = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias, dilation=dilation)
+
+    if spectral_norm:
+        layer = nn.utils.spectral_norm(layer)
+
+    if init_fn is not None:
+        seed_init(seed, name, "_init")
+        layer = init_fn(layer)
+    
+    if batch_norm:
+        seed_init(seed, name, "_batch_norm")
+        layer = nn.Sequential(layer, nn.BatchNorm2d(out_channels))
+    
+    if layer_norm:
+        seed_init(seed, name, "_layer_norm")
+        layer = nn.Sequential(layer, nn.GroupNorm(1, out_channels))
+
+    if activation is not None:
+        layer = nn.Sequential(layer, activation)
+
+    return layer
+
+def MyLinear(name, in_features, out_features, bias=True, spectral_norm=USE_SPECTRAL_NORM, batch_norm=USE_BATCH_NORM, layer_norm=USE_LAYER_NORM, activation="leaky_relu", init_fn=None, seed=None):
+    if seed is None:
+        print(f"No seed provided for {name}", file=sys.stderr)
+        seed = int(time.time())
+
+    name = name + "_linear"
+
+    activation = get_activation(activation)
+
+    seed_init(seed, name)
+    layer = nn.Linear(in_features, out_features, bias=bias)
+
+    if spectral_norm:
+        layer = nn.utils.spectral_norm(layer)
+
+    if init_fn is not None:
+        seed_init(seed, name, "_init")
+        layer = init_fn(layer)
+    
+    if batch_norm:
+        seed_init(seed, name, "_batch_norm")
+        layer = nn.Sequential(layer, nn.BatchNorm1d(out_features))
+
+    if layer_norm:
+        seed_init(seed, name, "_layer_norm")
+        layer = nn.Sequential(layer, nn.GroupNorm(1, out_features))
+
+    if activation is not None:
+        layer = nn.Sequential(layer, activation)
+
+    return layer
+
+def Conv1x1(name, in_channels, out_channels, bias=True, spectral_norm=USE_SPECTRAL_NORM, batch_norm=USE_BATCH_NORM, layer_norm=USE_LAYER_NORM, activation="leaky_relu", init_fn=None, seed=None):
+    return MyConv2d(name, in_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=bias, spectral_norm=spectral_norm, batch_norm=batch_norm, layer_norm=layer_norm, activation=activation, init_fn=init_fn, seed=seed)
+
+def Conv3x3(name, in_channels, out_channels, bias=True, spectral_norm=USE_SPECTRAL_NORM, batch_norm=USE_BATCH_NORM, layer_norm=USE_LAYER_NORM, activation="leaky_relu", init_fn=None, seed=None):
+    return MyConv2d(name, in_channels, out_channels, kernel_size=3, stride=1, padding="same", bias=bias, spectral_norm=spectral_norm, batch_norm=batch_norm, layer_norm=layer_norm, activation=activation, init_fn=init_fn, seed=seed)
+
+def Conv3x3_2(name, in_channels, out_channels, bias=True, spectral_norm=USE_SPECTRAL_NORM, batch_norm=USE_BATCH_NORM, layer_norm=USE_LAYER_NORM, activation="leaky_relu", init_fn=None, seed=None):
+    return MyConv2d(name, in_channels, out_channels, kernel_size=3, stride=2, padding=1, bias=bias, spectral_norm=spectral_norm, batch_norm=batch_norm, layer_norm=layer_norm, activation=activation, init_fn=init_fn, seed=seed)
+
+def Conv3x3_d(name, in_channels, out_channels, dilation = 2, padding = 2, bias=True, spectral_norm=USE_SPECTRAL_NORM, batch_norm=USE_BATCH_NORM, layer_norm=USE_LAYER_NORM, activation="leaky_relu", init_fn=None, seed=None):
+    return MyConv2d(name, in_channels, out_channels, kernel_size=3, stride=1, padding=padding, bias=bias, dilation=dilation, spectral_norm=spectral_norm, batch_norm=batch_norm, layer_norm=layer_norm, activation=activation, init_fn=init_fn, seed=seed)
+
+def Conv5x5(name, in_channels, out_channels, bias=True, spectral_norm=USE_SPECTRAL_NORM, batch_norm=USE_BATCH_NORM, layer_norm=USE_LAYER_NORM, activation="leaky_relu", init_fn=None, seed=None):
+    return MyConv2d(name, in_channels, out_channels, kernel_size=5, stride=1, padding="same", bias=bias, spectral_norm=spectral_norm, batch_norm=batch_norm, layer_norm=layer_norm, activation=activation, init_fn=init_fn, seed=seed)
+
+class SqueezeExcitation(nn.Module):
+    def __init__(self, name, channel, reduction=16, seed=None):
+        super(SqueezeExcitation, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Sequential(
+            MyLinear(name + "_se_fc", channel, channel // reduction, bias=False, activation="relu", init_fn=init_relu_, seed=seed),
+            MyLinear(name + "_se_fc2", channel // reduction, channel, bias=False, activation="sigmoid", init_fn=init_sigmoid_, seed=seed)
+        )
+
+    def forward(self, x):
+        b, c, _, _ = x.size()
+        y = self.avg_pool(x).view(b, c)
+        y = self.fc(y).view(b, c, 1, 1)
+        return x * y.expand_as(x)
+
+class ResidualBlock(nn.Module):
+    def __init__(self, name, in_channels, out_channels, use_se=True, seed=None):
+        super(ResidualBlock, self).__init__()
+        self.conv1 = Conv3x3(name + "_conv1", in_channels, out_channels, bias=(not USE_BATCH_NORM), spectral_norm=USE_SPECTRAL_NORM, batch_norm=USE_BATCH_NORM, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed)
+        self.conv2 = Conv3x3(name + "_conv2", out_channels, out_channels, bias=(not USE_BATCH_NORM), spectral_norm=USE_SPECTRAL_NORM, batch_norm=USE_BATCH_NORM, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed)
+        self.use_se = use_se
+        if use_se:
+            self.se = SqueezeExcitation(name + "_se", out_channels, reduction=16, seed=seed)
+        self.leaky_relu = nn.LeakyReLU(inplace=True)
+
+        if in_channels != out_channels:
+            self.skip = Conv1x1(name + "_skip", in_channels, out_channels, bias=(not USE_BATCH_NORM), spectral_norm=USE_SPECTRAL_NORM, batch_norm=USE_BATCH_NORM, activation=None, init_fn=init_leaky_relu_, seed=seed)
+        else:
+            self.skip = None
+
+    def forward(self, x):
+        identity = x
+        out = self.conv1(x)
+        out = self.conv2(out)
+        if self.use_se:
+            out = self.se(out)
+
+        if self.skip is not None:
+            identity = self.skip(identity)
+
+        out += identity
+        out = self.leaky_relu(out)
+        return out
+
+class DashNet(nn.Module):
+    def __init__(self, seed=42):
+
+        super(DashNet, self).__init__()
+
+        #self.init_conv = MyConv2d("init", 16, 64, kernel_size=3, stride=1, padding="same", batch_norm=USE_BATCH_NORM, spectral_norm=USE_SPECTRAL_NORM, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed)
+
+        #self.res_block1 = ResidualBlock("res_block1", 64, 64, use_se=True, seed=seed)
+        #self.res_block2 = ResidualBlock("res_block2", 64, 64, use_se=True, seed=seed)
+        #self.res_block3 = ResidualBlock("res_block3", 64, 64, use_se=True, seed=seed)
+        #self.res_block4 = ResidualBlock("res_block4", 64, 64, use_se=True, seed=seed)
+
+        self.final_conv = MyConv2d("final", 16, 16, kernel_size=3, stride=1, padding="same", batch_norm=USE_BATCH_NORM, spectral_norm=USE_SPECTRAL_NORM, activation="leaky_relu", init_fn=init_leaky_relu_, seed=seed)
+
+    def forward(self, x):
+        #x = self.init_conv(x)
+
+        #x = self.res_block1(x)
+        #x = self.res_block2(x)
+        #x = self.res_block3(x)
+        #x = self.res_block4(x)
+
+        x = self.final_conv(x)
+
+        return x
+
 
 
 class BaseFeaturesExtractor(nn.Module):
@@ -65,10 +267,14 @@ class NatureCNN(BaseFeaturesExtractor):
 
     def __init__(
         self,
-        observation_space: spaces.Box,
+        observation_space: gym.Space,
         features_dim: int = 512,
         normalized_image: bool = False,
     ) -> None:
+        assert isinstance(observation_space, spaces.Box), (
+            "NatureCNN must be used with a gym.spaces.Box ",
+            f"observation space, not {observation_space}",
+        )
         super().__init__(observation_space, features_dim)
         # We assume CxHxW images (channels first)
         # Re-ordering will be done by pre-preprocessing or wrapper
@@ -146,103 +352,103 @@ def create_mlp(
     return modules
 
 
+class CustomExtractor(nn.Module):
+    def __init__(
+        self,
+        feature_dim: int,
+        net_arch: Union[List[int], Dict[str, List[int]]],
+        activation_fn: Type[nn.Module],
+        device: Union[th.device, str] = "auto",
+        obs_shape: int = 0,
+    ) -> None:
+        super().__init__()
+        device = get_device(device)
+        #policy_net: List[nn.Module] = [nn.Identity()]
+        policy_net: List[nn.Module] = [DashNet()]
+        value_net: List[nn.Module] = [
+            nn.Conv2d(feature_dim, feature_dim, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(feature_dim),
+            activation_fn(),
+            nn.AdaptiveAvgPool2d(1),
+            nn.Flatten(),
+        ]
+
+        self.policy_net = nn.Sequential(*policy_net).to(device)
+        self.value_net = nn.Sequential(*value_net).to(device)
+
+        self.latent_dim_pi = feature_dim
+        self.latent_dim_vf = feature_dim
+
+    def forward(self, features: th.Tensor) -> Tuple[th.Tensor, th.Tensor]:
+        """
+        :return: latent_policy, latent_value of the specified network.
+            If all layers are shared, then ``latent_policy == latent_value``
+        """
+        return self.forward_actor(features), self.forward_critic(features)
+
+    def forward_actor(self, features: th.Tensor) -> th.Tensor:
+        return self.policy_net(features)
+
+    def forward_critic(self, features: th.Tensor) -> th.Tensor:
+        return self.value_net(features)
+
+
 class MlpExtractor(nn.Module):
     """
     Constructs an MLP that receives the output from a previous features extractor (i.e. a CNN) or directly
     the observations (if no features extractor is applied) as an input and outputs a latent representation
     for the policy and a value network.
-    The ``net_arch`` parameter allows to specify the amount and size of the hidden layers and how many
-    of them are shared between the policy network and the value network. It is assumed to be a list with the following
-    structure:
 
-    1. An arbitrary length (zero allowed) number of integers each specifying the number of units in a shared layer.
-       If the number of ints is zero, there will be no shared layers.
-    2. An optional dict, to specify the following non-shared layers for the value network and the policy network.
-       It is formatted like ``dict(vf=[<value layer sizes>], pi=[<policy layer sizes>])``.
-       If it is missing any of the keys (pi or vf), no non-shared layers (empty list) is assumed.
+    The ``net_arch`` parameter allows to specify the amount and size of the hidden layers.
+    It can be in either of the following forms:
+    1. ``dict(vf=[<list of layer sizes>], pi=[<list of layer sizes>])``: to specify the amount and size of the layers in the
+        policy and value nets individually. If it is missing any of the keys (pi or vf),
+        zero layers will be considered for that key.
+    2. ``[<list of layer sizes>]``: "shortcut" in case the amount and size of the layers
+        in the policy and value nets are the same. Same as ``dict(vf=int_list, pi=int_list)``
+        where int_list is the same for the actor and critic.
 
-    Deprecation note: shared layers in ``net_arch`` are deprecated, please use separate
-    pi and vf networks (e.g. net_arch=dict(pi=[...], vf=[...]))
-
-    For example to construct a network with one shared layer of size 55 followed by two non-shared layers for the value
-    network of size 255 and a single non-shared layer of size 128 for the policy network, the following layers_spec
-    would be used: ``[55, dict(vf=[255, 255], pi=[128])]``. A simple shared network topology with two layers of size 128
-    would be specified as [128, 128].
-
-    Adapted from Stable Baselines.
+    .. note::
+        If a key is not specified or an empty list is passed ``[]``, a linear network will be used.
 
     :param feature_dim: Dimension of the feature vector (can be the output of a CNN)
     :param net_arch: The specification of the policy and value networks.
         See above for details on its formatting.
     :param activation_fn: The activation function to use for the networks.
-    :param device:
+    :param device: PyTorch device.
     """
 
     def __init__(
         self,
         feature_dim: int,
-        net_arch: Union[Dict[str, List[int]], List[Union[int, Dict[str, List[int]]]]],
+        net_arch: Union[List[int], Dict[str, List[int]]],
         activation_fn: Type[nn.Module],
         device: Union[th.device, str] = "auto",
     ) -> None:
         super().__init__()
         device = get_device(device)
-        shared_net: List[nn.Module] = []
         policy_net: List[nn.Module] = []
         value_net: List[nn.Module] = []
-        policy_only_layers: List[int] = []  # Layer sizes of the network that only belongs to the policy network
-        value_only_layers: List[int] = []  # Layer sizes of the network that only belongs to the value network
-        last_layer_dim_shared = feature_dim
+        last_layer_dim_pi = feature_dim
+        last_layer_dim_vf = feature_dim
 
-        if isinstance(net_arch, list) and len(net_arch) > 0 and isinstance(net_arch[0], int):
-            warnings.warn(
-                (
-                    "Shared layers in the mlp_extractor are deprecated and will be removed in SB3 v1.8.0, "
-                    "please use separate pi and vf networks "
-                    "(e.g. net_arch=dict(pi=[...], vf=[...]))"
-                ),
-                DeprecationWarning,
-            )
-
-        # TODO(antonin): update behavior for net_arch=[64, 64]
-        # once shared networks are removed
+        # save dimensions of layers in policy and value nets
         if isinstance(net_arch, dict):
-            policy_only_layers = net_arch["pi"]
-            value_only_layers = net_arch["vf"]
+            # Note: if key is not specificed, assume linear network
+            pi_layers_dims = net_arch.get("pi", [])  # Layer sizes of the policy network
+            vf_layers_dims = net_arch.get("vf", [])  # Layer sizes of the value network
         else:
-            # Iterate through the shared layers and build the shared parts of the network
-            for layer in net_arch:
-                if isinstance(layer, int):  # Check that this is a shared layer
-                    shared_net.append(nn.Linear(last_layer_dim_shared, layer))  # add linear of size layer
-                    shared_net.append(activation_fn())
-                    last_layer_dim_shared = layer
-                else:
-                    assert isinstance(layer, dict), "Error: the net_arch list can only contain ints and dicts"
-                    if "pi" in layer:
-                        assert isinstance(layer["pi"], list), "Error: net_arch[-1]['pi'] must contain a list of integers."
-                        policy_only_layers = layer["pi"]
-
-                    if "vf" in layer:
-                        assert isinstance(layer["vf"], list), "Error: net_arch[-1]['vf'] must contain a list of integers."
-                        value_only_layers = layer["vf"]
-                    break  # From here on the network splits up in policy and value network
-
-        last_layer_dim_pi = last_layer_dim_shared
-        last_layer_dim_vf = last_layer_dim_shared
-
-        # Build the non-shared part of the network
-        for pi_layer_size, vf_layer_size in zip_longest(policy_only_layers, value_only_layers):
-            if pi_layer_size is not None:
-                assert isinstance(pi_layer_size, int), "Error: net_arch[-1]['pi'] must only contain integers."
-                policy_net.append(nn.Linear(last_layer_dim_pi, pi_layer_size))
-                policy_net.append(activation_fn())
-                last_layer_dim_pi = pi_layer_size
-
-            if vf_layer_size is not None:
-                assert isinstance(vf_layer_size, int), "Error: net_arch[-1]['vf'] must only contain integers."
-                value_net.append(nn.Linear(last_layer_dim_vf, vf_layer_size))
-                value_net.append(activation_fn())
-                last_layer_dim_vf = vf_layer_size
+            pi_layers_dims = vf_layers_dims = net_arch
+        # Iterate through the policy layers and build the policy net
+        for curr_layer_dim in pi_layers_dims:
+            policy_net.append(nn.Linear(last_layer_dim_pi, curr_layer_dim))
+            policy_net.append(activation_fn())
+            last_layer_dim_pi = curr_layer_dim
+        # Iterate through the value layers and build the value net
+        for curr_layer_dim in vf_layers_dims:
+            value_net.append(nn.Linear(last_layer_dim_vf, curr_layer_dim))
+            value_net.append(activation_fn())
+            last_layer_dim_vf = curr_layer_dim
 
         # Save dim, used to create the distributions
         self.latent_dim_pi = last_layer_dim_pi
@@ -250,7 +456,6 @@ class MlpExtractor(nn.Module):
 
         # Create networks
         # If the list of layers is empty, the network will just act as an Identity module
-        self.shared_net = nn.Sequential(*shared_net).to(device)
         self.policy_net = nn.Sequential(*policy_net).to(device)
         self.value_net = nn.Sequential(*value_net).to(device)
 
@@ -259,14 +464,13 @@ class MlpExtractor(nn.Module):
         :return: latent_policy, latent_value of the specified network.
             If all layers are shared, then ``latent_policy == latent_value``
         """
-        shared_latent = self.shared_net(features)
-        return self.policy_net(shared_latent), self.value_net(shared_latent)
+        return self.forward_actor(features), self.forward_critic(features)
 
     def forward_actor(self, features: th.Tensor) -> th.Tensor:
-        return self.policy_net(self.shared_net(features))
+        return self.policy_net(features)
 
     def forward_critic(self, features: th.Tensor) -> th.Tensor:
-        return self.value_net(self.shared_net(features))
+        return self.value_net(features)
 
 
 class CombinedExtractor(BaseFeaturesExtractor):

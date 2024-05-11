@@ -1,7 +1,7 @@
 import warnings
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
-import gym
+import gymnasium as gym
 import numpy as np
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecEnv, VecMonitor, is_vecenv_wrapped
@@ -10,7 +10,7 @@ from sb3_contrib.common.maskable.utils import get_action_masks, is_masking_suppo
 from sb3_contrib.ppo_mask import MaskablePPO
 
 
-def evaluate_policy(  # noqa: C901
+def evaluate_policy(
     model: MaskablePPO,
     env: Union[gym.Env, VecEnv],
     n_eval_episodes: int = 10,
@@ -64,7 +64,7 @@ def evaluate_policy(  # noqa: C901
     is_monitor_wrapped = False
 
     if not isinstance(env, VecEnv):
-        env = DummyVecEnv([lambda: env])
+        env = DummyVecEnv([lambda: env])  # type: ignore[list-item, return-value]
 
     is_monitor_wrapped = is_vecenv_wrapped(env, VecMonitor) or env.env_is_wrapped(Monitor)[0]
 
@@ -79,6 +79,9 @@ def evaluate_policy(  # noqa: C901
     n_envs = env.num_envs
     episode_rewards = []
     episode_lengths = []
+    episode_ice_dug = []
+    episode_ice_transfered = []
+    episode_water_collected = []
 
     episode_counts = np.zeros(n_envs, dtype="int")
     # Divides episodes among different sub environments in the vector as evenly as possible
@@ -86,6 +89,7 @@ def evaluate_policy(  # noqa: C901
 
     current_rewards = np.zeros(n_envs)
     current_lengths = np.zeros(n_envs, dtype="int")
+
     observations = env.reset()
     states = None
     episode_starts = np.ones((env.num_envs,), dtype=bool)
@@ -93,7 +97,7 @@ def evaluate_policy(  # noqa: C901
         if use_masking:
             action_masks = get_action_masks(env)
             actions, state = model.predict(
-                observations,
+                observations,  # type: ignore[arg-type]
                 state=states,
                 episode_start=episode_starts,
                 deterministic=deterministic,
@@ -101,14 +105,17 @@ def evaluate_policy(  # noqa: C901
             )
         else:
             actions, states = model.predict(
-                observations, state=states, episode_start=episode_starts, deterministic=deterministic
+                observations,  # type: ignore[arg-type]
+                state=states,
+                episode_start=episode_starts,
+                deterministic=deterministic,
             )
         observations, rewards, dones, infos = env.step(actions)
+
         current_rewards += rewards
         current_lengths += 1
         for i in range(n_envs):
             if episode_counts[i] < episode_count_targets[i]:
-
                 # unpack values so that the callback can access the local variables
                 reward = rewards[i]
                 done = dones[i]
@@ -124,11 +131,15 @@ def evaluate_policy(  # noqa: C901
                         # the agent loses a life, but it does not correspond
                         # to the true end of episode
                         if "episode" in info.keys():
+                            
                             # Do not trust "done" with episode endings.
                             # Monitor wrapper includes "episode" key in info if environment
                             # has been wrapped with it. Use those rewards instead.
                             episode_rewards.append(info["episode"]["r"])
                             episode_lengths.append(info["episode"]["l"])
+                            episode_ice_dug.append(info["metrics"]["ice_dug"])
+                            episode_ice_transfered.append(info["metrics"]["ice_transferred"])
+                            episode_water_collected.append(info["metrics"]["water_produced"])
                             # Only increment at the real end of an episode
                             episode_counts[i] += 1
                     else:
@@ -143,8 +154,17 @@ def evaluate_policy(  # noqa: C901
 
     mean_reward = np.mean(episode_rewards)
     std_reward = np.std(episode_rewards)
+
+    mean_ice_dug = np.mean(episode_ice_dug)
+    mean_ice_transfered = np.mean(episode_ice_transfered)
+    mean_water_collected = np.mean(episode_water_collected)
+
+    std_ice_dug = np.std(episode_ice_dug)
+    std_ice_transfered = np.std(episode_ice_transfered)
+    std_water_collected = np.std(episode_water_collected)
+
     if reward_threshold is not None:
         assert mean_reward > reward_threshold, "Mean reward below threshold: " f"{mean_reward:.2f} < {reward_threshold:.2f}"
     if return_episode_rewards:
-        return episode_rewards, episode_lengths
-    return mean_reward, std_reward
+        return episode_rewards, episode_lengths, episode_ice_dug, episode_ice_transfered, episode_water_collected
+    return mean_reward, std_reward, mean_ice_dug, std_ice_dug, mean_ice_transfered, std_ice_transfered, mean_water_collected, std_water_collected
