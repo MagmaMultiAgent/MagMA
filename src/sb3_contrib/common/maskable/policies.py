@@ -154,9 +154,7 @@ class MaskableActorCriticPolicy(BasePolicy):
         
         if action_masks is not None:
             action_masks = np.transpose(action_masks, (0, 2, 3, 1))
-
             action_masks = action_masks.reshape(-1, action_channels)
-
             assert latent_pi.shape == action_masks.shape
 
         distribution = self._get_action_dist_from_latent(latent_pi)
@@ -287,6 +285,7 @@ class MaskableActorCriticPolicy(BasePolicy):
         :param action_masks: Action masks to apply to the action distribution
         :return: Taken action according to the policy
         """
+
         distribution, batch_size, height, width = self.get_distribution(observation, action_masks)
         actions = distribution.get_actions(deterministic=deterministic)
         actions = actions.reshape(batch_size, height, width)
@@ -412,12 +411,23 @@ class MaskableActorCriticPolicy(BasePolicy):
         else:
             pi_features, _ = features
             latent_pi = self.mlp_extractor.forward_actor(pi_features)
-        batch_size, action_channels, height, width = latent_pi.shape
 
+        latent_shape = latent_pi.shape
+        assert len(latent_shape) == 4
 
+        if action_masks is not None:
+            assert latent_shape == action_masks.shape
+
+        batch_size, action_channels, height, width = latent_shape
         latent_pi = latent_pi.permute(0, 2, 3, 1)
         latent_pi = latent_pi.reshape(-1, action_channels)
         assert latent_pi.shape[0] == batch_size * height * width
+
+        if action_masks is not None:
+            action_masks = np.transpose(action_masks, (0, 2, 3, 1))
+            action_masks = action_masks.reshape(-1, action_channels)
+            assert latent_pi.shape == action_masks.shape
+
         distribution = self._get_action_dist_from_latent(latent_pi)
         if action_masks is not None:
             distribution.apply_masking(action_masks)
