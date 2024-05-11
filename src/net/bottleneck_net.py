@@ -325,8 +325,10 @@ class BottleNet(BaseFeaturesExtractor):
             self.bottleneck = MultiScaleBottleneck("multiscale_bottleneck", num_bottleneck_channels, seed=seed)
         elif bottleneck_type == "inception":
             self.bottleneck = InceptionBottleneck("inception_bottleneck", num_bottleneck_channels, seed=seed)
-        else:
+        elif bottleneck_type == "simple":
             self.bottleneck = SimpleBottleneck("simple_bottleneck", num_bottleneck_channels, seed=seed)
+        else:
+            raise ValueError(f"Unknown bottleneck type: {bottleneck_type}")
 
         self.up4 = UpsampleBlock("up4", num_bottleneck_channels, 128, use_se=True, seed=seed)
         self.up3 = UpsampleBlock("up3", 128, 64, use_se=True, seed=seed)

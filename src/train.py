@@ -128,10 +128,6 @@ def parse_args():
     args = parser.parse_args()
     return args
 
-
-
-
-
 def make_env(env_id: str, rank: int, max_episode_steps: int = 256, seed: int = 42, eval_seed = 0):
     """
     Creates the environment
@@ -249,7 +245,7 @@ def main(args):
                 "seed": args.seed,
                 }
             }
-    else:
+    elif args.net == "dash":
         policy_kwargs_unit = {
             "features_extractor_class": DashNet,
             "features_extractor_kwargs": {
@@ -257,7 +253,8 @@ def main(args):
                 "seed": args.seed,
                 }
             }
-
+    else:
+        raise ValueError(f"Unknown net type: {args.net}")
     rollout_steps = 8192
     model = MaskablePPO(
         "MultiInputPolicy",
