@@ -102,7 +102,7 @@ def parse_args():
     return args
 
 
-def make_env(env_id: str, rank: int, max_episode_steps: int = 256, seed: int = 42, eval_seed = 0):
+def make_env(env_id: str, rank: int, max_episode_steps: int = 1024, seed: int = 42, eval_seed = 0):
     """
     Creates the environment
     """
