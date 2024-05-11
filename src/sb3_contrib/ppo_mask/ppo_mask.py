@@ -222,8 +222,8 @@ class MaskablePPO(OnPolicyAlgorithm):
         self.start_time = time.time_ns()
         if self.ep_info_buffer is None or reset_num_timesteps:
             # Initialize buffers if they don't exist, or reinitialize if resetting counters
-            self.ep_info_buffer = deque(maxlen=self._stats_window_size)
-            self.ep_success_buffer = deque(maxlen=self._stats_window_size)
+            self.ep_info_buffer = deque(maxlen=100)
+            self.ep_success_buffer = deque(maxlen=100)
 
         if reset_num_timesteps:
             self.num_timesteps = 0
@@ -315,9 +315,9 @@ class MaskablePPO(OnPolicyAlgorithm):
             self._update_info_buffer(infos)
             n_steps += 1
 
-            # if isinstance(self.action_space, spaces.Discrete):
+            if isinstance(self.action_space, spaces.Discrete):
                 # Reshape in case of discrete action
-                # actions = actions.reshape(-1, 1)
+                actions = actions.reshape(-1, 1)
 
             # Handle timeout by bootstraping with value function
             # see GitHub issue #633
@@ -466,6 +466,13 @@ class MaskablePPO(OnPolicyAlgorithm):
                     log_ratio = log_prob - rollout_data.old_log_prob
                     approx_kl_div = th.mean((th.exp(log_ratio) - 1) - log_ratio).cpu().numpy()
                     approx_kl_divs.append(approx_kl_div)
+
+                if self.target_kl is not None and approx_kl_div > 1.5 * self.target_kl:
+                    continue_training = False
+                    if self.verbose >= 1:
+                        print(f"Early stopping at step {epoch} due to reaching max kl: {approx_kl_div:.2f}")
+                    break
+
                 # Optimization step
                 self.policy.optimizer.zero_grad()
                 loss.backward()

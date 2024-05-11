@@ -77,7 +77,7 @@ def parse_args():
     parser.add_argument(
         "--total-timesteps",
         type=int,
-        default = 8192 * 25,
+        default = 2048000,
         help="Total timesteps for training",
     )
 
@@ -206,16 +206,14 @@ def main(args):
     env = VecMonitor(env)
     env.reset()
 
-    policy_kwargs = dict(
-        net_arch=[128, 128],
-        activation_fn=th.nn.LeakyReLU,
-    )
+    policy_kwargs = dict(activation_fn=th.nn.ReLU,
+                     net_arch= (128, 128))
     rollout_steps = 8192
     model = PPO(
         "MlpPolicy",
         env,
         n_steps=rollout_steps // args.n_envs,
-        batch_size=512,
+        batch_size=1024,
         learning_rate=3e-4,
         policy_kwargs=policy_kwargs,
         verbose=1,
