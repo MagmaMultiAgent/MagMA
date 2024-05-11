@@ -61,7 +61,6 @@ class MaskableActorCriticPolicy(BasePolicy):
         optimizer_class: Type[th.optim.Optimizer] = th.optim.Adam,
         optimizer_kwargs: Optional[Dict[str, Any]] = None,
     ):
-
         if optimizer_kwargs is None:
             optimizer_kwargs = {}
             # Small values to avoid NaN in Adam optimizer
@@ -78,6 +77,10 @@ class MaskableActorCriticPolicy(BasePolicy):
             normalize_images=normalize_images,
             squash_output=False,
         )
+<<<<<<< HEAD
+=======
+
+>>>>>>> df4383346aeb574afc020781a778898a56dc5875
         if isinstance(net_arch, list) and len(net_arch) > 0 and isinstance(net_arch[0], dict):
             warnings.warn(
                 (

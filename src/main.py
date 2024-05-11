@@ -7,8 +7,8 @@ import json
 from argparse import Namespace
 from typing import Dict
 from agent import Agent
-from lux.config import EnvConfig
-from lux.kit import process_action, process_obs
+from kit.config import EnvConfig
+from kit.kit import process_action, process_obs
 
 agent_dict = ({})
 agent_prev_obs = {}

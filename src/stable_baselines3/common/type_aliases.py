@@ -1,7 +1,11 @@
 """Common aliases for type hints"""
 
 from enum import Enum
+<<<<<<< HEAD
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Protocol, SupportsFloat, Tuple, Union
+=======
+from typing import Any, Callable, Dict, List, NamedTuple, Optional, SupportsFloat, Tuple, Union
+>>>>>>> df4383346aeb574afc020781a778898a56dc5875
 
 import gymnasium as gym
 import numpy as np

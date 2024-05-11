@@ -39,11 +39,15 @@ class MaskableEvalCallback(EvalCallback):
         self.water_collected = []
 
     def _on_step(self) -> bool:
-
         continue_training = True
+<<<<<<< HEAD
         
         
         if self.eval_freq > 0 and self.num_timesteps % self.eval_freq == 0:
+=======
+
+        if self.eval_freq > 0 and self.n_calls % self.eval_freq == 0:
+>>>>>>> df4383346aeb574afc020781a778898a56dc5875
             # Sync training and eval env if there is VecNormalize
             if self.model.get_vec_normalize_env() is not None:
                 try:

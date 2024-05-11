@@ -727,7 +727,11 @@ class DictRolloutBuffer(RolloutBuffer):
         self.observations = {}
         for key, obs_input_shape in self.obs_shape.items():
             self.observations[key] = np.zeros((self.buffer_size, self.n_envs, *obs_input_shape), dtype=np.float32)
+<<<<<<< HEAD
         self.actions = np.zeros((self.buffer_size, self.n_envs, 48, 48), dtype=np.float32)
+=======
+        self.actions = np.zeros((self.buffer_size, self.n_envs, self.action_dim), dtype=np.float32)
+>>>>>>> df4383346aeb574afc020781a778898a56dc5875
         self.rewards = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
         self.returns = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
         self.episode_starts = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
@@ -769,7 +773,11 @@ class DictRolloutBuffer(RolloutBuffer):
             self.observations[key][self.pos] = obs_
 
         # Reshape to handle multi-dim and discrete action spaces, see GH #970 #1392
+<<<<<<< HEAD
         # action = action.reshape((self.n_envs, self.action_dim))
+=======
+        action = action.reshape((self.n_envs, self.action_dim))
+>>>>>>> df4383346aeb574afc020781a778898a56dc5875
 
         self.actions[self.pos] = np.array(action).copy()
         self.rewards[self.pos] = np.array(reward).copy()
