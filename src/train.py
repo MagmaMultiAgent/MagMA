@@ -8,18 +8,10 @@ import argparse
 import os.path as osp
 import gymnasium as gym
 import torch as th
-<<<<<<< HEAD
-from torch import nn
-from luxai_s2.state import StatsStateDict
-from luxai_s2.utils.heuristics.factory_placement import place_near_random_ice
-from stable_baselines3.common.callbacks import BaseCallback, EvalCallback
-from stable_baselines3.common.evaluation import evaluate_policy
-=======
 import seeding
 import numpy as np
 from sb3_contrib.common.maskable.callbacks import MaskableEvalCallback
 from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback, EvalCallback
->>>>>>> df4383346aeb574afc020781a778898a56dc5875
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecMonitor
@@ -28,82 +20,9 @@ from sb3_contrib.ppo_mask import MaskablePPO
 from controller.controller import SimpleUnitDiscreteController
 from wrappers.obs_wrappers import SimpleUnitObservationWrapper
 from wrappers.sb3_action_mask import SB3InvalidActionWrapper
-<<<<<<< HEAD
-
-class CustomEnvWrapper(gym.Wrapper):
-    """
-    Custom wrapper for the LuxAI_S2 environment
-    """
-
-    def __init__(self, env: gym.Env) -> None:
-        """
-        Adds a custom reward and turns the LuxAI_S2 environment \
-        into a single-agent environment for easy training
-        """
-        super().__init__(env)
-        self.prev_step_metrics = None
-
-    def step(self, action):
-        """
-        Steps the environment
-        """
-
-        agent = "player_0"
-        opp_agent = "player_1"
-
-        opp_factories = self.env.state.factories[opp_agent]
-        for k in opp_factories.keys():
-            factory = opp_factories[k]
-            factory.cargo.water = 1000
-
-        action = {agent: action}
-        obs, _, termination, truncation, info = self.env.step(action)
-        done = dict()
-        for k in termination:
-            done[k] = termination[k] | truncation[k]
-
-        obs = obs[agent]
-
-
-        stats: StatsStateDict = self.env.state.stats[agent]
-
-        info = {}
-        metrics = {}
-        metrics["ice_dug"] = (
-            stats["generation"]["ice"]["HEAVY"] + stats["generation"]["ice"]["LIGHT"]
-        )
-        metrics["water_produced"] = stats["generation"]["water"]
-        metrics["action_queue_updates_success"] = stats["action_queue_updates_success"]
-        metrics["action_queue_updates_total"] = stats["action_queue_updates_total"]
-
-        info["metrics"] = metrics
-
-        reward = 0
-        if self.prev_step_metrics is not None:
-
-            ice_dug_this_step = metrics["ice_dug"] - self.prev_step_metrics["ice_dug"]
-            water_produced_this_step = (
-                metrics["water_produced"] - self.prev_step_metrics["water_produced"]
-            )
-
-            reward = ice_dug_this_step / 100 + water_produced_this_step
-
-        self.prev_step_metrics = copy.deepcopy(metrics)
-        return obs, reward, termination[agent], truncation[agent], info
-
-    def reset(self, **kwargs):
-        """
-        Resets the environment
-        """
-
-        obs, reset_info = self.env.reset(**kwargs)
-        self.prev_step_metrics = None
-        return obs["player_0"], reset_info
-=======
 from wrappers.reward_wrapper import RewardWrapper
 from wrappers.utils import gaussian_ice_placement, bid_zero_to_not_waste
 th.autograd.set_detect_anomaly(True)
->>>>>>> df4383346aeb574afc020781a778898a56dc5875
 
 def parse_args():
     """
@@ -204,17 +123,10 @@ def make_env(env_id: str, rank: int, max_episode_steps: int = 1024, seed: int = 
         env = SimpleUnitObservationWrapper(
             env
         )
-<<<<<<< HEAD
-        env = CustomEnvWrapper(env)
-        #env = Monitor(env)
-        env.reset(seed=seed + rank)
-        set_random_seed(seed)
-=======
         env = RewardWrapper(env)
         new_seed = np.random.SeedSequence(seed).generate_state(1).item() + rank
         env.reset(seed=new_seed)
         set_random_seed(new_seed)
->>>>>>> df4383346aeb574afc020781a778898a56dc5875
         return env
 
     return _init
@@ -252,16 +164,10 @@ def train(args, env_id, model: PPO):
     """
     Trains the model
     """
-<<<<<<< HEAD
-
-    eval_environments = [make_env(env_id, i, max_episode_steps=1000) for i in range(4)]
-    eval_env = SubprocVecEnv(eval_environments)
-=======
     seeding.set_seed(args.seed)
     eval_environments = [make_env(env_id, i, max_episode_steps=args.eval_max_episode_steps, seed=args.eval_seed) for i in range(args.eval_num)]
     eval_env = SubprocVecEnv(eval_environments)
     eval_env = VecMonitor(eval_env)
->>>>>>> df4383346aeb574afc020781a778898a56dc5875
     eval_env.reset()
     eval_callback = EvalCallback(
         eval_env,
@@ -295,15 +201,6 @@ def main(args):
         set_random_seed(args.seed)
     env_id = "LuxAI_S2-v0"
 
-<<<<<<< HEAD
-    environments = [make_env(env_id, i, max_episode_steps=args.max_episode_steps) \
-                    for i in range(args.n_envs)]
-    env = SubprocVecEnv(environments)
-    env.reset()
-
-    policy_kwargs = dict(net_arch=(128, 128))
-    rollout_steps = 4000
-=======
     environments = [make_env(env_id, i, max_episode_steps=args.max_episode_steps) for i in range(args.n_envs)]
     env = SubprocVecEnv(environments)
     env = VecMonitor(env)
@@ -312,7 +209,6 @@ def main(args):
     policy_kwargs = dict(activation_fn=th.nn.ReLU,
                      net_arch= (128, 128))
     rollout_steps = 8192
->>>>>>> df4383346aeb574afc020781a778898a56dc5875
     model = PPO(
         "MlpPolicy",
         env,

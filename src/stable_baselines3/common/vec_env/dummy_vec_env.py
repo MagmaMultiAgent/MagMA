@@ -103,7 +103,6 @@ class DummyVecEnv(VecEnv):
     def _save_obs(self, env_idx: int, obs: VecEnvObs) -> None:
         for key in self.keys:
             if key is None:
-                print([o.shape for o in obs])
                 self.buf_obs[key][env_idx] = obs
             else:
                 self.buf_obs[key][env_idx] = obs[key]  # type: ignore[call-overload]

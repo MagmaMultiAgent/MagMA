@@ -11,37 +11,6 @@ try:
 
     cv2.ocl.setUseOpenCL(False)
 except ImportError:
-<<<<<<< HEAD
-    cv2 = None  # type: ignore[assignment]
-
-
-class StickyActionEnv(gym.Wrapper[np.ndarray, int, np.ndarray, int]):
-    """
-    Sticky action.
-
-    Paper: https://arxiv.org/abs/1709.06009
-    Official implementation: https://github.com/mgbellemare/Arcade-Learning-Environment
-
-    :param env: Environment to wrap
-    :param action_repeat_probability: Probability of repeating the last action
-    """
-
-    def __init__(self, env: gym.Env, action_repeat_probability: float) -> None:
-        super().__init__(env)
-        self.action_repeat_probability = action_repeat_probability
-        assert env.unwrapped.get_action_meanings()[0] == "NOOP"  # type: ignore[attr-defined]
-
-    def reset(self, **kwargs) -> AtariResetReturn:
-        self._sticky_action = 0  # NOOP
-        return self.env.reset(**kwargs)
-
-    def step(self, action: int) -> AtariStepReturn:
-        if self.np_random.random() >= self.action_repeat_probability:
-            self._sticky_action = action
-        return self.env.step(self._sticky_action)
-
-
-=======
     cv2 = None
 
 
@@ -71,7 +40,6 @@ class StickyActionEnv(gym.Wrapper[np.ndarray, int, np.ndarray, int]):
         return self.env.step(self._sticky_action)
 
 
->>>>>>> df4383346aeb574afc020781a778898a56dc5875
 class NoopResetEnv(gym.Wrapper[np.ndarray, int, np.ndarray, int]):
     """
     Sample initial states by taking random number of no-ops on reset.
@@ -273,7 +241,6 @@ class WarpFrame(gym.ObservationWrapper[np.ndarray, int, np.ndarray]):
         :param frame: environment frame
         :return: the observation
         """
-        assert cv2 is not None, "OpenCV is not installed, you can do `pip install opencv-python`"
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
         frame = cv2.resize(frame, (self.width, self.height), interpolation=cv2.INTER_AREA)
         return frame[:, :, None]

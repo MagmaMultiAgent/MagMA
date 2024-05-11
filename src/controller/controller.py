@@ -2,14 +2,10 @@
 Controller Wrapper for the Competition
 """
 
-from gymnasium import spaces
 from typing import Any, Dict
 import numpy as np
 import numpy.typing as npt
-<<<<<<< HEAD:src/wrappers/controllers.py
-=======
 from gymnasium import spaces
->>>>>>> df4383346aeb574afc020781a778898a56dc5875:src/controller/controller.py
 
 class Controller:
     """

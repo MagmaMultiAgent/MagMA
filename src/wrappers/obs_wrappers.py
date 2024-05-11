@@ -5,11 +5,8 @@ from typing import Any, Dict
 import gymnasium as gym
 import numpy as np
 import numpy.typing as npt
-<<<<<<< HEAD
-=======
 from gymnasium import spaces
 from observation.observation_parser import FeatureParser
->>>>>>> df4383346aeb574afc020781a778898a56dc5875
 
 class SimpleUnitObservationWrapper(gym.ObservationWrapper):
     """
@@ -27,7 +24,7 @@ class SimpleUnitObservationWrapper(gym.ObservationWrapper):
         """
 
         super().__init__(env)
-        self.observation_space = gym.spaces.Box(-999, 999, shape=(13,))
+        self.observation_space = spaces.Box(-999, 999, shape=(13,))
 
     def observation(self, obs):
         """

@@ -3,10 +3,6 @@ This file contains a wrapper that adds action masks to the environment \
 for use with stable-baselines3
 """
 from typing import Dict, Callable
-<<<<<<< HEAD
-import gymnasium as gym
-=======
->>>>>>> df4383346aeb574afc020781a778898a56dc5875
 from luxai_s2.env import LuxAI_S2
 from luxai_s2.state import ObservationStateDict
 from wrappers.sb3_wrapper import SB3Wrapper
