@@ -433,8 +433,7 @@ class EvalCallback(EventCallback):
 
     def _on_step(self) -> bool:
         continue_training = True
-
-        if self.eval_freq > 0 and self.n_calls % self.eval_freq == 0:
+        if self.eval_freq > 0 and self.num_timesteps % self.eval_freq == 0:
             # Sync training and eval env if there is VecNormalize
             if self.model.get_vec_normalize_env() is not None:
                 try:
@@ -458,7 +457,6 @@ class EvalCallback(EventCallback):
                 return_episode_rewards=True,
                 warn=self.warn,
                 callback=self._log_success_callback,
-                use_masking=self.use_masking,
             )
 
 
@@ -508,7 +506,6 @@ class EvalCallback(EventCallback):
             self.logger.record("eval/mean_ice_dug", mean_ice_dug)
             self.logger.record("eval/mean_ice_transferred", mean_ice_transferred)
             self.logger.record("eval/mean_water_collected", mean_water_collected)
-            
             self.logger.record("eval/std_reward", float(std_reward))
             self.logger.record("eval/std_ice_dug", float(std_ice_dug))
             self.logger.record("eval/std_ice_transferred", float(std_ice_transferred))

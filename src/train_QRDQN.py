@@ -15,8 +15,9 @@ from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback,
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecMonitor
-from stable_baselines3.ppo import PPO
-from sb3_contrib.ppo_mask import MaskablePPO
+
+from stable_baselines3.dqn import DQN
+from sb3_contrib.qrdqn.qrdqn import QRDQN
 from controller.controller import SimpleUnitDiscreteController
 from wrappers.obs_wrappers import SimpleUnitObservationWrapper
 from wrappers.sb3_action_mask import SB3InvalidActionWrapper
@@ -40,7 +41,7 @@ def parse_args():
         "-n",
         "--n-envs",
         type=int,
-        default=1,
+        default=8,
         help="Number of parallel envs to run. Note that the rollout \
         size is configured separately and invariant to this value",
     )
@@ -77,7 +78,7 @@ def parse_args():
     parser.add_argument(
         "--total-timesteps",
         type=int,
-        default = 2048000,
+        default = 1024000,
         help="Total timesteps for training",
     )
 
@@ -112,7 +113,7 @@ def make_env(env_id: str, rank: int, max_episode_steps: int = 1024, seed: int = 
         Initializes the environment
         """
 
-        env = gym.make(env_id, verbose=1, collect_stats=True, disable_env_checker=True, max_episode_steps=max_episode_steps)
+        env = gym.make(env_id, verbose=1, collect_stats=True, MAX_FACTORIES = 2, disable_env_checker=True, max_episode_steps=max_episode_steps)
 
         env = SB3InvalidActionWrapper(
             env,
@@ -160,7 +161,7 @@ class TensorboardCallback(BaseCallback):
                     self.logger.record_mean(f"{self.tag}/{k}", stat)
         return True
 
-def train(args, env_id, model: PPO):
+def train(args, env_id, model):
     """
     Trains the model
     """
@@ -206,27 +207,19 @@ def main(args):
     env = VecMonitor(env)
     env.reset()
 
-    policy_kwargs = dict(activation_fn=th.nn.ReLU,
-                     net_arch= (128, 128))
+    policy_kwargs = dict(net_arch= (128, 128))
     rollout_steps = 8192
-    model = PPO(
-        "MlpPolicy",
-        env,
-        n_steps=rollout_steps // args.n_envs,
-        batch_size=1024,
-        learning_rate=3e-4,
-        policy_kwargs=policy_kwargs,
-        verbose=1,
-        n_epochs=10,
-        gamma=0.99,
-        gae_lambda=0.95,
-        clip_range=0.2,
-        vf_coef=0.5,
-        ent_coef=0.001,
-        max_grad_norm=0.5,
-        normalize_advantage=True,
-        tensorboard_log=osp.join(args.log_path),
-    )
+
+    model = QRDQN(
+    policy='MlpPolicy',
+    env=env,
+    learning_rate=0.0005,
+    policy_kwargs=policy_kwargs,
+    batch_size=32,
+    verbose=1,
+    seed=args.seed,
+)
+    
 
     train(args, env_id, model)
 

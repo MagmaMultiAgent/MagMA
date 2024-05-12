@@ -40,7 +40,7 @@ class RewardWrapper(gym.Wrapper):
 
         info = {}
         metrics = self._get_info(stats)
-        reward = self.parse(metrics)
+        reward = self.parse(metrics, self.env.state)
         self.prev_step_metrics = copy.deepcopy(metrics)
         info["metrics"] = metrics
         return obs, reward, termination_status, truncation_status, info
@@ -59,21 +59,29 @@ class RewardWrapper(gym.Wrapper):
         metrics["action_queue_updates_total"] = stats["action_queue_updates_total"]
         return metrics
     
-    def parse(self, metrics):
+    def parse(self, metrics, game_state):
         """
         Parses the metrics
         """
-        reward = 0
+        final_reward = 0
+        reward_scale = 0.01
+        ice_norm = 1
+        step_weight_early = 1 + ((1000 - game_state.real_env_steps) / 1000) * 0.1
+
+
         if self.prev_step_metrics is not None:
+            ice_dug_this_step = (metrics['ice_dug'] - self.prev_step_metrics['ice_dug']) / 4 * 0.1
+            ice_transfered_this_step = (metrics['ice_transferred'] - self.prev_step_metrics['ice_transferred']) / 4
+            water_increment_this_step = (metrics['water_produced'] - self.prev_step_metrics['water_produced'])
 
-            ice_dug_this_step = metrics["ice_dug"] - self.prev_step_metrics["ice_dug"]
-            water_produced_this_step = (
-                metrics["water_produced"] - self.prev_step_metrics["water_produced"]
-            )
+            ice_dug_this_step_reward = ice_dug_this_step * reward_scale / ice_norm * step_weight_early
+            ice_transfered_this_step_reward = ice_transfered_this_step * reward_scale / ice_norm * step_weight_early
+            water_increment_this_step_reward = water_increment_this_step * reward_scale / 4 * step_weight_early
 
-            reward = ice_dug_this_step / 100 + water_produced_this_step
+            final_reward += ice_dug_this_step_reward
+            final_reward += water_increment_this_step_reward
 
-        return reward
+        return final_reward
 
     def reset(self, **kwargs):
         """

@@ -79,6 +79,9 @@ def evaluate_policy(
     n_envs = env.num_envs
     episode_rewards = []
     episode_lengths = []
+    episode_ice_dug = []
+    episode_ice_transfered = []
+    episode_water_collected = []
 
     episode_counts = np.zeros(n_envs, dtype="int")
     # Divides episodes among different sub environments in the vector as evenly as possible
@@ -131,6 +134,9 @@ def evaluate_policy(
                             # has been wrapped with it. Use those rewards instead.
                             episode_rewards.append(info["episode"]["r"])
                             episode_lengths.append(info["episode"]["l"])
+                            episode_ice_dug.append(info["metrics"]["ice_dug"])
+                            episode_ice_transfered.append(info["metrics"]["ice_transferred"])
+                            episode_water_collected.append(info["metrics"]["water_produced"])
                             # Only increment at the real end of an episode
                             episode_counts[i] += 1
                     else:
@@ -145,8 +151,17 @@ def evaluate_policy(
 
     mean_reward = np.mean(episode_rewards)
     std_reward = np.std(episode_rewards)
+
+    mean_ice_dug = np.mean(episode_ice_dug)
+    mean_ice_transfered = np.mean(episode_ice_transfered)
+    mean_water_collected = np.mean(episode_water_collected)
+
+    std_ice_dug = np.std(episode_ice_dug)
+    std_ice_transfered = np.std(episode_ice_transfered)
+    std_water_collected = np.std(episode_water_collected)
+
     if reward_threshold is not None:
         assert mean_reward > reward_threshold, "Mean reward below threshold: " f"{mean_reward:.2f} < {reward_threshold:.2f}"
     if return_episode_rewards:
-        return episode_rewards, episode_lengths
-    return mean_reward, std_reward
+        return episode_rewards, episode_lengths, episode_ice_dug, episode_ice_transfered, episode_water_collected
+    return mean_reward, std_reward, mean_ice_dug, std_ice_dug, mean_ice_transfered, std_ice_transfered, mean_water_collected, std_water_collected
