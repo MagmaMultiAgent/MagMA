@@ -151,8 +151,6 @@ class TensorboardCallback(BaseCallback):
         Called on every step
         """
         count = 0
-        print(self.locals.keys())
-        exit(1)
         for i, done in enumerate(self.locals["dones"]):
             if done:
                 info = self.locals["infos"][i]

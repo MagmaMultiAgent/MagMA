@@ -151,7 +151,8 @@ class TensorboardCallback(BaseCallback):
         Called on every step
         """
         count = 0
-        print(self.locals.keys())
+        if "dones" not in self.locals:
+            return True
         for i, done in enumerate(self.locals["dones"]):
             if done:
                 info = self.locals["infos"][i]
@@ -207,15 +208,14 @@ def main(args):
     env = VecMonitor(env)
     env.reset()
 
-    policy_kwargs = dict(activation_fn=th.nn.ReLU,
-                     net_arch= (128, 128))
+    policy_kwargs = dict(activation_fn=th.nn.ReLU,net_arch= (128, 128))
     rollout_steps = 8192
 
     model = ARS(
         "MlpPolicy",
         env,
         policy_kwargs=policy_kwargs,
-
+        tensorboard_log=args.log_path,
     )
     
 

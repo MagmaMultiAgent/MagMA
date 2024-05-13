@@ -127,7 +127,7 @@ class ARS(BaseAlgorithm):
             self.weights = th.zeros_like(self.weights, requires_grad=False)
             self.policy.load_from_vector(self.weights.cpu())
 
-    def _mimic_monitor_wrapper(self, episode_rewards: np.ndarray, episode_lengths: np.ndarray) -> None:
+    def _mimic_monitor_wrapper(self, episode_rewards: np.ndarray, episode_lengths: np.ndarray, episode_ice_dug, episode_ice_transfered, episode_water_collected) -> None:
         """
         Helper to mimic Monitor wrapper and report episode statistics (mean reward, mean episode length).
 
@@ -136,10 +136,19 @@ class ARS(BaseAlgorithm):
         """
         # Mimic Monitor Wrapper
         infos = [
-            {"episode": {"r": episode_reward, "l": episode_length}}
-            for episode_reward, episode_length in zip(episode_rewards, episode_lengths)
+            {
+                "episode": {
+                    "r": episode_reward,
+                    "l": episode_length,
+                    "ice_dug": ice_dug,
+                    "ice_transfered": ice_transfered,
+                    "water_collected": water_collected,
+                }
+            }
+            for episode_reward, episode_length, ice_dug, ice_transfered, water_collected in zip(
+                episode_rewards, episode_lengths, episode_ice_dug, episode_ice_transfered, episode_water_collected
+            )
         ]
-
         self._update_info_buffer(infos)
 
     def _trigger_callback(
@@ -219,7 +228,7 @@ class ARS(BaseAlgorithm):
                 # Load current candidate weights
                 train_policy.load_from_vector(candidate_weights[weights_idx].cpu())
                 # Evaluate the candidate
-                episode_rewards, episode_lengths = evaluate_policy(
+                episode_rewards, episode_lengths, episode_ice_dug, episode_ice_transfered, episode_water_collected = evaluate_policy(
                     train_policy,
                     self.env,
                     n_eval_episodes=self.n_eval_episodes,
@@ -231,7 +240,7 @@ class ARS(BaseAlgorithm):
                 # Update reward to cancel out alive bonus if needed
                 candidate_returns[weights_idx] = sum(episode_rewards) + self.alive_bonus_offset * sum(episode_lengths)
                 batch_steps += sum(episode_lengths)
-                self._mimic_monitor_wrapper(episode_rewards, episode_lengths)
+                self._mimic_monitor_wrapper(episode_rewards, episode_lengths, episode_ice_dug, episode_ice_transfered, episode_water_collected)
 
             # Note: we increment the num_timesteps inside the evaluate_policy()
             # however when using multiple environments, there will be a slight

@@ -211,13 +211,20 @@ def main(args):
     rollout_steps = 8192
 
     model = QRDQN(
-    policy='MlpPolicy',
-    env=env,
-    learning_rate=0.0005,
+    "MlpPolicy",
+    env,
+    learning_rate=5e-5,
+    batch_size=1024,
+    train_freq=rollout_steps,
+    gradient_steps=10,
+    buffer_size = 1_000_000,
+    gamma=0.99,
+    exploration_initial_eps=1.0,
+    exploration_final_eps=0.15,
+    exploration_fraction=0.4,
     policy_kwargs=policy_kwargs,
-    batch_size=32,
-    verbose=1,
-    seed=args.seed,
+    tensorboard_log=osp.join(args.log_path),
+    verbose=1
 )
     
 
