@@ -1,8 +1,9 @@
 name: luxai_s2
 channels:
   - conda-forge
+  - defaults
 dependencies:
-  - python=3.7
+  - python=3.9
   - numpy
   - matplotlib
   - scipy
@@ -10,4 +11,12 @@ dependencies:
   - cython
   - tqdm
   - yaml
+  - pygame
+  - termcolor
+  - pyyaml
+  - notebook
+  - tensorboard
+  - dm-tree
+  - seaborn
+  - gymnasium
 

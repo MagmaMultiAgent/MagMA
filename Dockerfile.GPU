@@ -24,6 +24,9 @@ ENV PATH /opt/conda/bin:$PATH
 # Copy conda environment file
 COPY envs/conda/environment.yml .
 
+# Copy pip environment file
+COPY envs/pip/requirements.txt .
+
 # Create environment from yaml file
 RUN conda env create -f environment.yml && conda clean -afy
 
@@ -45,18 +48,6 @@ RUN pip install --no-cache-dir --upgrade pip
 # Install basic dev tools, like GCC
 RUN apt update -y && apt upgrade -y && apt install -y build-essential && apt-get install -y manpages-dev
 
-# Intall prerequisites for LUX
-RUN pip install --no-cache-dir setuptools==57.1.0 psutil==5.7.0 \ 
-    pettingzoo==1.12.0 vec_noise==1.1.4 ipykernel moviepy pytest\
-    pygame termcolor wheel==0.38.4 notebook tensorboard seaborn
-
-# Install Lux, RL baselines and Jax
-RUN pip install --no-cache-dir stable_baselines3==1.7.0 gym==0.21 sb3-contrib --upgrade luxai_s2
-
-# Install Jax with Lux
-
-RUN pip install --no-cache-dir juxai-s2
-
 # Switch back to bash
 SHELL ["/bin/bash","-c"]
 
@@ -65,4 +56,7 @@ RUN conda init
 
 # Activate luxai_s2 environment on bash startup
 RUN echo 'conda activate luxai_s2' >> ~/.bashrc
+
+# Install requirements
+RUN pip install --no-cache-dir -r requirements.txt
 

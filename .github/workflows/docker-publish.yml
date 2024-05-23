@@ -1,12 +1,19 @@
 name: Docker
 
 on:
-  schedule:
-    - cron: '17 14 * * *'
   push:
-    branches: [ "main" ]
-    # Publish semver tags as releases.
-    tags: [ 'v*.*.*' ]
+    branches:
+      - '!v0.0.2-AQ-MA'
+      - '!v0.0.2-MA'
+      - '!v0.0.2-MA-Eval'
+      - '!main'
+      - '!TDK'
+      - 'alpha-CNN'
+      - '!alpha-algo'
+      - '!v0.0.1-CNN'
+      - '!v0.0.1-CNN-mixed'
+      - '!v0.0.1-action-per-unit'
+      - '!v0.0.1-factory-net'
 
 env:
   # Use docker.io for Docker Hub if empty
