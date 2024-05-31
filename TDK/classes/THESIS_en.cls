@@ -151,7 +151,7 @@
 
 % ------------------------------
 % Margin
-\RequirePackage[left=25mm, right=25mm, top=25mm, bottom=25mm, headheight=16pt]{geometry}
+\RequirePackage[left=25mm, right=20mm, top=25mm, bottom=25mm, headheight=16pt]{geometry}
 %\setlength{\textwidth}{150mm}
 %\setlength{\textheight}{247mm}
 % ------------------------------
@@ -272,7 +272,7 @@
 % According to
 % https://tex.stackexchange.com/questions/442030/setting-spaces-with-titlespacing-and-fonts
 % this matches the 1.5 linespacing in MS Word
-% \setstretch{1.427465}
+%\setstretch{1.427465}
 \setstretch{1}
 
 % Display vectors and matrixes with single line spacing
@@ -600,7 +600,7 @@
 
 \definecolor{deepblue}{RGB}{0,0,139}
 \definecolor{darkdarkgray}{rgb}{0.4, 0.4, 0.4}
-\definecolor{darkelectricblue}{rgb}{0.33, 0.41, 0.47}
+\definecolor{darkelectricblue}{rgb}{0.28, 0.36, 0.42}
 
 \newcommand\colorAutoref[1]{{\hypersetup{linkcolor=deepblue}\autoref{#1}}}
 \newcommand\textttdb[1]{{\textcolor{deepblue}{\texttt{#1}}}}
@@ -620,3 +620,4 @@
     citecolor=deepblue,    % Color for citations
     urlcolor=deepblue          % Color for URLs
 }
+

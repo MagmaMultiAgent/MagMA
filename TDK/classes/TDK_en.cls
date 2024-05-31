@@ -36,6 +36,10 @@
 \NewDocumentCommand{\codegree}{m}{\newcommand{\codegreename}{#1}}
 \NewDocumentCommand{\coperiod}{m}{\newcommand{\coperiodname}{#1}}
 
+\NewDocumentCommand{\neptuncode}{m}{\newcommand{\theneptuncode}{#1}}
+\NewDocumentCommand{\coneptuncode}{m}{\newcommand{\theconeptuncode}{#1}}
+
+
 \NewDocumentCommand{\cosupervisor}{m}{\newcommand{\cosupname}{#1}}
 \NewDocumentCommand{\coaffiliation}{m}{\newcommand{\cosupaff}{#1}}
 \RenewDocumentCommand{\extsupervisor}{m}{\newcommand{\cosupname}{#1}}
@@ -76,28 +80,29 @@
 	}
     { % English
     	\newcommand{\covertitle}{TDK-thesis}
-    	
 		\newcommand{\authorlabel}{Author}
 		\newcommand{\authorslabel}{Authors}
 		\newcommand{\suplabel}{Supervisor}
 		\newcommand{\supslabel}{Supervisors}
-
 		\newcommand{\deflabel}{Definiton}
 		\newcommand{\theolabel}{Theorem}
 		\newcommand{\remlabel}{Remark}
 		\newcommand{\notelabel}{Note}
-
 		\newcommand{\codelabel}{Code}
 		\newcommand{\alglabel}{Algorithm}
-
 		\newcommand{\biblabel}{Bibliography}
 		\newcommand{\lstalgorithmlabel}{List of Algorithms}
 		\newcommand{\lstfigurelabel}{List of Figures}
 		\newcommand{\lsttablelabel}{List of Tables}
 		\newcommand{\lstcodelabel}{List of Codes}
 		\newcommand{\lstnomencl}{List of Symbols}
-		\newcommand{\todolabel}{Todo list}
 		\newcommand{\acklabel}{Acknowledgements}
+            \renewcommand{\sectionautorefname}{Section}
+            \renewcommand{\subsectionautorefname}{Section}
+            \renewcommand{\subsubsectionautorefname}{Section}
+            \renewcommand{\paragraphautorefname}{Section}
+            \renewcommand{\subparagraphautorefname}{Section}
+            \renewcommand{\chapterautorefname}{Chapter}
 	}
 }
 % ------------------------------
@@ -159,6 +164,7 @@
 			\begin{minipage}{0.45\textwidth}
 				\begin{flushleft}
 					{\large \authorname}\\
+                        \theneptuncode\\
 					\degreename\\
 					\periodname
 				\end{flushleft}
@@ -166,6 +172,7 @@
 			\begin{minipage}{0.45\textwidth}
 				\begin{flushright}
 					{\large \coauthorname}\\
+                        \theconeptuncode\\
 					\codegreename\\
 					\coperiodname
 				\end{flushright}

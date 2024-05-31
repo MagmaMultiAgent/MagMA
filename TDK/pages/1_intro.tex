@@ -15,7 +15,7 @@
 
 \bigskip
 
-\noindent Environments such as LuxAI (\textcolor{deepblue}{\cite{lux-ai-season-2}}), upon which our work is centered, introduce inherent dynamism stemming from the evolving population dynamics. This dynamism facilitates intricate social scenarios, necessitating a high degree of interdependence among collaborating agents. However, it also presents a challenge regarding the compatibility of standard reinforcement learning algorithms (\textcolor{deepblue}{\cite{wong2022deep}}), typically designed for single-agent or static environments. Furthermore, the calculation of rewards emerges as a critical research area, with prevailing solutions often adopting a global reward framework, sometimes called \textcolor{deepblue}{\texttt{perfectly-cooperative}} games (\textcolor{deepblue}{\cite{chen2023emergent}; \cite{agapiou2023melting}; \cite{ye2023global}; \cite{leroy2020qvmix}; \cite{suarez2019neural}}). This approach raises notable concerns, particularly in environments where actions that push the agents towards the predefined goal are infrequent. In such cases, the model risks reinforcing globally detrimental actions initiated by a single agent.
+\noindent Environments such as LuxAI (\textcolor{deepblue}{\cite{lux-ai-season-2}}), upon which our work is centered, introduce inherent dynamism stemming from the evolving population dynamics. This dynamism facilitates intricate social scenarios, necessitating a high degree of interdependence among collaborating agents. However, it also presents a challenge regarding the compatibility of standard reinforcement learning algorithms (\textcolor{deepblue}{\cite{wong2022deep}}), typically designed for single-agent or static environments. Furthermore, the calculation of rewards emerges as a critical research area, with prevailing solutions often adopting a global reward framework, sometimes called \textcolor{deepblue}{\textbdd{perfectly-cooperative}} games (\textcolor{deepblue}{\cite{chen2023emergent}; \cite{agapiou2023melting}; \cite{ye2023global}; \cite{leroy2020qvmix}; \cite{suarez2019neural}}). This approach raises notable concerns, particularly in environments where actions that push the agents towards the predefined goal are infrequent. In such cases, the model risks reinforcing globally detrimental actions initiated by a single agent.
 
 \bigskip
 
@@ -29,7 +29,7 @@
 
 \noindent Our \textbdd{key contributions} are the following:
 
-\begin{itemize}[itemsep=1pt, parsep=0pt]
+\begin{itemize}[itemsep=4pt, parsep=0pt]
 
 \item We conducted a novel \textbdd{benchmark study} comparing a broad array of contemporary reinforcement learning algorithms, including PPO, R-PPO, M-PPO, A2C, TRPO, DQN, QR-DQN, and ARS, to test their performance in a multi-agent environment. We evaluated the results and provided a general guideline on which algorithms to use in multi-agent systems.
 
@@ -47,31 +47,31 @@
 
 \noindent Given the complexity involved in fully understanding the environment, problem space, advanced applications of reinforcement learning in multi-agent systems, and the development of a specialized neural network structure for this context, we aim to provide a concise overview. This will cover how we conceptualized the project, aspects that can be simplified or skipped, and how we have presented our results. The introduction section is structured as follows:
 
-\begin{itemize}[itemsep=1pt, parsep=0pt]
+\begin{itemize}[itemsep=4pt, parsep=0pt]
 
+\item \autoref{sec:rl} introduces basic concepts of reinforcement learning elements, such as \textbdd{agent, policies, value functions, action-value functions, Bellman equations, states, rewards, discounted returns, episodes, and optimality}. If the reader is familiar with these topics, we recommend skipping to approximation methods (\autoref{sec:Policy-Gradient-Methods}).
 
+\item \autoref{sec:Policy-Gradient-Methods} introduces various concepts of \textbdd{policy gradient methods, actor-critic methods, policy iteration, and neural network approximators, including A2C, TRPO, PPO, M-PPO, and R-PPO}. For readers already familiar with these topics, we suggest skipping ahead to the introduction of value-based methods (\autoref{subsec:value-based-methods}).
 
-\item \autoref{sec:background} introduces basic concepts of reinforcement learning elements, such as \textbdd{agent, policies, value functions, action-value functions, Bellman equations, states, rewards, discounted returns, episodes and optimality}. If the reader is familiar with these topics we recommend skipping to approximation methods (\autoref{sec:Policy-Gradient-Methods}).
+\item \autoref{subsec:value-based-methods} elaborates on various concepts related to \textbdd{value approximators, value-based methods, value iteration, and linear approximators, including DQN and QR-DQN}. For readers already familiar with these topics, we suggest proceeding directly to the introduction of evolutionary algorithms (\autoref{subsec:evol}).
 
+\item \autoref{subsec:evol} covers the basic concepts of \textbdd{evolutionary algorithms, neuro-evolution, and ARS}. For readers already acquainted with these topics, we suggest moving directly to the introduction of advanced neural network architectural components (\autoref{sec:mlp-policies}).
 
+\item \autoref{sec:mlp-policies} introduces various state-of-the-art deep learning methods we have utilized, including \textbdd{residual networks}, \textbdd{leaky ReLU activations}, \textbdd{squeeze-and-excitation blocks}, \textbdd{batch normalization}, \textbdd{spectral normalization} and \textbdd{orthogonal weight initialization}. If the reader is familiar with these methods, we recommend skipping to the description of the environment (\autoref{sec:environment}).
 
-\item \autoref{sec:Policy-Gradient-Methods} introduces concepts of \textbdd{policy gradient methods, actor-critic methods, value and policy approximator, value-based methods, value and policiy iterations, linear approximators, neural network approximators and evolutionary algorithms}. If the reader is familiar with these topics, we recommend skipping to to the description of the environment (\autoref{sec:environment}).
-
-
-
-\item \autoref{sec:environment} introduces the rules of the \textbdd{Lux AI Competition}. If the reader comfortable with the environment, we recommend completely skipping the introductory section and going straight to the methods section (\autoref{ch:meth}).
+\item \autoref{sec:environment} introduces the rules of the \textbdd{Lux AI Competition}. If the reader is comfortable with the environment, we recommend completely skipping the introductory section and going straight to the methods section (\autoref{ch:meth}).
 
 \end{itemize}
 
 \noindent The methods and results sections are closely integrated, with our findings presented in three distinct phases, as follows:
 
-\begin{itemize}[itemsep=1pt, parsep=0pt]
+\begin{itemize}[itemsep=4pt, parsep=0pt]
 
 \item \textbdd{Single Unit Testbench}: In the methods section, we introduce the novel reinforcement learning algorithms (\autoref{sec:trpo}) used for testing and provide an overview of the feature space, action space, and neural network architecture utilized in the benchmark (\autoref{sec:single-unit-testbench}). We also provide a detailed description of the training environment (\autoref{sec:single-unit-training}) and specific details regarding the evaluation processes (\autoref{sec:single-unit-eval}). The results section details the quantitative outcomes and conclusions drawn from these tests (\autoref{sec:single-unit-testbench-results}), helping us to select the most suitable algorithm for further studies in the subsequent sections.
 
 \item \textbdd{Monolithic Approach}: We established a baseline using novel and contemporary research to create a simple, monolithic approach for our multi-agent reinforcement learning problem (\autoref{sec:monolithic-approach}). Utilizing the top-performing model from the single unit testbench, we expanded the scope to a multi-agent scenario (\autoref{sec:multi-agent-environment}) that includes multi-unit generation. This section proves particularly valuable as it serves as a benchmark; subsequent studies demonstrate significant enhancements over this single-brained method, highlighting the effectiveness of our research. We maintain consistent sections for training (\autoref{sec:monolithic-approach-training}), evaluation (\autoref{sec:monolithic-approach-eval}) and results (\autoref{sec:monolithic-approach-results}) within this monolithic approach.
 
-\item \textbdd{Hybrid Approach}: This is the main novelty of our contribution which explores the expansion of the previously mentioned monolithic method towards a fully multi-agent approach. We incorporate features such as reward groupings, individual and group level trajectories, and calculations for rewards, values, and advantages (\autoref{sec:hybrid-approach}). The methods section in this phase also provides architectural recommendations and insights (\autoref{sec:hybrid-network-architecture}). The results are comprehensive (\autoref{sec:hybrid-approach-results}), including performance tests and ablation studies. For additional details on initialization techniques, seeding, and the limits of neural network architecture, we direct the reader to the discussion chapter, where we delve into less quantified findings from our research (\autoref{ch:disc-init-is-all-you-need}).
+\item \textbdd{Hybrid Approach}: This is the main novelty of our contribution, which explores the expansion of the previously mentioned monolithic method towards a fully multi-agent approach. We incorporate features such as reward groupings, individual and group level trajectories, and calculations for rewards, values, and advantages (\autoref{sec:hybrid-approach}). The methods section in this phase also provides architectural recommendations and insights (\autoref{sec:hybrid-network-architecture}). The results are comprehensive (\autoref{sec:hybrid-approach-results}), including performance tests and ablation studies. For additional details on initialization techniques, seeding, and the limits of neural network architecture, we direct the reader to the discussion chapter, where we delve into less quantified findings from our research (\autoref{ch:disc-init-is-all-you-need}).
 
 \end{itemize}
 
@@ -93,7 +93,7 @@
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=1\linewidth]{images/intro/related_works/game-trends.png}
+    \includegraphics[width=0.9\linewidth]{images/intro/related_works/game-trends.png}
     \captionsetup{justification=justified, singlelinecheck=false, width=1\linewidth, labelfont=bf}     
     \caption{Exponential growth in training compute requirements for notable AI systems from the 1950s to the present, illustrating the transition from early machine learning to the current Large Scale Era (\textcolor{deepblue}{\cite{epoch2023pcdtrends}}).}
     \label{fig:game-trends}
@@ -109,477 +109,1017 @@
 \section{Background}
 \label{sec:background}
 
-\noindent Reinforcement Learning (RL) encapsulates all the processes through which agents learn optimal behaviors through exploration and the evaluation of actions based on rewards and penalties. This framework excels in single-agent, single-objective optimization scenarios because it directly aligns an agent's learning process with the maximization (or minimization) of a specific goal, enabling the agent to iteratively refine its strategy towards achieving optimal performance in well-defined environments (\textcolor{deepblue}{\cite{Lee_2020}}). Exploring advanced Reinforcement Learning topics necessitates a solid grasp of the fundamental RL concepts due to the technical complexity of the field. Specifically, Policy Optimization algorithms, which extend basic RL principles, are detailed and form the basis for further discussion. This discourse selectively highlights relevant concepts, omitting details beyond the scope of our research. For a thorough foundational understanding, the seminal work "Reinforcement Learning: An Introduction" by Sutton and Barto (\textcolor{deepblue}{\cite{Sutton1998}}) is an essential reference.
-
-\bigskip
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.6\linewidth]{images/intro/background/rl_simple.png}
-    \captionsetup{justification=justified, singlelinecheck=false, width=1\linewidth, labelfont=bf}  
-    \caption{The standard representation of the agent-environment control loop depicts the agent as the actuator and the environment as a sensor, sending signals to this actuator. These signals typically consist of reward signals, reflecting the efficacy of the agent's last action $a_t$, and a new environment signal $s_{t+1}$, updated based on the agent's actuator action $a_t$.}
-    \label{fig:rl_simple}
-\end{figure}
-
-\noindent In reinforcement learning, the foundational components are the \textbdd{environment} and the \textbdd{agents} operating within it. Agents interact with the environment by executing actions informed by \textbdd{observations}, which may vary in terms of their completeness and detail. Based on these observations, the agent decides on \textbdd{actions}, influencing the environment, which can also change independently. The agent aims to maximize its \textbdd{total rewards} over time, known as the return, by learning optimal actions through its interactions. Reinforcement learning techniques enable this learning process by guiding the agent to achieve its goal of reward maximization.
-
-\bigskip
-
-\noindent In deep reinforcement learning, a state $s$ is a detailed representation of the environment, containing all pertinent information, while an observation $o$ provides a subset of this information, possibly omitting crucial details. Deep RL frameworks typically use vectors, matrices, or tensors to model these states and observations. For example, an image might be represented by its RGB values, and a robot's status by vectors of its joint angles and velocities. The environment's \textbdd{observability} is classified based on the agent's access to information: it is fully observed if the agent perceives the entire state, and partially observed if the agent only gets incomplete observations. We will not consider partial observability, since our work focuses only on a fully observed environment (\autoref{sec:environment}).
-
-\bigskip
-
-\noindent The \textbdd{action space} of an environment defines all possible actions an agent can execute. Environments may feature \textbdd{discrete} action spaces, where the choices are finite and distinct (\textcolor{deepblue}{\cite{mnih2013playing}; \cite{SilverHuangEtAl16nature}}), or \textbdd{continuous} action spaces, characterized by actions as real-valued vectors that offer a spectrum of possibilities. This research explores an environment that integrates both discrete and bounded continuous actions (\autoref{sec:environment}; \autoref{fig:lux-actions_ex}).
-
-\bigskip
-
-\noindent Regarding the actions available to the agent, we define the concept known as a \textbdd{policy}. Policies may be \textbdd{deterministic}, implying that, for a given state, the action selected is consistent and not derived from a probability distribution of actions (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:deterministic-policy}}) .
-
-\begin{equation}
-    a_t = \mu(s_t)
-    \label{eq:deterministic-policy}
-\end{equation}
-
-\noindent The chosen action can be \textbdd{stochastic}, derived by sampling from a probability distribution over possible actions (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:stochastic-policy}}).
-
-\begin{equation}
-    a_t \sim \pi_{\theta}(\cdot | s_t).
-    \label{eq:stochastic-policy}
-\end{equation}
-
-\noindent In deep reinforcement learning we are dealing with prameterized policies, which are characterized by their outputs being computable functions reliant on a distinct parameter set, such as the weights inside an \textbdd{artificial neural network} (ANN), that we can adjust dynamically to the modify the actions of the agent via optimization methods. These weights are usually denoted by $\theta$ (\textcolor{deepblue}{\autoref{eq:stochastic-policy}}). In our research, we exclusively focus on stochastic policies to facilitate exploration; hence, discussions on deterministic policies are beyond the scope of this research.
-
-\bigskip
-
-\noindent The two primary stochastic policies implemented in current deep reinforcement learning frameworks are \textbdd{categorical} and \textbdd{diagonal Gaussian policies} (\textcolor{deepblue}{\cite{SpinningUp2018}}). Categorical policies are designed for discrete action spaces. Diagonal Gaussian policies, on the other hand, are appropriate for continuous action spaces. The Lux Environment utilizes discrete and bounded continuous action values within its action space (\autoref{sec:environment}; \autoref{fig:lux-actions_ex}), but for the purposes of simplification, we used a discretization technique known as \textbdd{binning}. This approach significantly improves performance in on-policy optimization (\textcolor{deepblue}{\cite{tang2020discretizing}}), allowing action prediction in continuous domains using categorical policies. These policies serve as classifiers within the action selection mechanisms, utilizing a neural network to process inputs and ending with a linear layer that generates \textbdd{logits} for each possible action. Logits represent the unnormalized scores output by the linear layer, which are then converted into a probabilistic distribution of actions through the softmax function.
-
-\bigskip
-
-\noindent A \textbdd{trajectory} (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:trajectory}}) represents a sequence composed of state-action pairs as experienced within the environment.
-
-\begin{equation}
-    \tau = (s_0, a_0, s_1, a_1, \hdots).
-    \label{eq:trajectory}
-\end{equation}
-
-\noindent Typically, the initial state of the environment is drawn from a \textbdd{starting state distribution} (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:start-state-distrib}}).
-
-\begin{equation}
-    s_0 \sim \rho_0(\cdot).
-    \label{eq:start-state-distrib}
-\end{equation}
-
-\noindent State transitions within an environment are dictated by the environment's inherent dynamics and depend on the previous action executed, represented by $a_t$. These transitions may follow a deterministic or stochastic pattern, as highlighted in (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:transition}}). 
-
-\begin{equation}
-    s_{t+1} \sim P(\cdot | s_t, a_t).
-    \label{eq:transition}
-\end{equation}
-
-\noindent Specifically, the Lux Environment runs under deterministic rules, as detailed in \autoref{sec:environment}, ensuring that each action directly results in a predictable environmental update. Moving forward, we will term trajectories as \textbdd{rollouts}, adopting a standard nomenclature used in RL.
-
-\bigskip
-
-\noindent The reward function, represented by $R$ has diverse notational variations, with a common formulation involving the agent's current state, the action executed in that state, and the subsequent state resulting from the action (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:reward}}).
-
-\begin{equation}
-    r_t = R(s_t, a_t, s_{t+1})
-    \label{eq:reward}
-\end{equation}
-
-\noindent The notation for reward is often simplified to depend solely on the state at timestep $t$, $R(s_t)$, or on both the current state and the recently executed action at timestep $t$, $R(s_t, a_t)$. The objective of the agent is to maximize the total accumulated reward throughout a rollout, denoted as $R(\tau)$ (\textcolor{deepblue}{\cite{Sutton1998}}). However, given the variety of possible returns, this notation can be ambiguous. The first concept of return encountered in the literature is termed the \textbdd{finite-horizon undiscounted return}, which aggregates the rewards collected within a predetermined rollout window (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:reward-undiscounted}}).
-
-\begin{equation}
-    R(\tau) = \sum_{t=0}^{T} r_t.
-    \label{eq:reward-undiscounted}
-\end{equation}
-
-\noindent  Mathematically, the reward may not always converge to a finite value. To address this, the concept of \textbdd{infinite-horizon discounted return} is introduced, which applies a discount factor, $\gamma$ to future rewards. This discounting ensures convergence under suitable conditions. When $\gamma$ is set to 1, it results in the equivalent of an undiscounted return (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:reward-discounted}}).
-
-\begin{equation}
-    R(\tau) = \sum_{t=0}^{\infty} \gamma^{t}r_t.
-    \label{eq:reward-discounted}
-\end{equation}
-
-\noindent The core goal of the agent is to adopt a policy that ensures the maximization of its expected return, regardless of the specific return metric or policy model used. In a deterministic environment, such as the one addressed in our research, the probability function $P(s_{t+1} | s_t, a_t)$ transforms into a deterministic relation $s_{t+1} = f(s_t, a_t)$. This modification indicates that state transitions are directly determined by the current state and action, simplifying the calculation of trajectory probabilities under a given policy $\pi$ (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:prob-func}}).
-
-\begin{equation}
-    P(\tau | \pi) = \rho_0(s_0)\prod_{t=0}^{T-1} \pi(a_t|s_t).
-    \label{eq:prob-func}
-\end{equation}
-
-\noindent Given that the transitions are deterministic, the expectation of the return, $J(\pi)$, remains (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:expected-return}}):
-
-\begin{equation}
-    J(\pi) = \int_{\tau} P(\tau | \pi) R(\tau) = \mathbb{E}_{\tau \sim \pi} \text{ }[R(\tau)]
-    \label{eq:expected-return}
-\end{equation}
-
-\noindent The optimization challenge in reinforcement learning involves identifying the \textbdd{optimal policy} by selecting the argument $\pi$ that maximizes the expected return (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:optimal-policy}}).
-
-\begin{equation}
-    \pi^* = \arg \max_{\pi} J(\pi),
-    \label{eq:optimal-policy}
-\end{equation}
-
-\noindent with $\pi^*$ being the optimal policy.
-
-\bigskip
-
-\noindent \textbdd{Value functions} quantify expected rewards from given states or state-action pairs under defined policies. Value functions estimate the benefit of an agent being in a specific state and play a role, in some form, across nearly all reinforcement learning algorithms (\textcolor{deepblue}{\cite{SpinningUp2018}; \cite{AlMahamid_2021}}). The \textbdd{On-Policy Value Function} calculates the expected reward for being in state $s$ while following a specific policy $\pi$, essentially computing the expected reward across a trajectory $\tau$ (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:value}}).
-
-\begin{equation}
-    V^{\pi}(s) = \mathbb{E}_{\tau \sim \pi} \text{ }[R(\tau) | s_0 = s]
-    \label{eq:value}
-\end{equation}
-
-\noindent The \textbdd{On-Policy Action-Value Function} estimates the value of starting in state $s$, taking an initial arbitrary action $a$, and thereafter adhering to policy $\pi$, providing a measure that parallels the On-Policy Value Function but starts with a specific action $a$ (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:action-value}}).
-
-\begin{equation}
-    Q^{\pi}(s, a) = \mathbb{E}_{\tau \sim \pi} \text{ }[R(\tau) | s_0 = s, a_0 = a]
-    \label{eq:action-value}
-\end{equation}
-
-\noindent \textbdd{Optimal value functions} signify the maximum expected return obtainable from a state $s$ when following the optimal policy within an environment. Conversely, optimal action-value functions indicate the highest expected return achievable by executing an action $a$ in state $s$ and adhering to the optimal policy for all subsequent decisions. The optimal value function is defined as (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:optimal-value}}):
-
-\begin{equation}
-    V^{*}(s) = \underset{\pi}{\text{max }} \mathbb{E}_{\tau \sim \pi} \text{ }[R(\tau) | s_0 = s],
-    \label{eq:optimal-value}
-\end{equation}
-
-\noindent while the optimal action-value function has the following form (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:optimal-action-value}}):
-
-\begin{equation}
-    Q^{*}(s, a) = \underset{\pi}{\text{max }} \mathbb{E}_{\tau \sim \pi} \text{ }[R(\tau) | s_0 = s, a_0 = a].
-    \label{eq:optimal-action-value}
-\end{equation}
-
-\noindent In value and action-value functions, we assume an \textbdd{infinite-horizon discounted return} to ensure convergence. Without discounting, a finite horizon is required to avoid infinite returns, making the concept of expected return meaningless and impractical for RL tasks. In the undiscounted case, incorporating time as an argument is necessary to account for time-dependence. An equally important connection in literature is to define the value function in terms of the action-value function (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:act-val-1}; \autoref{eq:act-val-2}}), highlighting their integral relationship. The value function using the action-value function is defined as:
-
-\begin{equation}
-    V^{\pi}(s) = \mathbb{E}_{a \sim \pi} \text{ }[Q^{\pi}(s, a)]
-    \label{eq:act-val-1}
-\end{equation}
-
-\noindent while the optimal value function using the optimal action-value function has the following form:
-
-\begin{equation}
-    V^{*}(s) = \underset{\text{a}}{\text{max }} [Q^{*}(s, a)]
-    \label{eq:act-val-2}
-\end{equation}
-
-\noindent \textbdd{The Bellman Equations}, crucial to reinforcement learning, establish a recursive linkage between the value of a specific state and the values of its ensuing states. They assert that the optimal policy at any stage matches the optimal policy at all future stages, effectively stating that the value of a state equals the immediate reward plus the expected value of next states under the optimal policy. This principle ensures the consistency and optimality of decision-making across time. Bellman equations use \textbdd{on-policy} notation (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:bellman-value}; \autoref{eq:bellman-action-value}}), calculating state values or action-values based on a specified policy $\pi$ \protect \footnotemark. 
-
-\footnotetext{This notation sometimes leads to confusion with the concepts of on-policy and off-policy learning. In off-policy scenarios, though the equations appear similar, the policy $\pi$ refers to the target policy, whereas data collection follows a different behavior policy $\mu$.}
-
-\begin{equation}
-    V^{\pi}(s) = \mathbb{E}_{\underset{s' \sim P(\cdot | s, a)}{a \sim \pi(\cdot | s)}} \text{ } [r(s,a) + \gamma V^{\pi}(s')]
-    \label{eq:bellman-value}
-\end{equation}
-
-\begin{equation}
-    Q^{\pi}(s, a) = \mathbb{E}_{s' \sim P(\cdot | s, a)} [r(s,a) + \gamma \text{ } \mathbb{E}_{a' \sim \pi(\cdot | s')} \text{ } Q^{\pi}(s', a')]
-    \label{eq:bellman-action-value}
-\end{equation}
-
-\noindent For both value iteration and policy iteration algorithms, the Bellman equations ensure convergence to the optimal policy (\textcolor{deepblue}{\cite{Sutton1998}}), given enough iterations and under certain conditions, such as a finite state space or the presence of a discount factor in infinite horizons. The Bellman equations for optimal value and action-value functions resemble the on-policy framework, yet differ in action selection. Instead of sampling actions a from a state-dependent probability distribution, the optimal framework selects the action that maximizes the future value (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:bellman-optimal-value}; \autoref{eq:bellman-optimal-action-value}}).
-
-\begin{equation}
-    V^{*}(s) = \underset{\text{a}}{\text{max }} \mathbb{E}_{s' \sim P(\cdot | s, a} \text{ } [r(s,a) + \gamma \text{ }V^{*}(s')]
-    \label{eq:bellman-optimal-value}
-\end{equation}
-
-\begin{equation}
-    Q^{*}(s, a) = \mathbb{E}_{s' \sim P(\cdot | s, a)} [r(s,a) + \gamma \underset{\text{a'}}{\text{ max }} \mathbb{E}_{a' \sim \pi(\cdot | s')} \text{ } Q^{*}(s', a')]
-    \label{eq:bellman-optimal-action-value}
-\end{equation}
-
-\noindent In modern RL algorithms, the calculation of a so-called \textbdd{advantage function} plays a crucial role in optimal decision making. The advantage function quantifies the benefit of selecting a particular action $a$ in state $s$ compared to the average result of pursuing other available actions in the same state, given adherence to policy $\pi$ subsequently. The on-policy advantage function, $A^{\pi}(s, a)$, measures the expected benefit of choosing action $a$ compared to following the policy's action distribution in state $s$. This calculation involves subtracting the value function, representing the average benefit of being in state $s$, from the action-value function for a specific action $a$, thus determining a relative improvement over other actions (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:advantage}}). 
-
-\begin{equation}
-    A^{\pi}(s, a) = Q^{\pi}(s, a) - V^{\pi}(s)
-    \label{eq:advantage}
-\end{equation}
-
-\noindent Our research environment (\autoref{sec:environment}) can be formulated as a fully-observable \textbdd{Markov Decision Process}, which is a formal notation frame work for an agent's environment. It is mathematically represented to indicate adherence to the Markov property, meaning that state transitionts do not rely on past history. At any given timestep $t$, the next state $s_{t+1}$ is influenced by the current state $s_t$ and the action $a_t$ taken at that state. In our study, we model our environment as an MDP (\textcolor{deepblue}{\cite{SpinningUp2018}}), represented by the tuple $\langle S, A, R, P, \rho_0 \rangle$, where:
-
-\vspace{-5pt}
-
-\begin{itemize}[itemsep=1pt, parsep=0pt]
-    \item $S$ is the set of all possible states, including map features, units, and resources.
-    \item $A$ encompasses the entire set of allowable actions, such as digging and moving.
-    \item $R : S \times A \times S \rightarrow \mathbb{R}$ is the reward function, devised based on a specific reward scheme.
-    \item $P : S \times A \times A_{adv} \rightarrow P(S)$ denotes the state transition probability function. This function is characterized as stochastic in adversarial environments. Transforming the setting to a cooperative scenario, or making the adversary passive, results in a deterministic transition probability of 1.
-    \item $\rho_0$ represents the starting state distribution, determined by a controlled seeding method.
-\end{itemize}
-
-\noindent Modern RL algorithms fit into a diverse range of domains and applications. Our research focuses on \textbdd{model-free methods}, which operate without an explicit environmental model, restricting the ability to predict state transitions and rewards. This absence prevents the utilization of lookahead or planning techniques to enhance policy learning through forward simulation. Consequently, model-free approaches rely solely on empirical interactions heavily compromising sample efficiency. Moreover, the transferability of models learned from empirical data to real-world scenarios is limited, often requiring substantial computational resources for effective adaptation. 
-
-\bigskip
-
-\noindent In model-free learning, the agent cannot directly access the expected future rewards or the total distribution of the future states and rewards at the start of learning. Instead, these \textbdd{distributions must be approximated} through various methods that explore potential states and rewards within the environment. This concept is central to the multi-armed bandit problem (\cite{Sutton1998}), a form of statistical optimization where the agent must find the optimal balance between exploring the environment to accurately approximate the total distribution of rewards and states and exploiting the environment to maximize reward collection. This framework comprises an evolutionary multi-objective optimization challenge (\cite{Zitzler2012}). Ideally, an agent could achieve a perfect distribution understanding through the law of large numbers with infinite samples and negligible time. However, in practice, resources are finite, and the goal becomes optimizing the utilization of given resources.
-
-\bigskip
-
-\noindent In the case of \textbdd{multi-armed bandits}, imagine a slot machine with $n$ levers, each lever dispensing rewards from a different and unknown distribution. The algorithm's goal is to devise an optimal strategy that balances the initial exploration of each lever — to collect sufficient data for approximating the distribution of rewards — with the exploitation of this data to maximize accumulated rewards by prioritizing levers with higher payouts (\cite{Sutton1998}). The complexity of finding an optimal solution increases with the complexity of the reward distributions, particularly if they are heavily skewed, irregular, or multimodal, as these require more samples to approximate accurately. For example, consider a lever that typically yields no or minimal rewards but, on rare occasions, dispenses the largest jackpot in the country. This scenario would necessitate more extensive sampling compared to a lever offering moderate but consistent payouts, where the reward distribution might closely resemble a uniform distribution.
-
-\bigskip
-
-\noindent Another distinction between algorithms is concerned with what is being learned by the agent, which can be \textbdd{policies}, \textbdd{value functions}, \textit{action-value functions} or the \textbdd{model of the environment}. There are two main approaches to represent model-free reinforcement learning: \textbdd{policy gradient methods} and \textbdd{value-based methods}.
-
-\bigskip
-
-\noindent To properly understand policy gradient methods, it's important to differentiate between an \textbdd{agent} and an \textbdd{entity} in the environment. In scenarios with a single agent, the policy is the learning entity controlling the algorithm while following a policy (\textcolor{deepblue}{\cite{Sutton1998}}). However, in multi-agent systems, it's necessary to distinguish between passive or heuristic entities and learning entities. The definition of an agent in multi-agent systems depends on how rewards are distributed across agents, whether based on global or local information, how experience is divided into multiple trajectories, and how action probabilities, entropies, and advantages are calculated. If an entity in the environment is passive or follows a pre-defined heuristic operation, it's not considered an agent, but rather a passive entity. If the same rewards are distributed to all agents based on a single trajectory using global observation, the agent is considered the \textbdd{orchestrator}. Conversely, when rewards or other computations are allocated at the entity or group level, agents are referenced accordingly to those groups or individual entities. This approach may encompass all entities present on the map as agents, as rewards, advantages, and model updates are computed based on individual trajectories and at the individual level.
-
-\bigskip
-
-\noindent When dealing with multiple agents, the method of credit assignment must also be mentioned. In a cooperative scenario, rewards must reflect not only the individual's achievement but also the shared goals of the entire team in order to drive the agent towards the desired degree of altruistic behavior. By forgoing team-based rewards, the agents might prefer to act in their own self-interest, while not providing them with enough "selfish" rewards could result in their inability to learn basic functions due to the sparsity of the reward feedback. This phenomenon is called the credit assignment problem, and multiple approaches have been theorized for its mitigation. These include the utilization of counterfactual reward baselines (\cite{foerster2017counterfactual}) and forgoing the multi-agent aspect of the scenario entirely with the use of an orchestrator (\cite{chen2023emergent}).
-
-
-\subsection{Policy Gradient Methods}
-\label{sec:Policy-Gradient-Methods}
-
-\noindent Policy optimization algorithms explicitly parameterize the policy by employing a set of parameters denoted as $\theta$. The objective of these algorithms is to optimize these parameters by optimization methods on the objective function, denoted as $J(\pi_\theta)$, which is the total expected return across a given trajectory $\tau$ (\textcolor{deepblue}{\cite{SpinningUp2018}}). Optimization techniques may also focus on maximizing local approximations of this function. These algorithms operate on an on-policy basis, meaning they use data generated from the current policy's actions to calculate updates. The process includes learning a value function approximator, $V_\theta(s)$, for the on-policy value function, $V^{\pi}(s)$, which assists in guiding policy updates.
-
-\bigskip
-
-\noindent To optimize the objective function $J(\pi_\theta)$ via gradient ascent, it's essential to define the concept of the \textbdd{policy gradient}, which represents the derivative of the expected reward with respect to the policy parameters $\theta$. This leads to the formulation of the parameter update rule as follows (\textcolor{deepblue}{\cite{SpinningUp2018}; \autoref{eq:param-update}}):
-
-\begin{equation}
-    \theta_{k+1} = \theta_k + \alpha \nabla_{\theta} J(\pi_{\theta})
-    \label{eq:param-update}
-\end{equation}
-
-\noindent Policy gradient algorithms, including Trust Region Policy Optimization, Proximal Policy Optimization, Recurrent-PPO, and Masked-PPO, form the basis of our research experiments presented. These algorithms utilize distinct update mechanisms, ratios and gradient clipping methods to steer the policy toward optimality (\textcolor{deepblue}{\cite{lehmann2024definitive}}). For implementation purposes, a generalized, computationally viable and numerically stable form of the update rule is adopted from vanilla policy gradient techniques. The derivation of the analytical gradient is beyond the scope of this study and is detailed in Sutton and Barto's book (\textcolor{deepblue}{\cite{Sutton1998}}).
-
-\bigskip
-
-\noindent The complete derivation of the vanilla policy gradient results in an expression representing the expected cumulative sum of the policy's log probability gradients, each weighted by the trajectory's total reward, across all possible trajectories (\textcolor{deepblue}{\cite{SpinningUp2018}; \autoref{eq:policy-gradient}}).
-
-\begin{equation}
-    \nabla_{\theta}J(\pi_{\theta}) = \mathbb{E}_{\tau \sim \pi_{\theta}} \left[ \sum_{t=0}^{T} \nabla_{\theta} \text{ log } \pi_{\theta}(a_t | s_t) \underbrace{R(\tau)}_{\text{ total reward }}\right]
-    \label{eq:policy-gradient}
-\end{equation}
-
-
-
-\noindent Given the principle of the law of large numbers (\textcolor{deepblue}{\cite{Athreya2006}}), the expected form of the vanilla policy gradient can be estimated by aggregating a large volume of environment rollouts. By defining this set of rollouts as $D$, where the cardinality of the set is $|D| = N$, the formula for the vanilla policy gradient is accordingly updated for estimation (\textcolor{deepblue}{\cite{SpinningUp2018}; \autoref{eq:policy-gradient-sample}}).
-
-\begin{equation}
-    \hat{g} = \frac{1}{|D|} \sum_{r \in D} \sum_{t=0}^{T} \nabla_{\theta} \text{ log } \pi_{\theta}(a_t | s_t) R(\tau)
-    \label{eq:policy-gradient-sample}
-\end{equation}
-
-\noindent State-of-the-art policy gradient algorithms adopt a refined version of this fundamental gradient update formula in their original implementations. The computability of the gradient of log probabilities of the policies with respect to the parameters, $\theta$, denoted by $\nabla_{\theta} \text{ log } \pi_{\theta}(a_t | s_t)$ has to be ensured (\textcolor{deepblue}{\cite{SpinningUp2018}}). As the sample size $N$ increases, the sample mean more closely approximates the true mean, resulting in a sample estimate with significantly reduced variance.
-
-\bigskip
-
-
-\noindent In policy gradient methods, a key mathematical caveat involves the updates to the log probabilities of actions being directly proportional to $R(\tau)$ (\textcolor{deepblue}{\cite{SpinningUp2018}; \autoref{eq:policy-gradient}}), which represents the sum of rewards obtained throughout the whole trajectory $\tau$. This methodology may initially appear counterintuitive, as the objective is to condition agent behavior on the future outcomes of their actions, or the rewards accrued subsequent to a specific timestep $t$. By adjusting the vanilla policy gradient equation to utilize a \textbdd{reward-to-go} formulation instead of the total reward function, the policy gradient becomes more stable, achieving lower variance in parallel (\textcolor{deepblue}{\cite{SpinningUp2018}; \autoref{eq:policy-gradient-updated}}).
-
-\begin{equation}
-    \nabla_{\theta}J(\pi_{\theta}) = \mathbb{E}_{\tau \sim \pi_{\theta}} \left[ \sum_{t=0}^{T} \nabla_{\theta} \text{ log } \pi_{\theta}(a_t | s_t) \underbrace{\sum_{t'= t}^{T} R(s_{t'}, a_{t'}, s_{t'+1})}_{\text{reward-to-go}} \right]
-    \label{eq:policy-gradient-updated}
-\end{equation}
-
-\noindent The "reward-to-go" trick significantly enhances the calculation of policy gradients by addressing a specific optimization problem intrinsic in the vanilla policy gradient equation, known as the \textbdd{Expected Grad-Log-Prob (EGLP) Lemma} (\textcolor{deepblue}{\cite{SpinningUp2018}}). This lemma specifies that for a continuous probability distribution $P_0$ over a random variable $x$, when one integrates over $x$, differentiates both sides of the resulting equation, and then applies a log derivative trick, the outcome is the following (\textcolor{deepblue}{\cite{SpinningUp2018}; \autoref{eq:eglp-lemma}}):
-
-\begin{equation}
-    \mathbb{E}_{x \sim P_{\theta}} [ \nabla_{\theta} \text{ log } P_{\theta}(x)] = 0
-    \label{eq:eglp-lemma}
-\end{equation}
-
-\noindent This equation shows that the product of the gradient of log probabilities with any function exclusively dependent on the current state $t$ will also yield zero. This introduces the baseline function, denoted as $b(s_t)$, which, when added to or subtracted from the reward-to-go component in (\textcolor{deepblue}{\cite{SpinningUp2018}; \autoref{eq:policy-gradient-updated}}), does not affect the expected value of the equation.
-
-\begin{equation}
-    \nabla_{\theta}J(\pi_{\theta}) = \mathbb{E}_{\tau \sim \pi_{\theta}} \left[ \sum_{t=0}^{T} \nabla_{\theta} \text{ log } \pi_{\theta}(a_t | s_t) \left( \sum_{t'= t}^{T} R(s_{t'}, a_{t'}, s_{t'+1}) - \underbrace{b(s_t)}_{\text{baseline}} \right) \right]
-    \label{eq:policy-gradient-baseline}
-\end{equation}
-
-\noindent In policy gradient algorithms like PPO, TRPO, A2C, and VPG, the baseline function is set as the on-policy value function $V^{\pi}(s_t)$. Using $V^{\pi}(s_t)$ as a baseline improves stability and convergence but requires neural network estimation. This requires simultaneous updates to both the policy and the value function estimate, an approach found in \textbdd{actor-critic} methods, where the objective is typically defined by the mean-squared-error (MSE) loss (\textcolor{deepblue}{\cite{SpinningUp2018}; \autoref{eq:mean-squared-error}}).
-
-\begin{equation}
-    \phi_k = \text{arg }\underset{\phi}{\text{max }} \mathbb{E}_{s_t, \hat{R_t} \sim \pi_k} \left [ \left (  V_{\phi}(s_t) - \hat{R_t}    \right )^{2} \right]
-    \label{eq:mean-squared-error}
-\end{equation}
-
-\noindent The final generalization of (\textcolor{deepblue}{\cite{SpinningUp2018}; \autoref{eq:policy-gradient}}) can be expressed as the following:
-
-\begin{equation}
-    \nabla_{\theta}J(\pi_{\theta}) = \mathbb{E}_{\tau \sim \pi_{\theta}} \left[ \sum_{t=0}^{T} \nabla_{\theta} \text{ log } \pi_{\theta}(a_t | s_t) \Phi_t \right], 
-    \label{eq:policy-gradient-general}
-\end{equation}
-
-\noindent where the choice for $\Phi_t$ may include \textbdd{total reward} $\left(R(\tau)\right)$, \textbdd{reward-to-go} $\left(\sum_{t'= t}^{T} R(s_{t'}, a_{t'}, s_{t'+1})\right)$, \textbdd{reward-to-go + baseline} $\left(\sum_{t'= t}^{T} R(s_{t'}, a_{t'}, s_{t'+1}) - b(s_t)\right)$ or be determined by alternative approaches, such as the on-policy action-value function (\textcolor{deepblue}{\cite{SpinningUp2018}; \autoref{eq:action-value-function-phi}}):
-
-\begin{equation}
-    \Phi_t = Q^{\pi_{\theta}} (s_t, a_t),
-    \label{eq:action-value-function-phi}
-\end{equation}
-
-\noindent or the advantage function with its refinement, \textbdd{General Advantage Estimation (GAE)}, employed in algorithms such as PPO and its variants, due to the necessity of estimating the advantage, which cannot be directly calculated (\textcolor{deepblue}{\cite{SpinningUp2018}; \autoref{eq:advantage-function-phi}}).
-
-\begin{equation}
-    \Phi_t = A^{\pi_{\theta}} (s_t, a_t) = Q^{\pi_{\theta}} (s_t, a_t) - V^{\pi_{\theta}} (s_t)
-    \label{eq:advantage-function-phi}
-\end{equation}
-
-\subsection{Value-Based Methods}
-
-\noindent Value-based methods aim to estimate the values $V^{\pi}(s)$ or action-values $Q^{\pi}(s, a)$ of states under a policy $\pi$, adopting a strategy to determine these optimal values first (\textcolor{deepblue}{\cite{SpinningUp2018}}). Consequently, these methods develop a deterministic policy optimized for exploitation by choosing actions that maximize expected returns, guided by choosing actions with respect to the greedy policy. RL literature, such as Sutton and Barto's book (\cite{Sutton1998}), heavily focus on explaining a lot these methods, but in our research we only utilized Q-function approximations with deep Q-learning, therefore we will mention the most notable value-based methods. We think its important to go trough these in a minimalistic way, since they help to build up intuititon for more complex approaches:
-
-\vspace{-2pt}
-
-\begin{itemize}[itemsep=1pt, parsep=0pt]
-    \item \textbdd{Value Iteration}: a dynamic programming method for finding either the optimal value function $V^{*}(s)$ or the optimal action-value function $Q^{*}(s, q)$ trough solving the Bellman Equations in an iterative way. It has been shown to converge if certain conditions are met  (\cite{dellavecchia}). Requires the model of the world; in particular, knowing $P(s', r | s, a)$ (\cite{Sutton1998}).
-
-    \item \textbdd{Monte-Carlo Methods}: estimate state or action values by averaging the returns from many complete episodes, updating value estimates only at the end of each episode. These methods do not use partial updates or rely on existing value estimates, instead depending solely on the total actual rewards received. Q-tables are used to maintain Q-values troughout the learning process. This makes the methods impossible to scale to very large problems (\cite{Sutton1998}).
-
-    \item \textbdd{Temporal Difference Methods}: due to the high variance associated with Monte Carlo methods, TD-learning introduces \textbdd{bootstrapping}, which updates Q-values using the immediate reward received and an estimate of future rewards, rather than relying solely on the total discounted return $G$. Two renowned methods fit into this category of algorithms: Q-Learning and SARSA (\cite{Sutton1998}).
-
-    \item \textbdd{n-step Methods}: essentially a combination of both trying to find a sweet spot between deep and shallow backups. Introduces the n-step SARSA, n-step Q-Learning algorithms (\cite{Sutton1998}).
-
-\end{itemize}
-
-\noindent Addressing major challenges in Q-learning, such as extremely poor scaling in large environments with vast state and action spaces, \textbdd{function approximation methods} have been developed. Notably, linear function approximation adopts a statistical approach, while deep Q-learning leverages artificial neural networks to estimate \textbdd{Q-values}. Our research primarily focuses on deep Q-learning, but a brief overview of linear function approximation is also beneficial for understanding the broader context of approximation methods in Q-learning. 
-
-\bigskip
-
-
-\noindent In linear function approximation, the objective is to approximate a value by using a linear combination of features and weights. Specifically for Q-function approximation, this involves representing the state space through a well-defined set of features, each assigned a specific weight. Instead of directly storing state-action pairs, the approach uses feature vectors $f(s,a)$, where each vector has a dimensionality of $n \times |A|$. Here, $n$ denotes the number of features, and $|A|$ represents the total number of possible actions (\textcolor{deepblue}{\cite{valuemethods}; \autoref{eq:feature-vector}}).
-
-\begin{equation}
-        f(s,a) = \begin{bmatrix}
-        f_1(s,a) \\
-        f_2(s,a) \\
-        \vdots \\
-        f_{n \times |A|}(s,a)
-        \end{bmatrix}
-    \label{eq:feature-vector}
-\end{equation}
-
-\noindent A weight vector of the same size $W$ is assigned to correspond with each feature-action pair. The final Q-value is then calculated as the linear combination of these feature vectors and weight vectors (\textcolor{deepblue}{\cite{valuemethods}; \autoref{eq:q-approx}}).
-
-\begin{equation}
-    Q(s, a \text{ | } W) = f_1(s, a) \cdot w_1^a + f_2(s, a) \cdot w_2^a + \hdots + f_n(s, a) \cdot w_n^a
-    \label{eq:q-approx}
-\end{equation}
-
-\noindent For effective weight updates in linear function approximation, it is crucial to start with a proper initialization technique and an update rule (\textcolor{deepblue}{\cite{valuemethods}; \autoref{eq:q-weight-update-rule}}). Given the linear nature of the model and the convexity of the optimization problem, these factors ensure convergence (\textcolor{deepblue}{\cite{2010Szepesvari}}).
-
-\begin{equation}
-    w_i^a = w_i^a + \alpha \cdot \delta f_i(s, a)
-    \label{eq:q-weight-update-rule}
-\end{equation}
-
-\noindent In deep Q-learning, the task of updating weights and engineering features for a statistical linear function approximator is done by an artificial neural network. This network automatically learns the features through its layers. A significant advantage of this approach is its versatility; the ANN can handle various types of environment representations, including images, gridmaps, videos, and text. The improved update rule becomes the following (\textcolor{deepblue}{\cite{valuemethods}; \autoref{eq:q-weight-update-rule-ann}}):
-
-\begin{equation}
-    \theta = \theta + \alpha \cdot \delta \cdot \nabla_{\theta} Q(s, a | \theta)
-    \label{eq:q-weight-update-rule-ann}
-\end{equation}
-
-\noindent In deep Q-learning, methods like DQN improve stability by using two neural networks: a primary Q network for updating Q-values and a separate target network, whose weights are periodically synced with the Q network, to provide a stable reference for updates.
-
-\subsection{Evolution Strategies}
-
-\noindent Evolutionary algorithms are a specific subset of optimization techniques that find unique applications in reinforcement learning. Though evolutionary algorithms and RL are strictly categorized as distinct subfields, evolutionary strategies are useful for neural network search and optimization, enhancing methods such as deep Q-learning and policy gradient techniques. Despite being less sample efficient than conventional RL algorithms, evolutionary algorithms require less computational resources and are easily parallelizable, leading to improved processing speeds (\textcolor{deepblue}{\cite{Yanes2021}}). 
-
-\bigskip
-
-\noindent Evolutionary algorithms draw inspiration from \textbdd{biological evolution}, utilizing processes such as reproduction, mutation, recombination, natural selection, and survival of the fittest. These mechanisms make them inherently profficient at exploration and optimization tasks. Among these, the \textbdd{genetic algorithm} (\textcolor{deepblue}{\cite{1975Holland}}) is a fairly well-known algorithm, simulating the process of natural selection inspired by Charles Darwin’s theory. However, a significant challenge with genetic algorithms is the encoding of the problem space, which does not always ensure the discovery of the most optimal solution, especially in vast search spaces.
-
-\bigskip
-
-\noindent We utilized a specific domain of evolution, called \textbdd{evolutionary artificial neural networks}, often termed Neuro-Evolution (\textcolor{deepblue}{\cite{Galvan_2021}}). These methods optimize neural network architecture by evolving topologies, connections, activation functions, the number of hidden layers, and even weights until an optimal solution is reached. Neuro-Evolution is particularly valuable in scenarios where domain-specific knowledge is limited, making it challenging to construct an optimal network architecture through conventional means. In our environment, neuroevolution has been employed to systematically explore the optimization space by conducting randomized searches for an optimal policy.
-
-\section{Environment} \label{sec:env}
-\label{sec:environment}
-
-\noindent The Lux AI Environment represents a 2D grid platform tailored for Multi-Agent Reinforcement Learning (MARL) research (\cite{chen2023emergent}), designed to tackle challenges in multi-variable optimization, resource acquisition, and allocation within a competitive 1v1 setting. Beyond optimization, proficient agents are tasked with adeptly analyzing their adversaries and formulating strategic policies to gain a decisive advantage (\textcolor{deepblue}{\cite{lux-ai-season-2}}). The environment is fully observed by all agents.
-
-\subsection{Map}
-
-\noindent The world of Lux is represented as a \textbdd{2D grid}. Coordinates increase east (right) and south (down). The map is always a square and has a variable size of 32, 48, 64 or 128 tiles. The (0, 0) coordinate is at the top left. The map has various features, including raw resources (Ice, Ore), refined resources (Water, Metal), units (Light, Heavy), Factories, Rubble, and Lichen. \textcolor{deepblue}{\autoref{fig:lux-map}} shows two possible generations of the game environment, visualizing different block types and resources. In our research, we utilized Lux AI S2 version $2.2.0$ as the engine for our experiments (\textcolor{deepblue}{\cite{luxais2_neurips_23}}).
-
-
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=1\linewidth]{images/intro_luxenv/map/resources.png}
-    \captionsetup{justification=justified, singlelinecheck=false, width=1\linewidth, labelfont=bf}    
-    \caption{Visual Representation of Lux 2D map types which exhibit unique layouts, each generated based on specific seeds \protect\footnotemark. In cave maps, resources are situated inside ravines, while mountain maps, presenting a more challenging terrain, hide resources beneath extensive rubble.}
-    \label{fig:lux-map}
-\end{figure}
-
-\footnotetext{The maps were generated using seeds $560$ and $788$.}
-
-\subsection{Early Game}
-\label{subsec:early-game}
-
-\noindent Each player will start the game by bidding on factory placement order, then alternating placing several factories and specifying their starting resources. Factory placement policies play a crucial role in speeding up the learning process within the game environment. By strategically situating units closer to resources, these policies establish a less cluttered and more conducive proximity environment, thereby promoting faster resource collection. Additionally, the introduction of bidding mechanisms enhances the competitive aspect of the game, compelling players to outbid one another for optimal factory spawn locations. Players are given starting resources for the bidding process. \textcolor{deepblue}{\autoref{fig:lux-map2}} shows map states after concluding the \textbdd{factory placement} and \textbdd{bidding tasks}.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=1\linewidth]{images/intro_luxenv/map/factories_units.png}
-    \captionsetup{justification=justified, singlelinecheck=false, width=1\linewidth, labelfont=bf}    
-    \caption{Visual representation of a random factory placement policy on the two generated maps presented on \textcolor{deepblue}{\autoref{fig:lux-map}}. For further restrictions on factory placement and bidding, please refer to the more in-depth documentation \protect\footnotemark.}
-    \label{fig:lux-map2}
-\end{figure}
-
-\footnotetext{Advanced specifications available on \href{https://github.com/Lux-AI-Challenge/Lux-Design-S2/blob/main/docs/advanced_specs.md}{GitHub.}}
-
-\subsection{Resources}
-
-\noindent The two kinds of raw resources shown in \textcolor{deepblue}{\autoref{fig:lux-map}}, Ice and Ore, can be refined by a factory into Water or Metal respectively. The raw resources are collected by Light or Heavy units and then dropped off once a unit transfers them to a friendly factory, which then automatically converts them into refined resources at a constant rate. Refined resources are used for growing Lichen, powering factories as well as building more units. For detailed conversion rates and restrictions on transferring resources, please refer to the documentation (\textcolor{deepblue}{\cite{lux-ai-season-2}}).
-
-\subsection{Actions}
-\label{subsec:lux-action}
-
-\noindent Units and factories can perform actions at each turn, given certain conditions and enough power to do so. In general, all actions are simultaneously applied and are validated against the state of the game at the start of each turn (\cite{chen2023emergent}). Every turn, players can give an action to each factory and a queue of actions to each unit. Units always execute actions from an action queue, which is limited to a size of 20, while factories directly execute actions. Players can choose to repeat actions for $n$ times, which further complicates the action queue. Submitting a new action queue for a robot requires the robot to use additional power to replace it's current action queue. It costs an additional $1$ power, for light units and an additional $10$ power, for heavy units. For further information regarding action queue updates and repeat handling, please, refer to the documentation (\textcolor{deepblue}{\cite{lux-ai-season-2}}). There are six possible action types that are simplified for easier understanding on \textcolor{deepblue}{\autoref{fig:lux-actions}}.
-
-\bigskip
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=1\linewidth]{images/intro_luxenv/action/action_space.png}
-    \captionsetup{justification=justified, singlelinecheck=false, width=1\linewidth, labelfont=bf} 
-    \caption{Simplified representation of all possible actions available in the Lux environment. Additional limits and restrictions are applied in the implementation of the engine (\textcolor{deepblue}{\cite{lux-ai-season-2}}).}
-    \label{fig:lux-actions}
-\end{figure}
-
-\noindent A factory is a building that takes up $3\times3$ tiles of space. Units created from the factory will appear at the center of the factory. Factories can assume passive roles with fixed heuristic action generation, alongside active roles where actions are learned. The action vectors for both factories and units are 1D vectors. Given $n$ units and $m$ factories, predicting action vectors yields matrices of $n\times6$ and $m\times1$, respectively. The response template to the \textbdd{Lux engine} conforms to the format illustrated in \textcolor{deepblue}{\autoref{fig:lux-actions_ex}}.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=1\linewidth]{images/intro_luxenv/action/action_example.png}
-    \captionsetup{justification=justified, singlelinecheck=false, width=1\linewidth, labelfont=bf}
-    \caption{Visual example of possible action vectors for both units and factories.}
-    \label{fig:lux-actions_ex}
-\end{figure}
-
-\subsection{Rubble Dynamics}
-
-\noindent Each square on the map has a rubble value, which affects how difficult that square is to move onto. Rubble value is an integer ranging from 0 to 100. Rubble can be removed from a square by a light or heavy unit by executing the dig action while occupying the square. This environment also has unit collisions. Units which move onto the same square on the same turn can be destroyed and add rubble to the square according to a list of extensive rules in the documentation (\textcolor{deepblue}{\cite{lux-ai-season-2}}).
-
-\subsection{Night Cycles}
-
-\noindent Night cycles are introduced as a complexity measure in the Lux Environment to enhance dynamism and continual change. The environment alternates between \textbdd{day cycles}, which last 30 steps, and \textbdd{night cycles}, which are 20 steps long. This alternation continues until the episode concludes at 1000 steps. During night cycles, the recharging capability of units is stopped, although factories continue to produce power without change (\textcolor{deepblue}{\cite{lux-ai-season-2}; \cite{chen2023emergent}}).
-
-\subsection{Win Condition}
-\label{sec:wincondition}
-
-\noindent A game can be resolved in four possible ways:
-
-\begin{itemize}[itemsep=1pt, parsep=0pt]
-\item 
-In the event that all factories belonging to a player explode, the opposing player is declared the winner.
-\item 
-If both players lose their last factories in the same step, the game ends in a draw.
-\item If each player maintains at least one operational factory, victory in the Lux AI environment is determined by the quantity of Lichen tiles under their control. Lichen watering serves a dual purpose: establishing victory conditions and generating additional power for factories. Due to the intricate nature of power calculations and lichen watering dynamics, we advise consulting the detailed documentation for further understanding (\textcolor{deepblue}{\cite{lux-ai-season-2}}).
-\item If the quantity of owned Lichen tiles match, the game concludes in a draw.
-\end{itemize}
-\noindent
+\subsection{Introductory Reinforcement Learning}
+\label{sec:rl}
+
+    \noindent Reinforcement Learning (RL) encapsulates all the processes through which agents learn optimal behaviors through exploration and the evaluation of actions based on rewards and penalties. This framework excels in single-agent, single-objective optimization scenarios because it directly aligns an agent's learning process with the maximization (or minimization) of a specific goal, enabling the agent to iteratively refine its strategy towards achieving optimal performance in well-defined environments (\textcolor{deepblue}{\cite{Lee_2020}}). Exploring advanced Reinforcement Learning topics necessitates a solid grasp of the fundamental RL concepts due to the technical complexity of the field. Specifically, Policy Optimization algorithms, which extend basic RL principles, are detailed and form the basis for further discussion. This discourse selectively highlights relevant concepts, omitting details beyond the scope of our research. For a thorough foundational understanding, the seminal work "Reinforcement Learning: An Introduction" by Sutton and Barto (\textcolor{deepblue}{\cite{Sutton1998}}) is an essential reference.
+    
+    \bigskip
+    
+    \begin{figure}[htbp]
+        \centering
+        \includegraphics[width=0.6\linewidth]{images/intro/background/rl_simple.png}
+         \captionsetup{justification=justified, singlelinecheck=false, width=1\linewidth, labelfont=bf}
+        \caption{The standard representation of the agent-environment control loop depicts the agent as the actuator and the environment as a sensor, sending signals to this actuator. These signals typically consist of reward signals, reflecting the efficacy of the agent's last action $a_t$, and a new environment signal $s_{t+1}$, updated based on the agent's actuator action $a_t$.}
+        \label{fig:rl_simple}
+    \end{figure}
+    
+    \noindent In reinforcement learning, the foundational components are the \textbdd{environment} and the \textbdd{agents} operating within it. Agents interact with the environment by executing actions informed by \textbdd{observations}, which may vary in terms of their completeness and detail. Based on these observations, the agent decides on \textbdd{actions}, influencing the environment, which can also change independently. The agent aims to maximize its \textbdd{total rewards} over time, known as the return, by learning optimal actions through its interactions. Reinforcement learning techniques enable this learning process by guiding the agent to achieve its goal of reward maximization.
+    
+    \bigskip
+    
+    \noindent In deep reinforcement learning, a state $s$ is a detailed representation of the environment, containing all pertinent information, while an observation $o$ provides a subset of this information, possibly omitting crucial details. Deep RL frameworks typically use vectors, matrices, or tensors to model these states and observations. For example, an image might be represented by its RGB values, and a robot's status by vectors of its joint angles and velocities. The environment's \textbdd{observability} is classified based on the agent's access to information: it is fully observed if the agent perceives the entire state, and partially observed if the agent only gets incomplete observations. We will not consider partial observability, since our work focuses only on a fully observed environment (\autoref{sec:environment}).
+    
+    \bigskip
+    
+    \noindent The \textbdd{action space} of an environment defines all possible actions an agent can execute. Environments may feature \textbdd{discrete} action spaces, where the choices are finite and distinct (\textcolor{deepblue}{\cite{mnih2013playing}; \cite{SilverHuangEtAl16nature}}), or \textbdd{continuous} action spaces, characterized by actions as real-valued vectors that offer a spectrum of possibilities. This research explores an environment that integrates both discrete and bounded continuous actions (\autoref{sec:environment}; \autoref{fig:lux-actions_ex}).
+    
+    \bigskip
+    
+    \noindent Regarding the actions available to the agent, we define the concept known as a \textbdd{policy}. Policies may be \textbdd{deterministic}, implying that, for a given state, the action selected is consistent and not derived from a probability distribution of actions (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:deterministic-policy}}).
+    
+    \begin{equation}
+        a_t = \mu(s_t)
+        \label{eq:deterministic-policy}
+    \end{equation}
+    
+    \noindent The chosen action can be \textbdd{stochastic}, derived by sampling from a probability distribution over possible actions (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:stochastic-policy}}).
+    
+    \begin{equation}
+        a_t \sim \pi_{\theta}(\cdot | s_t).
+        \label{eq:stochastic-policy}
+    \end{equation}
+    
+    \noindent In deep reinforcement learning we are dealing with parameterized policies, which are characterized by their outputs being computable functions reliant on a distinct parameter set, such as the weights inside an \textbdd{artificial neural network} (ANN), that we can adjust dynamically to the modify the actions of the agent via optimization methods. These weights are usually denoted by $\theta$ (\textcolor{deepblue}{\autoref{eq:stochastic-policy}}). In our research, we exclusively focus on stochastic policies to facilitate exploration; hence, discussions on deterministic policies are beyond the scope of this research.
+    
+    \bigskip
+    
+    \noindent The two primary stochastic policies implemented in current deep reinforcement learning frameworks are \textbdd{categorical} and \textbdd{diagonal Gaussian policies} (\textcolor{deepblue}{\cite{SpinningUp2018}}). Categorical policies are designed for discrete action spaces. Diagonal Gaussian policies, on the other hand, are appropriate for continuous action spaces. The Lux Environment utilizes discrete and bounded continuous action values within its action space (\autoref{sec:environment}; \autoref{fig:lux-actions_ex}), but for the purposes of simplification, we used a discretization technique known as \textbdd{binning}. This approach significantly improves performance in on-policy optimization (\textcolor{deepblue}{\cite{tang2020discretizing}}), allowing action prediction in continuous domains using categorical policies. These policies serve as classifiers within the action selection mechanisms, utilizing a neural network to process inputs and ending with a linear layer that generates \textbdd{logits} for each possible action. Logits represent the unnormalized scores output by the linear layer, which are then converted into a probabilistic distribution of actions through the softmax function.
+    
+    \bigskip
+    
+    \noindent A \textbdd{trajectory} (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:trajectory}}) represents a sequence composed of state-action pairs as experienced within the environment.
+    
+    \begin{equation}
+        \tau = (s_0, a_0, s_1, a_1, \hdots).
+        \label{eq:trajectory}
+    \end{equation}
+    
+    \noindent Typically, the initial state of the environment is drawn from a \textbdd{starting state distribution} (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:start-state-distrib}}).
+    
+    \begin{equation}
+        s_0 \sim \rho_0(\cdot).
+        \label{eq:start-state-distrib}
+    \end{equation}
+    
+    \noindent State transitions within an environment are dictated by the environment's inherent dynamics and depend on the previous action executed, represented by $a_t$. These transitions may follow a deterministic or stochastic pattern, as highlighted in (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:transition}}). 
+    
+    \begin{equation}
+        s_{t+1} \sim P(\cdot | s_t, a_t).
+        \label{eq:transition}
+    \end{equation}
+    
+    \noindent Specifically, the Lux Environment runs under deterministic rules, as detailed in \autoref{sec:environment}, ensuring that each action directly results in a predictable environmental update. Moving forward, we will term trajectories as \textbdd{rollouts}, adopting a standard nomenclature used in RL.
+    
+    \bigskip
+    
+    \noindent The reward function, represented by $R$ has diverse notational variations, with a common formulation involving the agent's current state, the action executed in that state, and the subsequent state resulting from the action (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:reward}}).
+    
+    \begin{equation}
+        r_t = R(s_t, a_t, s_{t+1})
+        \label{eq:reward}
+    \end{equation}
+    
+    \noindent The notation for reward is often simplified to depend solely on the state at timestep $t$, $R(s_t)$, or on both the current state and the recently executed action at timestep $t$, $R(s_t, a_t)$. The objective of the agent is to maximize the total accumulated reward throughout a rollout, denoted as $R(\tau)$ (\textcolor{deepblue}{\cite{Sutton1998}}). However, given the variety of possible returns, this notation can be ambiguous. The first concept of return encountered in the literature is termed the \textbdd{finite-horizon undiscounted return}, which aggregates the rewards collected within a predetermined rollout window (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:reward-undiscounted}}).
+    
+    \begin{equation}
+        R(\tau) = \sum_{t=0}^{T} r_t.
+        \label{eq:reward-undiscounted}
+    \end{equation}
+    
+    \noindent  Mathematically, the reward may not always converge to a finite value. To address this, the concept of \textbdd{infinite-horizon discounted return} is introduced, which applies a discount factor, $\gamma$ to future rewards. This discounting ensures convergence under suitable conditions. When $\gamma$ is set to 1, it results in the equivalent of an undiscounted return (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:reward-discounted}}).
+    
+    \begin{equation}
+        R(\tau) = \sum_{t=0}^{\infty} \gamma^{t}r_t.
+        \label{eq:reward-discounted}
+    \end{equation}
+    
+    \noindent The core goal of the agent is to adopt a policy that ensures the maximization of its expected return, regardless of the specific return metric or policy model used. In a deterministic environment, such as the one addressed in our research, the probability function $P(s_{t+1} | s_t, a_t)$ transforms into a deterministic relation $s_{t+1} = f(s_t, a_t)$. This modification indicates that state transitions are directly determined by the current state and action, simplifying the calculation of trajectory probabilities under a given policy $\pi$ (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:prob-func}}).
+    
+    \begin{equation}
+        P(\tau | \pi) = \rho_0(s_0)\prod_{t=0}^{T-1} \pi(a_t|s_t).
+        \label{eq:prob-func}
+    \end{equation}
+    
+    \noindent Given that the transitions are deterministic, the expectation of the return, $J(\pi)$, remains (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:expected-return}}):
+    
+    \begin{equation}
+        J(\pi) = \int_{\tau} P(\tau | \pi) R(\tau) = \mathbb{E}_{\tau \sim \pi} \text{ }[R(\tau)]
+        \label{eq:expected-return}
+    \end{equation}
+    
+    \noindent The optimization challenge in reinforcement learning involves identifying the \textbdd{optimal policy} by selecting the argument $\pi$ that maximizes the expected return (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:optimal-policy}}).
+    
+    \begin{equation}
+        \pi^* = \arg \max_{\pi} J(\pi),
+        \label{eq:optimal-policy}
+    \end{equation}
+    
+    \noindent with $\pi^*$ being the optimal policy.
+    
+    \bigskip
+    
+    \noindent \textbdd{Value functions} quantify expected rewards from given states or state-action pairs under defined policies. Value functions estimate the benefit of an agent being in a specific state and play a role, in some form, across nearly all reinforcement learning algorithms (\textcolor{deepblue}{\cite{SpinningUp2018}; \cite{AlMahamid_2021}}). The \textbdd{On-Policy Value Function} calculates the expected reward for being in state $s$ while following a specific policy $\pi$, essentially computing the expected reward across a trajectory $\tau$ (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:value}}).
+    
+    \begin{equation}
+        V^{\pi}(s) = \mathbb{E}_{\tau \sim \pi} \text{ }[R(\tau) | s_0 = s]
+        \label{eq:value}
+    \end{equation}
+    
+    \noindent The \textbdd{On-Policy Action-Value Function} estimates the value of starting in state $s$, taking an initial arbitrary action $a$, and thereafter adhering to policy $\pi$, providing a measure that parallels the On-Policy Value Function but starts with a specific action $a$ (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:action-value}}).
+    
+    \begin{equation}
+        Q^{\pi}(s, a) = \mathbb{E}_{\tau \sim \pi} \text{ }[R(\tau) | s_0 = s, a_0 = a]
+        \label{eq:action-value}
+    \end{equation}
+    
+    \noindent \textbdd{Optimal value functions} signify the maximum expected return obtainable from a state $s$ when following the optimal policy within an environment. Conversely, optimal action-value functions indicate the highest expected return achievable by executing an action $a$ in state $s$ and adhering to the optimal policy for all subsequent decisions. The optimal value function is defined as (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:optimal-value}}):
+    
+    \begin{equation}
+        V^{*}(s) = \underset{\pi}{\text{max }} \mathbb{E}_{\tau \sim \pi} \text{ }[R(\tau) | s_0 = s],
+        \label{eq:optimal-value}
+    \end{equation}
+    
+    \noindent while the optimal action-value function has the following form (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:optimal-action-value}}):
+    
+    \begin{equation}
+        Q^{*}(s, a) = \underset{\pi}{\text{max }} \mathbb{E}_{\tau \sim \pi} \text{ }[R(\tau) | s_0 = s, a_0 = a].
+        \label{eq:optimal-action-value}
+    \end{equation}
+    
+    \noindent In value and action-value functions, we assume an \textbdd{infinite-horizon discounted return} to ensure convergence. Without discounting, a finite horizon is required to avoid infinite returns, making the concept of expected return meaningless and impractical for RL tasks. In the undiscounted case, incorporating time as an argument is necessary to account for time-dependence. An equally important connection in literature is to define the value function in terms of the action-value function (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:act-val-1}; \autoref{eq:act-val-2}}), highlighting their integral relationship. The value function using the action-value function is defined as:
+    
+    \begin{equation}
+        V^{\pi}(s) = \mathbb{E}_{a \sim \pi} \text{ }[Q^{\pi}(s, a)]
+        \label{eq:act-val-1}
+    \end{equation}
+    
+    \noindent while the optimal value function using the optimal action-value function has the following form:
+    
+    \begin{equation}
+        V^{*}(s) = \underset{\text{a}}{\text{max }} [Q^{*}(s, a)]
+        \label{eq:act-val-2}
+    \end{equation}
+    
+    \noindent \textbdd{The Bellman Equations}, crucial to reinforcement learning, establish a recursive linkage between the value of a specific state and the values of its ensuing states. They assert that the optimal policy at any stage matches the optimal policy at all future stages, effectively stating that the value of a state equals the immediate reward plus the expected value of next states under the optimal policy. This principle ensures the consistency and optimality of decision-making across time. Bellman equations use \textbdd{on-policy} notation (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:bellman-value}; \autoref{eq:bellman-action-value}}), calculating state values or action-values based on a specified policy $\pi$ \protect \footnotemark. 
+    
+    \footnotetext{This notation sometimes leads to confusion with the concepts of on-policy and off-policy learning. In off-policy scenarios, though the equations appear similar, the policy $\pi$ refers to the target policy, whereas data collection follows a different behavior policy $\mu$.}
+    
+    \begin{equation}
+        V^{\pi}(s) = \mathbb{E}_{\underset{s' \sim P(\cdot | s, a)}{a \sim \pi(\cdot | s)}} \text{ } [r(s,a) + \gamma V^{\pi}(s')]
+        \label{eq:bellman-value}
+    \end{equation}
+    
+    \begin{equation}
+        Q^{\pi}(s, a) = \mathbb{E}_{s' \sim P(\cdot | s, a)} [r(s,a) + \gamma \text{ } \mathbb{E}_{a' \sim \pi(\cdot | s')} \text{ } Q^{\pi}(s', a')]
+        \label{eq:bellman-action-value}
+    \end{equation}
+    
+    \noindent For both value iteration and policy iteration algorithms, the Bellman equations ensure convergence to the optimal policy (\textcolor{deepblue}{\cite{Sutton1998}}), given enough iterations and under certain conditions, such as a finite state space or the presence of a discount factor in infinite horizons. The Bellman equations for optimal value and action-value functions resemble the on-policy framework, yet differ in action selection. Instead of sampling actions a from a state-dependent probability distribution, the optimal framework selects the action that maximizes the future value (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:bellman-optimal-value}; \autoref{eq:bellman-optimal-action-value}}).
+    
+    \begin{equation}
+        V^{*}(s) = \underset{\text{a}}{\text{max }} \mathbb{E}_{s' \sim P(\cdot | s, a} \text{ } [r(s,a) + \gamma \text{ }V^{*}(s')]
+        \label{eq:bellman-optimal-value}
+    \end{equation}
+    
+    \begin{equation}
+        Q^{*}(s, a) = \mathbb{E}_{s' \sim P(\cdot | s, a)} [r(s,a) + \gamma \underset{\text{a'}}{\text{ max }} \mathbb{E}_{a' \sim \pi(\cdot | s')} \text{ } Q^{*}(s', a')]
+        \label{eq:bellman-optimal-action-value}
+    \end{equation}
+    
+    \noindent In modern RL algorithms, the calculation of a so-called \textbdd{advantage function} plays a crucial role in optimal decision making. The advantage function quantifies the benefit of selecting a particular action $a$ in state $s$ compared to the average result of pursuing other available actions in the same state, given adherence to policy $\pi$ subsequently. The on-policy advantage function, $A^{\pi}(s, a)$, measures the expected benefit of choosing action $a$ compared to following the policy's action distribution in state $s$. This calculation involves subtracting the value function, representing the average benefit of being in state $s$, from the action-value function for a specific action $a$, thus determining a relative improvement over other actions (\textcolor{deepblue}{\cite{Sutton1998}; \autoref{eq:advantage}}). 
+    
+    \begin{equation}
+        A^{\pi}(s, a) = Q^{\pi}(s, a) - V^{\pi}(s)
+        \label{eq:advantage}
+    \end{equation}
+    
+    \noindent Our research environment (\autoref{sec:environment}) can be formulated as a fully-observable \textbdd{Markov Decision Process}, which is a formal notation framework for an agent's environment. It is mathematically represented to indicate adherence to the Markov property, meaning that state transitions do not rely on past history. At any given timestep $t$, the next state $s_{t+1}$ is influenced by the current state $s_t$ and the action $a_t$ taken at that state. In our study, we model our environment as an MDP (\textcolor{deepblue}{\cite{SpinningUp2018}}), represented by the tuple $\langle S, A, R, P, \rho_0 \rangle$, where:
+    
+    \vspace{-5pt}
+    
+    \begin{itemize}[itemsep=4pt, parsep=0pt]
+        \item $S$ is the set of all possible states, including map features, units, and resources.
+        \item $A$ encompasses the entire set of allowable actions, such as digging and moving.
+        \item $R : S \times A \times S \rightarrow \mathbb{R}$ is the reward function, devised based on a specific reward scheme.
+        \item $P : S \times A \times A_{adv} \rightarrow P(S)$ denotes the state transition probability function. This function is characterized as stochastic in adversarial environments. Transforming the setting to a cooperative scenario, or making the adversary passive, results in a deterministic transition probability of 1.
+        \item $\rho_0$ represents the starting state distribution, determined by a controlled seeding method.
+    \end{itemize}
+    
+    \noindent Modern RL algorithms fit into a diverse range of domains and applications. Our research focuses on \textbdd{model-free methods}, which operate without an explicit environmental model, restricting the ability to predict state transitions and rewards. This absence prevents the utilization of lookahead or planning techniques to enhance policy learning through forward simulation. Consequently, model-free approaches rely solely on empirical interactions heavily compromising sample efficiency. Moreover, the transferability of models learned from empirical data to real-world scenarios is limited, often requiring substantial computational resources for effective adaptation. 
+    
+    \bigskip
+    
+    \noindent In model-free learning, the agent cannot directly access the expected future rewards or the total distribution of the future states and rewards at the start of learning. Instead, these \textbdd{distributions must be approximated} through various methods that explore potential states and rewards within the environment. This concept is central to the multi-armed bandit problem (\cite{Sutton1998}), a form of statistical optimization where the agent must find the optimal balance between exploring the environment to accurately approximate the total distribution of rewards and states and exploiting the environment to maximize reward collection (\cite{Lorincz}). This framework comprises an evolutionary multi-objective optimization challenge (\cite{Zitzler2012}). Ideally, an agent could achieve a perfect distribution understanding through the law of large numbers with infinite samples and negligible time. However, in practice, resources are finite, and the goal becomes optimizing the utilization of given resources.
+    
+    \bigskip
+    
+    \noindent In the case of \textbdd{multi-armed bandits}, imagine a slot machine with $n$ levers, each lever dispensing rewards from a different and unknown distribution. The algorithm's goal is to devise an optimal strategy that balances the initial exploration of each lever — to collect sufficient data for approximating the distribution of rewards — with the exploitation of this data to maximize accumulated rewards by prioritizing levers with higher payouts (\cite{Sutton1998}). The complexity of finding an optimal solution increases with the complexity of the reward distributions, particularly if they are heavily skewed, irregular, or multimodal, as these require more samples to approximate accurately. For example, consider a lever that typically yields no or minimal rewards but, on rare occasions, dispenses the largest jackpot in the country. This scenario would necessitate more extensive sampling compared to a lever offering moderate but consistent payouts, where the reward distribution might closely resemble a uniform distribution.
+    
+    \bigskip
+    
+    \noindent Another distinction between algorithms is concerned with what is being learned by the agent, which can be \textbdd{policies}, \textbdd{value functions}, \textit{action-value functions} or the \textbdd{model of the environment}. There are two main approaches to represent model-free reinforcement learning: \textbdd{policy gradient methods} and \textbdd{value-based methods}.
+    
+    \bigskip
+    
+    \noindent To properly understand policy gradient methods, it's important to differentiate between an \textbdd{agent} and an \textbdd{entity} in the environment. In scenarios with a single agent, the policy is the learning entity controlling the algorithm while following a policy (\textcolor{deepblue}{\cite{Sutton1998}}). However, in multi-agent systems, it's necessary to distinguish between passive or heuristic entities and learning entities. The definition of an agent in multi-agent systems depends on how rewards are distributed across agents, whether based on global or local information, and how the policy is updated. If an entity in the environment is passive or follows a pre-defined heuristic operation, it's not considered an agent, but rather a passive entity. If the same rewards are distributed to all agents based on a single trajectory using global observation, the agent is considered the \textbdd{orchestrator}. Conversely, when rewards or other computations are allocated at the entity or group level, agents are referenced accordingly to those groups or individual entities. This approach may encompass all entities present on the map as agents, as rewards, advantages, and model updates are computed based on individual trajectories and at the individual level.
+    
+    \bigskip
+    
+    \noindent When dealing with multiple agents, the method of credit assignment must also be discussed. In a cooperative scenario, rewards must reflect not only the individual's achievement but also the shared goals of the entire team in order to drive the agent towards the desired degree of altruistic behavior. By forgoing team-based rewards, the agents might prefer to act in their own self-interest, while not providing them with enough \textbdd{selfish} rewards could result in their inability to learn basic functions due to the sparsity of the reward feedback. This phenomenon is called the credit assignment problem, and multiple approaches have been theorized for its mitigation. These include the utilization of counterfactual reward baselines (\cite{foerster2017counterfactual}) and forgoing the multi-agent aspect of the scenario entirely with the use of an orchestrator (\cite{chen2023emergent}).
+
+
+    \subsection{Policy Gradient Methods}
+    \label{sec:Policy-Gradient-Methods}
+
+        \noindent Policy optimization algorithms explicitly parameterize the policy by employing a set of parameters denoted as $\theta$. The objective of these algorithms is to optimize these parameters by optimization methods on the objective function, denoted as $J(\pi_\theta)$, which is the total expected return across a given trajectory $\tau$ (\textcolor{deepblue}{\cite{SpinningUp2018}}). Optimization techniques may also focus on maximizing local approximations of this function. These algorithms operate on an on-policy basis, meaning they use data generated from the current policy's actions to calculate updates. The process includes learning a value function approximator, $V_\theta(s)$, for the on-policy value function, $V^{\pi}(s)$, which assists in guiding policy updates.
+        
+        \bigskip
+        
+        \noindent To optimize the objective function $J(\pi_\theta)$ via gradient ascent, it's essential to define the concept of the \textbdd{policy gradient}, which represents the derivative of the expected reward with respect to the policy parameters $\theta$. This leads to the formulation of the parameter update rule as follows (\textcolor{deepblue}{\cite{SpinningUp2018}; \autoref{eq:param-update}}):
+        
+        \begin{equation}
+            \theta_{k+1} = \theta_k + \alpha \nabla_{\theta} J(\pi_{\theta})
+            \label{eq:param-update}
+        \end{equation}
+        
+        \noindent Policy gradient algorithms, including Trust Region Policy Optimization (\autoref{sec:trpo}), Proximal Policy Optimization (\autoref{sec:ppo}), Recurrent-PPO (\autoref{sec:rppo}), and Masked-PPO (\autoref{subsec:M-PPO}), form the basis of our research experiments presented. These algorithms utilize distinct update mechanisms, ratios and gradient clipping methods to steer the policy toward optimality (\textcolor{deepblue}{\cite{lehmann2024definitive}}). For implementation purposes, a generalized, computationally viable and numerically stable form of the update rule is adopted from vanilla policy gradient techniques. The derivation of the analytical gradient is beyond the scope of this study and is detailed in Sutton and Barto's book (\textcolor{deepblue}{\cite{Sutton1998}}).
+        
+        \bigskip
+        
+        \noindent The complete derivation of the vanilla policy gradient results in an expression representing the expected cumulative sum of the policy's log probability gradients, each weighted by the trajectory's total reward, across all possible trajectories (\textcolor{deepblue}{\cite{SpinningUp2018}; \autoref{eq:policy-gradient}}).
+        
+        \begin{equation}
+            \nabla_{\theta}J(\pi_{\theta}) = \mathbb{E}_{\tau \sim \pi_{\theta}} \left[ \sum_{t=0}^{T} \nabla_{\theta} \text{ log } \pi_{\theta}(a_t | s_t) \underbrace{R(\tau)}_{\text{ total reward }}\right]
+            \label{eq:policy-gradient}
+        \end{equation}
+        
+        
+        
+        \noindent Given the principle of the law of large numbers (\textcolor{deepblue}{\cite{Athreya2006}}), the expected form of the vanilla policy gradient can be estimated by aggregating a large volume of environment rollouts. By defining this set of rollouts as $D$, where the cardinality of the set is $|D| = N$, the formula for the vanilla policy gradient is accordingly updated for estimation (\textcolor{deepblue}{\cite{SpinningUp2018}; \autoref{eq:policy-gradient-sample}}).
+        
+        \begin{equation}
+            \hat{g} = \frac{1}{|D|} \sum_{r \in D} \sum_{t=0}^{T} \nabla_{\theta} \text{ log } \pi_{\theta}(a_t | s_t) R(\tau)
+            \label{eq:policy-gradient-sample}
+        \end{equation}
+        
+        \noindent State-of-the-art policy gradient algorithms adopt a refined version of this fundamental gradient update formula in their original implementations. The computability of the gradient of log probabilities of the policies with respect to the parameters, $\theta$, denoted by $\nabla_{\theta} \text{ log } \pi_{\theta}(a_t | s_t)$ has to be ensured (\textcolor{deepblue}{\cite{SpinningUp2018}}). As the sample size $N$ increases, the sample mean more closely approximates the true mean, resulting in a sample estimate with significantly reduced variance.
+        
+        \bigskip
+        
+        
+        \noindent In policy gradient methods, a key mathematical caveat involves the updates to the log probabilities of actions being directly proportional to $R(\tau)$ (\textcolor{deepblue}{\cite{SpinningUp2018}; \autoref{eq:policy-gradient}}), which represents the sum of rewards obtained throughout the whole trajectory $\tau$. This methodology may initially appear counterintuitive, as the objective is to condition agent behavior on the future outcomes of their actions, or the rewards accrued subsequent to a specific timestep $t$. By adjusting the vanilla policy gradient equation to utilize a \textbdd{reward-to-go} formulation instead of the total reward function, the policy gradient becomes more stable, achieving lower variance in parallel (\textcolor{deepblue}{\cite{SpinningUp2018}; \autoref{eq:policy-gradient-updated}}).
+        
+        \begin{equation}
+            \nabla_{\theta}J(\pi_{\theta}) = \mathbb{E}_{\tau \sim \pi_{\theta}} \left[ \sum_{t=0}^{T} \nabla_{\theta} \text{ log } \pi_{\theta}(a_t | s_t) \underbrace{\sum_{t'= t}^{T} R(s_{t'}, a_{t'}, s_{t'+1})}_{\text{reward-to-go}} \right]
+            \label{eq:policy-gradient-updated}
+        \end{equation}
+        
+        \noindent The \textbdd{reward-to-go} trick significantly enhances the calculation of policy gradients by addressing a specific optimization problem intrinsic in the vanilla policy gradient equation, known as the \textbdd{Expected Grad-Log-Prob (EGLP) Lemma} (\textcolor{deepblue}{\cite{SpinningUp2018}}). This lemma specifies that for a continuous probability distribution $P_0$ over a random variable $x$, when one integrates over $x$, differentiates both sides of the resulting equation, and then applies a log derivative trick, the outcome is the following (\textcolor{deepblue}{\cite{SpinningUp2018}; \autoref{eq:eglp-lemma}}):
+        
+        \begin{equation}
+            \mathbb{E}_{x \sim P_{\theta}} [ \nabla_{\theta} \text{ log } P_{\theta}(x)] = 0
+            \label{eq:eglp-lemma}
+        \end{equation}
+        
+        \noindent This equation shows that the product of the gradient of log probabilities with any function exclusively dependent on the current state $t$ will also yield zero. This introduces the baseline function, denoted as $b(s_t)$, which, when added to or subtracted from the reward-to-go component in (\textcolor{deepblue}{\cite{SpinningUp2018}; \autoref{eq:policy-gradient-updated}}), does not affect the expected value of the equation.
+        
+        \begin{equation}
+            \nabla_{\theta}J(\pi_{\theta}) = \mathbb{E}_{\tau \sim \pi_{\theta}} \left[ \sum_{t=0}^{T} \nabla_{\theta} \text{ log } \pi_{\theta}(a_t | s_t) \left( \sum_{t'= t}^{T} R(s_{t'}, a_{t'}, s_{t'+1}) - \underbrace{b(s_t)}_{\text{baseline}} \right) \right]
+            \label{eq:policy-gradient-baseline}
+        \end{equation}
+        
+        \noindent In policy gradient algorithms like PPO, TRPO, A2C, and VPG, the baseline function is set as the on-policy value function $V^{\pi}(s_t)$. Using $V^{\pi}(s_t)$ as a baseline improves stability and convergence but requires neural network estimation. This requires simultaneous updates to both the policy and the value function estimate, an approach found in \textbdd{actor-critic} methods, where the objective is typically defined by the mean-squared-error (MSE) loss (\textcolor{deepblue}{\cite{SpinningUp2018}; \autoref{eq:mean-squared-error}}).
+        
+        \begin{equation}
+            \phi_k = \text{arg }\underset{\phi}{\text{max }} \mathbb{E}_{s_t, \hat{R_t} \sim \pi_k} \left [ \left (  V_{\phi}(s_t) - \hat{R_t}    \right )^{2} \right]
+            \label{eq:mean-squared-error}
+        \end{equation}
+        
+        \noindent The final generalization of (\textcolor{deepblue}{\cite{SpinningUp2018}; \autoref{eq:policy-gradient}}) can be expressed as the following:
+        
+        \begin{equation}
+            \nabla_{\theta}J(\pi_{\theta}) = \mathbb{E}_{\tau \sim \pi_{\theta}} \left[ \sum_{t=0}^{T} \nabla_{\theta} \text{ log } \pi_{\theta}(a_t | s_t) \Phi_t \right], 
+            \label{eq:policy-gradient-general}
+        \end{equation}
+        
+        \noindent where the choice for $\Phi_t$ may include \textbdd{total reward} $\left(R(\tau)\right)$, \textbdd{reward-to-go} $\left(\sum_{t'= t}^{T} R(s_{t'}, a_{t'}, s_{t'+1})\right)$, \textbdd{reward-to-go + baseline} $\left(\sum_{t'= t}^{T} R(s_{t'}, a_{t'}, s_{t'+1}) - b(s_t)\right)$ or be determined by alternative approaches, such as the on-policy action-value function (\textcolor{deepblue}{\cite{SpinningUp2018}; \autoref{eq:action-value-function-phi}}):
+        
+        \begin{equation}
+            \Phi_t = Q^{\pi_{\theta}} (s_t, a_t),
+            \label{eq:action-value-function-phi}
+        \end{equation}
+        
+        \noindent or the advantage function with its refinement, \textbdd{General Advantage Estimation (GAE)}, employed in algorithms such as PPO and its variants, due to the necessity of estimating the advantage, which cannot be directly calculated (\textcolor{deepblue}{\cite{SpinningUp2018}; \autoref{eq:advantage-function-phi}}).
+        
+        \begin{equation}
+            \Phi_t = A^{\pi_{\theta}} (s_t, a_t) = Q^{\pi_{\theta}} (s_t, a_t) - V^{\pi_{\theta}} (s_t)
+            \label{eq:advantage-function-phi}
+        \end{equation}
+
+        \subsubsection{Trust Region Policy Optimization (TRPO)}
+        \label{sec:trpo}
+
+            \noindent Policy optimization techniques aim to make significant updates to the policy, but this approach has inherent limitations. Specifically, Vanilla Policy Gradient (VPG) methods lack regularization mechanisms, gradient clipping, or specific thresholds for policy updates (\textcolor{deepblue}{\cite{SpinningUp2018}}). This absence often results in a phenomenon known as policy collapse, primarily due to the high variance typically associated with policy gradient methods (\textcolor{deepblue}{\cite{dohare2023overcoming}}). In classical neural network architectures, updating the model’s parameters is straightforward because the loss function guides the adjustment of weights based on the deviation from known labels in the training dataset. However, in reinforcement learning, especially in model-free scenarios, this process becomes more complex. There is no explicit ground truth action for each state; instead, weight adjustments are guided by reward signals, which are often sparse and delayed, making it challenging to directly correlate actions to desired outcomes. This implies that in almost every deep RL task, there are some updates that push the policy gradients toward suboptimal directions. If such a negative update is relatively large, it can lead to a significant degradation of the policy, a situation from which the algorithm might not recover. This scenario is commonly referred to as \textbdd{policy collapse}.
+            
+            \bigskip
+            
+            \noindent Trust Region Policy Optimization (\textcolor{deepblue}{\cite{schulman2017trust}}) was the first among policy gradient methods to implement a hard limit on gradient updates, based on the Kullback-Leibler Divergence between the probability distributions of actions before and after the updates. This constraint ensures that the model's parameters remain close in the parameter space, thus helping the model mitigate potentially detrimental updates. The parameter update rule looks like the following (\textcolor{deepblue}{\cite{schulman2017trust}; \autoref{eq:trpo-update}}):
+            
+            \begin{equation}
+                \theta_{k+1} = \text{arg }\underset{\theta}{\text{max }} L(\theta_k, \theta) \quad \text{w.r.t.} \quad D_{KL}(\theta || \theta_k) \leq \delta,
+                \label{eq:trpo-update}
+            \end{equation}
+            
+            \noindent where $L(\theta_k, \theta)$ is defined as the \textbdd{surrogate advantage function}, which measures how much better does $\pi_{\theta}$ perform over $\pi_{\theta_k}$ (\textcolor{deepblue}{\cite{schulman2017trust}; \autoref{eq:surrogate-advantage}}).
+            
+            \begin{equation}
+                L(\theta_k, \theta) = \mathbb{\hat{E}}_{s, a \sim \pi_{\theta_k}} \left [ \underbrace{\frac{\pi_{\theta}(a | s)}{\pi_{\theta_k}(a | s)}}_{\text{importance sampling ratio}} \hat{A}^{\pi_{\theta_k}}(s, a)\right]
+                \label{eq:surrogate-advantage}
+            \end{equation}
+            
+            \noindent The update in \textcolor{deepblue}{\autoref{eq:trpo-update}}) is not straightforward to compute in an explicit way. Therefore, TRPO approximates the impact of a small change in policy parameters using a first-order Taylor series expansion. It linearly approximates how the objective function changes with a small change in parameters, constrained by a second-order Taylor expansion of the KL divergence to ensure the change is not too large (\textcolor{deepblue}{\cite{schulman2017trust}; \autoref{eq:trpo-update-approx}}).
+            
+            \begin{equation}
+                \theta_{k+1} = \text{arg }\underset{\theta}{\text{max }} g^T(\theta - \theta_k) \quad \text{w.r.t.} \quad \frac{1}{2}(\theta - \theta_k)^T H(\theta - \theta_k) \leq \delta
+                \label{eq:trpo-update-approx}
+            \end{equation}
+            
+            \noindent The above optimization problem is addressed using Lagrangian duality (\cite{KnowlesLagrangianDuality}), but potential inaccuracies from the Taylor approximation may not meet the KL divergence constraint, needing for a backtracking line-search for correct updates. Due to the computational intensity of directly calculating and storing the inverse Hessian, the conjugate gradient method (\cite{conjugate}) is employed for approximation.
+            
+            \begin{algorithm}[ht]
+            \caption{Trust Region Policy Optimization (\cite{schulman2017trust})} 
+            \label{alg:TRPO}
+            
+            \begin{algorithmic}[1]
+            \State \textbdd{Input:} Initial parameters for both the value, $\phi_0$, and policy functions, $\theta_0$.
+            \State \textbdd{Hyperparameters:} KL-divergence threshold, $\delta$, number of backtracks, $K$, and the backtracking coefficient, $\alpha$.
+            \For\textbdd{ $k = 0, 1, 2, \hdots$ }
+                \State Collect rollouts, $D_k$, using current policy $\pi_k$.
+                \State Compute the rewards-to-go term $\hat{R_t}$. 
+                \State Estimate the advantage function, $\hat{A_t}$, using any general advantage estimator.
+                \State Calculate the policy gradient based on \textcolor{deepblue}{\autoref{eq:policy-gradient-sample}}.
+                \State Utilize the conjugate gradient method to calculate:
+                \begin{equation*}
+                \hat{x_k} \approx \hat{H}^{-1}_{k} \hat{g_k}
+                \end{equation*}
+                \State Use backtracking line search to update the policy:
+                \begin{equation*}
+                \theta_{k+1} = \theta_k + \alpha^j \sqrt{\frac{2\delta}{\hat{x_k^T} \hat{H_k} \hat{x_k}}} \hat{x_k} 
+                \end{equation*}
+                \text{\hspace{18pt}where $j$ is the smallest possible integer value that satisfies the KL constraint.}
+                \State Approximate the value function $V_{\phi}(s_t)$ by mean-squared error:
+                \begin{equation*}
+                \phi_{k+1} = \arg \min_{\phi} \frac{1}{|D_k| T} \sum_{\tau \in D_k} \sum_{t=0}^{T} \left( V_\phi(s_t) - \hat{R_t} \right)^2
+                \end{equation*}
+                \text{\hspace{18pt} via a gradient descent algorithm.}
+            \EndFor
+            \end{algorithmic}
+            \end{algorithm}
+
+        \subsubsection{Advantage Actor Critic (A2C)}
+        \label{sec:a2c}
+
+            \noindent The Advantage Actor-Critic is a family of algorithms, including Asynchronous Advantage Actor Critic (A3C) and Advantage Actor Critic (A2C), and were developed by the Deepmind team at Google (\textcolor{deepblue}{\cite{mnih2016asynchronous}}). A3C employs multiple parallel actor-learners that asynchronously update a global network, introduced one year after Trust Region Policy Optimization (TRPO). A3C, notable for its asynchronicity, employed \textbdd{fixed-length episode segments} for both updates and advantage function calculations and it also utilized a shared feature extractor for the value and policy heads. As a highly influential algorithm at its time, A3C underwent extensive benchmarking across various Gym environments. These tests aimed to determine whether its asynchronous nature genuinely enhanced performance or if apparent improvements were due to unrelated factors, such as optimal hyperparameter settings or variability introduced by initialization and seeding techniques. One year after A3C's release, OpenAI conducted a comprehensive benchmark study on A3C, its synchronous counterpart A2C, and the ACKTR algorithms (\textcolor{deepblue}{\cite{wu2017scalable}}). The study concluded that the asynchronicity and the associated noise did not enhance the performance of A3C. Surprisingly, it was found that A2C, which employs the same architecture but synchronizes \textbdd{actor-learner} updates to a global network, performed comparably to A3C. Notably, in A2C, the actor-learners wait for each other and update the central network by averaging over the learners, a process that benefits from GPU parallelization. This contrasts with the original design of A3C, which was optimized for running on CPU threads to accelerate training.
+            
+            \bigskip
+            
+            \noindent The Advantage Actor Critic (A2C) algorithm computes its loss function using the advantage function, necessitating estimates of both state values and state-action values (\textcolor{deepblue}{\autoref{eq:advantage}}). This requirement may seem atypical as it implies the need for separate networks: one to estimate state values and another for action-value estimations. 
+            
+            \begin{equation}
+                L^{A2C}(\theta) = \mathbb{\hat{E}}_{t} \left [ \text{log } \pi_{\theta}(a_t | s_t) \hat{A}_t \right]
+                \label{eq:a2c-update}
+            \end{equation}
+            
+            \noindent From (\textcolor{deepblue}{\cite{mnih2016asynchronous}; \autoref{eq:a2c-update}}), it is clear that the advantage function, $\hat{A}_t$ is simply an approximation of the actual true advantage. However, this can be reformulated to include only the value functions, using the Bellman Equations (\textcolor{deepblue}{\autoref{eq:bellman-action-value}}). According to these equations, the expected return of taking action $a_t$ in state $s_t$ can be broken down into the immediate reward $r_{t+1}$ plus the discounted future returns, as estimated by the value function $V^{\pi}_{\phi}$ at the subsequent state $s(t+1)$ (\textcolor{deepblue}{\cite{mnih2016asynchronous}; \autoref{eq:a2c-advantage-estimation}}). 
+            
+            \begin{equation}
+                \hat{A}^{\pi}(s_t, a_t) = r(s_{t+1}, a_{t+1}) + \gamma V^{\pi}_{\phi}(s_{t+1}) - V^{\pi}_{\phi}(s_{t})
+                \label{eq:a2c-advantage-estimation}
+            \end{equation}
+            
+            \noindent The seminal A2C paper also introduced n-step Actor-Critic learning, which updates both the policy and the value function using an \textbdd{n-step lookahead}. This method complicates advantage estimation by requiring the calculation of the Temporal Difference \textbdd{(TD) target}, $r(s_{t+1}, a_{t+1}) + \gamma V^{\pi}_{\phi}(s_{t+1})$, across $n$ steps, from which the value of the state, at timestep $t$, under policy $\pi$, parameterized by $\phi$ is subtracted (\textcolor{deepblue}{\cite{mnih2016asynchronous}; \autoref{eq:a2c-advantage-estimation-n-step}}).
+            
+            \begin{equation}
+                \hat{A}^{\pi}(s_t, a_t) = \underbrace{{\sum_{i=0}^{n-1}} \left (\gamma^i r(s_{t+i}, a_{t+i}) + \gamma^n V^{\pi}_{\phi}(s_{t+n}) \right )}_{\text{n-step return}} - V^{\pi}_{\phi}(s_{t})
+                \label{eq:a2c-advantage-estimation-n-step}
+            \end{equation}
+            
+            \noindent In the official paper, the value head of the network, characterized as an n-to-1 linear projection connected to a CNN backbone is updated by minimizing the squared difference between the bootstrapped n-step return and the predicted value, which helps approximate $V_{\phi}(s_t)$ (\textcolor{deepblue}{\cite{mnih2016asynchronous}; \autoref{eq:a2c-value-optimization}}).
+            
+            \begin{equation}
+                \phi_{k+1} = \arg \min_{\phi} \frac{1}{2} \sum_{t=0}^{T} \left( V_\phi(s_t) - \hat{R_t} \right)^2
+                \label{eq:a2c-value-optimization}
+            \end{equation}
+            
+            
+            \noindent Additionally, as a method of regularization, entropy is added to the policy $\pi$ to enhance exploration rates, a technique shown to improve performance during exploration phases (\textcolor{deepblue}{\cite{penge}}). 
+            
+            \begin{equation}
+                \nabla_{\theta} L^{A2C}(\theta, \phi) = \hat{\mathbb{E}}_{t} \left [ \nabla_{\theta}\log \pi_{\theta}(a_t | s_t) (R_t - V_{\phi}(s_t)) + \underbrace{\beta \nabla_{\theta} H(\pi_{\theta}(s_t))}_{\text{entropy}} \right]
+                \label{eq:a2c-gradient-calculation}
+            \end{equation}
+            
+            \noindent As detailed in \textcolor{deepblue}{\cite{mnih2016asynchronous}; \autoref{eq:a2c-advantage-estimation-n-step}}, the final gradient calculation for the policy head enables us to optimize of parameters of the policy, $\theta$, using various techniques, including SGD, RMSProp or Adam.
+            
+            \begin{algorithm}[ht]
+            \caption{Advantage Actor Critic (A2C) - One Actor (\cite{mnih2016asynchronous})} 
+            \label{alg:A2C}
+            
+            \begin{algorithmic}[1]
+            \State \textbdd{Input:} Initial parameters for both the value, $\phi_0$, and policy functions, $\theta_0$.
+            \State \textbdd{Hyperparameters:} Number of lookahead steps, $n$, the strength of the entropy, $\beta$, and the global shared counter, $T$.
+            
+            \Repeat
+                \State Set back gradients to 0.
+                \State Synchronize thread-specific parameters for correct global updates.
+                \State Set thread step counter, $t$, to 1.
+                \Repeat
+                    \State Perform action according to current policy $\pi_{\theta}(a_t \mid s_t)$ and receive reward $r_t$
+                    \State $t = t + 1$
+                    \State $T = T + 1$
+                \Until current state is terminal or $t_{max}$ is reached.
+                \If{state is terminal}
+                    \State $R = 0$
+                \Else
+                    \State $R = V_{\phi}(s_t)$
+                \EndIf
+                \For{$i = \{t-1, \hdots,  t_{\text{start}}\}$}
+                    \State $R = r_i + \gamma R$
+                    \State Accumulate gradients using \textcolor{deepblue}{\autoref{eq:a2c-value-optimization}}.
+                    \State Accumulate gradients of \textcolor{deepblue}{\autoref{eq:a2c-gradient-calculation}} using SGD or RMSProp.
+                \EndFor
+                \State Perform asynchronous update of both $\theta$ and $\phi$.
+            \Until{$T > T_{\max}$}
+            \end{algorithmic}
+            \end{algorithm}
+            
+            \bigskip
+            
+            \noindent 
+            Interestingly, Proximal Policy Optimization (PPO) performs similarly to A2C when limited to a single training epoch (\textcolor{deepblue}{\cite{huang2022a2c}}). In this setting, $\pi_{\theta_{old}}$ and $\pi_{\theta}$ remain unchanged during the epoch, which means the clipping operation, a key feature in PPO's loss calculation, does not fire. As a result, PPO's loss function becomes identical to that of A2C, leading to the same gradient if the data input is the same. 
+            However, this observation should be taken with a grain of salt. In practical implementations, achieving perfect determinism in the code to ensure log ratios equal one is impossible.
+
+
+        \subsubsection{Proximal Policy Optimization (PPO)}
+        \label{sec:ppo}
+
+            \noindent Proximal Policy Optimization extends the principles established by TRPO (\autoref{sec:trpo}), with the aim of maximizing the magnitude of policy updates while ensuring they remain under certain controlled limits (\textcolor{deepblue}{\cite{schulman2017proximal}}). PPO distinguishes itself from TRPO by moving away from the use of hard KL-divergence constraints and second-order approximation methods, introducing two new approaches for computing policy gradients instead. The first variant, \textbdd{PPO-Penalty}, incorporates a dynamically adjusted KL-divergence penalty coefficient into the objective function, deviating from TRPO's fixed threshold approach. However, despite its flexibility, PPO-Penalty has not demonstrated any performance improvements over TRPO and, thus, will not be further discussed. In subsequent references to PPO, we will specifically refer to the more performant variant, \textbdd{PPO-Clip}. PPO-Clip lacks a KL-divergence term in its objective function and employs a \textbdd{clipping mechanism} that effectively limits the distance between old and updated policies.
+            
+            \bigskip
+            
+            \noindent PPO-Clip updates its policy using a formulation similar to that in \textcolor{deepblue}{\autoref{eq:trpo-update}}, where the loss function employs a surrogate advantage function represented by the ratio $r_t(\theta, \theta_k)$. This ratio, commonly referred to as the importance sampling ratio in the literature, measures the improvement of the current updated policy over the old policy. By applying this formulation to the TRPO loss function, (\textcolor{deepblue}{\cite{schulman2017proximal}; \autoref{eq:surrogate-advantage}}), we get the following equation:
+            
+            \begin{equation}
+                L^{PPO}(\theta_k, \theta) = \mathbb{\hat{E}}_{s, a \sim \pi_{\theta_k}} \left [ r_t(\theta) \hat{A}^{\pi_{\theta_k}}(s, a)\right]
+                \label{eq:PPO-loss}
+            \end{equation}
+            
+            
+            \noindent Without constraints, this loss function results in excessively large policy updates. To address this, PPO-Clip incorporates a \textbdd{clipping mechanism} on the probability ratio (\textcolor{deepblue}{\cite{schulman2017proximal}; \autoref{eq:PPO-loss-clipped}}) \protect\footnotemark.
+            
+            \begin{equation}
+                L^{PPO}(\theta_k, \theta) = \mathbb{\hat{E}}_{s, a \sim \pi_{\theta_k}} \left [ \text{min}(r_t(\theta, \theta_k) \hat{A}^{\pi_{\theta_k}}(s, a),\text{ clip}(r_t(\theta, \theta_k), 1-\epsilon, 1+\epsilon)\hat{A}^{\pi_{\theta_k}}(s, a)\right]
+                \label{eq:PPO-loss-clipped}
+            \end{equation}
+            
+            \footnotetext{It should be noted that the final objective function of PPO also incorporates an entropy term, $H(\pi_{\theta}(s_t))$, to increase exploration.}
+            
+            \noindent This complex- and daunting-looking loss function is surprisingly simple while effectively limiting the magnitude of policy updates in PPO-Clip. The first term within the empirical estimate is derived from the original loss functions used in both PPO and TRPO (\textcolor{deepblue}{\cite{schulman2017proximal}; \autoref{eq:PPO-loss}}), incorporating a modification to the surrogate objective function. The clipping mechanism limits the importance sampling ratio to the interval [$1-\epsilon, 1+\epsilon$]. If the ratio exceeds these bounds, it is clipped and then multiplied by the advantage estimate, calculated using methods from TRPO and A2C that involve the Bellman Equations and n-step returns (\textcolor{deepblue}{\autoref{eq:a2c-advantage-estimation-n-step}}). The min operation at the end establishes a conservative lower bound on the unclipped objective, effectively ignoring improvements in the probability ratio that would enhance the objective and only incorporating changes that would degrade it. There is a more intuitive approach to the loss function that simplifies the concept and helps build an understanding of the clipping mechanism (\textcolor{deepblue}{\cite{SpinningUp2018}; \cite{schulman2017proximal}; \autoref{eq:PPO-loss-clipped-simplified}}):
+            
+            \begin{equation}
+                L^{PPO}(\theta_k, \theta) = \mathbb{\hat{E}}_{s, a \sim \pi_{\theta_k}} \left [ \text{min}(r_t(\theta, \theta_k) \hat{A}^{\pi_{\theta_k}}(s, a)\text{, }g(\epsilon, \hat{A}^{\pi_{\theta_k}}(s, a))\right],
+                \label{eq:PPO-loss-clipped-simplified}
+            \end{equation}
+            
+            \noindent where $g$ takes the following form (\textcolor{deepblue}{\cite{SpinningUp2018}; \cite{schulman2017proximal}; \autoref{eq:PPO-gfunction}}):
+            
+            \begin{equation}
+                g(\epsilon, \hat{A}) = 
+                    \begin{cases} 
+                    (1 + \epsilon)\hat{A} & \text{if } \hat{A} \geq 0 \\
+                    (1 - \epsilon)\hat{A} & \text{if } \hat{A} < 0 
+                    \end{cases}
+                \label{eq:PPO-gfunction}
+            \end{equation}
+            
+            \noindent When examining the case where the advantage estimate is positive, the term $g$ becomes $(1+\epsilon)\hat{A}$, suggesting that the advantage supports a positive direction in the surrogate objective. Since $\hat{A}$ appears in both terms within the \textbdd{min} function, we can factor it out, simplifying the expression to: $\min(r_t(\theta, \theta_k), (1+\epsilon))$. This indicates that if $\pi_{\theta}(a|s)$ exceeds $(1+\epsilon)\pi_{\theta_k}(a|s)$, the \textbdd{min} function fires, adding a ceiling of $(1+\epsilon)\hat{A}$ on the policy update. Similarly, if the advantage estimate $\hat{A}$ is negative, the objective will only increase if the selected action becomes less likely in the future, meaning a decrease in $\pi_{\theta}(a|s)$. When factoring out the negative advantage estimate, care must be taken due to the negative sign inside $(1-\epsilon)$. This detail converts the \textbdd{min} function to a \textbdd{max} function. This change imposes a ceiling of \( (1-\epsilon)\hat{A} \) on the policy updates, effectively limiting how much the policy can adjust in response to actions that degrade the final objective.
+            
+            \bigskip
+            
+            \noindent Surprisingly, heavily adopted implementations of PPO integrate both clipping mechanisms and KL-Divergence thresholds to maintain controlled policy updates (\textcolor{deepblue}{\cite{shengyi2022the37implementation}}). It has been demonstrated in various instances that clipping alone is insufficient to limit excessive updates to the model (\textcolor{deepblue}{\cite{stable-baselines-issue213}}). If the KL-Divergence exceeds a predefined limit, the update process is stopped early. In practice, PPO utilizes \textbdd{fixed-length trajectory segments}, where a single learner collects a specified number of steps ($N$) in multiple environments ($M$) before proceeding to update the model. This structured approach categorizes the learning process into two parts: a \textbdd{rollout phase} and a \textbdd{learning phase}. For updates, PPO utilizes \textbdd{minibatches} randomly sampled from the rollout batch, allowing certain steps to be sampled multiple times. Additional implementation details, not specified in the seminal paper, include the necessity for clipping the value function as well (\textcolor{deepblue}{\cite{Engstrom2020Implementation}}) and the application of \textbdd{clip range annealing}, similar to learning rate annealing. 
+            
+            \begin{algorithm}[htbp]
+            \caption{PPO-Clip (\cite{schulman2017proximal})} 
+            \label{alg:PPO-Clip}
+            
+            \begin{algorithmic}[1]
+            \State \textbdd{Input:} Initial parameters for both the value, $\phi_0$, and policy functions, $\theta_0$.
+            \State \textbdd{Hyperparameters:} KL-divergence threshold, $\delta$, and the clip threshold, $\epsilon$.
+            \For\textbdd{ $k = 0, 1, 2, \hdots$ }
+                \State Collect rollouts, $D_k$, using current policy $\pi_k$.
+                \State Compute the rewards-to-go term $\hat{R_t}$. 
+                \State Estimate the advantage function, $\hat{A_t}$, using any general advantage estimator.
+                \State Update the policy by maximizing the clipped PPO objective: 
+                \begin{equation*}
+                \theta_{k+1} = \arg \max_{\theta} \frac{1}{|D_k| T} \sum_{\tau \in D_k} \sum_{t=0}^{T} \text{min}\left (r_t(\theta, \theta_k) \hat{A}^{\pi_{\theta_k}}(s_t, a_t)\text{, }g(\epsilon, \hat{A}^{\pi_{\theta_k}}(s_t, a_t)\right),
+                \end{equation*}
+                \text{\hspace{16pt} using optimization techniques such as SGD, RMSProp, or Adam.}
+                \State Approximate the value function $V_{\phi}(s_t)$ by mean-squared error:
+                \begin{equation*}
+                \phi_{k+1} = \arg \min_{\phi} \frac{1}{|D_k| T} \sum_{\tau \in D_k} \sum_{t=0}^{T} \left( V_\phi(s_t) - \hat{R_t} \right)^2
+                \end{equation*}
+                \text{\hspace{16pt} via a gradient descent algorithm.}
+            \EndFor
+            \end{algorithmic}
+            \end{algorithm}
+
+        \subsubsection{Recurrent Proximal Policy Optimization (R-PPO)}
+        \label{sec:rppo}
+
+            \noindent R-PPO (\textcolor{deepblue}{\cite{pleines2022generalization}; \cite{stable-baselines3}}), a recurrent variant of the Proximal Policy Optimization (PPO) algorithm (\autoref{sec:ppo}), integrates\textbdd{LSTM layers} to establish a recurrent policy framework. This enables the policy to consider not only the current state but also the historical information from the agent’s past interactions, encapsulated in the hidden state $h_t$ at each timestep. This adaptation makes the action selection at each timestep dependent on both the state $s_t$ and $h_t$. This architecture is particularly advantageous in environments characterized by partial observability, or\textbdd{Partially Observable Markov Decision Processes (POMDPs)}, where the recurrent nature allows the policy to access a more extensive portion of the observational history from an experience replay. Additionally, R-PPO is well-suited for longer or continuous tasks that are not episodic, as recurrence can capture\textbdd{temporal dependencies} across extended periods. Recurrence was not initially introduced in policy gradient methods but was first explored in Deep Q-Networks (DQN) (\textcolor{deepblue}{\cite{andrychowicz2021what}}). These networks experimented with the ways in which episodes and their corresponding hidden states are sampled from an experience replay buffer.
+            
+            \bigskip
+            
+            \noindent In terms of implementation, most approaches (\textcolor{deepblue}{\cite{shengyi2022the37implementation}}) employ a convolutional neural network backbone linked to an LSTM or a dual-stream transformer. The outputs are then processed through either shared or separate feature extractors for the value and policy heads of the PPO. Some implementations also feature a shared linear layer before diverging into two distinct extractors. The loss functions of PPO and its recurrent variant, R-PPO, are largely similar, with a key difference in the importance of the sampling ratio. In R-PPO, both $\pi_{\theta}$ and $\pi_{\theta_k}$ depend on the hidden state of the recurrent layer, expressed as: $\pi_{\theta}(a_t | s_t, h_t)$ (\textcolor{deepblue}{\cite{pleines2022generalization}; \autoref{eq:R-PPO-ration}}).
+            
+            \begin{equation}
+                r_t(\theta, \theta_k) = \frac{\pi_{\theta}(a_t | s_t, h_t)}{\pi_{\theta_k}(a_t | s_t, h_t)}
+                \label{eq:R-PPO-ration}
+            \end{equation}
+            
+            \noindent Incorporating LSTM layers into a model significantly modifies the processing of rollout data, modifies the loss function (\textcolor{deepblue}{\cite{pleines2022generalization}; \autoref{eq:R-PPO-ration}}), and requires adjustments to the forward pass. Unlike the original PPO, which processes minibatches of potentially truncated data from the rollout buffer due to predetermined trajectory lengths, LSTM necessitates orderly processing of sequences to maintain temporal dependencies (\textcolor{deepblue}{\cite{shengyi2022the37implementation}}). This requires that rollout data be segmented into episodes, which are then divided into smaller sequences of fixed lengths. Given that episode lengths are different, maintaining a fixed\textbdd{sequence length}, unless it matches the lengths of episodes, can lead to padding shorter episodes with many zero-filled steps. This padding introduces substantial noise into the LSTM's input sequences, complicating the learning process and necessitating a masking procedure for loss calculation.
+            
+            \bigskip
+            
+            \noindent Correctly managing the hidden state is crucial when incorporating LSTMs into a model. The output hidden state from one sequence must serve as the input hidden state for the subsequent sequence, a process known as \textbdd{truncated backpropagation through time} (\textcolor{deepblue}{\cite{tallec2017unbiasing}}). Additionally, it is more efficient to process the entire batch of data through the network's backbone before segmenting it for the LSTM layers. After processing through the recurrent layers, the data must be reshaped once again to feed into the final linear projection layers for both the policy and value heads.
+            
+            \bigskip
+            
+            \noindent There is an ongoing debate about the benefits of refreshing advantages and hidden states before each minibatch epoch in policy gradient methods. Research indicates that recalculating advantage estimates prior to each epoch can significantly enhance the performance of these methods (\textcolor{deepblue}{\cite{andrychowicz2021what}}). Similarly, studies suggest that updating hidden states before collecting experiences and recalculating them before each minibatch epoch can notably improve the performance of R-PPO (\textcolor{deepblue}{\cite{kapturowski2018recurrent}; \cite{GuptaRecurrentPPO}}). However, other sources contend that recalculating advantages before every minibatch epoch does not yield substantial improvements (\textcolor{deepblue}{\cite{pleines2022generalization}}).
+
+        \subsubsection{Masked Proximal Policy Optimization (M-PPO)}
+        \label{subsec:M-PPO}
+
+            \noindent\textbdd{Action masking} is a significantly underutilized tool in Reinforcement Learning that enables a learning agent to avoid sampling invalid actions from the action space distribution (\textcolor{deepblue}{\cite{Huang_2022}}). These invalid actions, determined by the constraints of the environment, can significantly reduce the effective size of the action space. For example, OpenAI's Dota AI (\textcolor{deepblue}{\cite{openai2019dota}}) operates within an action space that has over 1.8 million dimensions, where a substantial number of actions—such as moving to invalid spaces, buying items without sufficient in-game currency, or using spells without the required resources—are infeasible. Action masking can effectively reduce this to a small fraction. Despite its simplicity, action masking is rarely discussed in academic literature, with only a few seminal papers addressing it (\textcolor{deepblue}{\cite{vinyals2017starcraft}; \cite{malmo}}). Invalid action masking produces a valid policy gradient in policy optimization methods.
+            
+            \bigskip
+            
+            \noindent Invalid action masking can be implemented through various methods, each differing in scalability and effectiveness (\textcolor{deepblue}{\cite{SpinningUp2018}}). One approach is to assign \textbdd{negative penalties} to invalid actions, which can exponentially increase the hyperparameter space with the number of invalid actions. This method typically yields unfeasible reward shaping requirements and is generally not recommended (\textcolor{deepblue}{\cite{app13148283}; \cite{dietterich1999hierarchical}}). More efficient techniques include \textbdd{true} and \textbdd{naive invalid action masking}, which directly prevent the selection of infeasible actions, improving the sample efficiency of an RL algorithm. 
+            
+            \bigskip
+            
+            \noindent The former operates by modifying the output logits of infeasible actions before converting these logits into a probability distribution from which actions are sampled. Specifically, the logits for invalid actions are set to an extremely large negative value (\textcolor{deepblue}{\autoref{fig:invalid-action-masking}}), effectively causing the softmax function to assign a near-zero probability to these actions (\textcolor{deepblue}{\cite{Huang_2022}}). However, this approach should be approached with caution due to potential issues with seeding and different implementations of categorical distributions in PyTorch or Tensorflow and inherent numerical uncertainties, which can result in this process not being entirely deterministic in masking out actions. The naive invalid action masking method employs a renormalized policy that ensures no invalid action can be chosen. However, it updates the gradient based on the unnormalized policy, which still includes the invalid actions. This method is termed \textbdd{naive} because it does not alter the logit values of invalid actions; instead, it simply renormalizes the probabilities across the valid actions in the policy.
+            
+            \bigskip
+            
+            \begin{figure}[htbp]
+                \centering
+                \includegraphics[width=1\linewidth]{images/methods_algos/m_ppo/invalidactionmasking.png}
+                \captionsetup{justification=justified, singlelinecheck=false, width=1\linewidth, labelfont=bf} 
+                \caption[]{A high-level overview of how invalid action masking affects the final action distribution. Note that logits here represent the log probabilities of actions and are sent through a masking procedure where invalid actions are filtered out. After masking, exponentiation is applied to convert these log probabilities back into raw probabilities. Subsequently, normalization is performed to transform these probabilities into a valid probability distribution.}
+                \label{fig:invalid-action-masking}
+            \end{figure}
+            
+            \noindent Studies have demonstrated that both true and naive invalid action masking methods perform comparably up to a certain point, with minor differences in convergence times (\textcolor{deepblue}{\cite{Huang_2022}}). Convergence is context-specific, typically defined by the learning agent consistently reaching a predetermined performance threshold. However, naive invalid action masking has some drawbacks, such as susceptibility to KL divergence explosion, which can result in significantly larger policy updates compared to true invalid action masking. Additionally, naive invalid action masking is sensitive to increases in environment size; for example, scaling up the size of a grid world map can significantly impair performance.
+            
+            \bigskip
+            
+            \noindent Now that we have explored the intricacies behind action masking, what exactly is M-PPO, and how does it function in practice? Simply put, M-PPO modifies the standard PPO (\autoref{sec:ppo}) algorithm by incorporating \textbdd{domain knowledge} into action selection, thus guiding gradient updates faster towards a global optimum. M-PPO is essentially a straightforward extension of the original PPO algorithm. At first glance, it may seem like a \textbdd{cheat code}, and indeed, it could potentially be used as such. Theoretically, one could build the heuristics behind the invalid action masking within a system to render the algorithm completely deterministic, adhering to a\textbdd{logic-based approach}. However, such modifications are purely hypothetical and would likely hold little practical value or relevance in real-world applications.
+
+    \subsection{Value-Based Methods}
+    \label{subsec:value-based-methods}
+        
+        \noindent Value-based methods aim to estimate the values $V^{\pi}(s)$ or action-values $Q^{\pi}(s, a)$ of states under a policy $\pi$, adopting a strategy to determine these optimal values first (\textcolor{deepblue}{\cite{SpinningUp2018}}). Consequently, these methods develop a deterministic policy optimized for exploitation by choosing actions that maximize expected returns, guided by choosing actions with respect to the greedy policy. RL literature, such as Sutton and Barto's book (\cite{Sutton1998}), heavily focus on explaining a lot these methods, but in our research we only utilized Q-function approximations with deep Q-learning, therefore we will mention the most notable value-based methods. We think its important to go trough these in a minimalistic way, since they help to build up intuititon for more complex approaches:
+        
+        \vspace{-2pt}
+        
+        \begin{itemize}[itemsep=4pt, parsep=0pt]
+            \item \textbdd{Value Iteration}: a dynamic programming method for finding either the optimal value function $V^{*}(s)$ or the optimal action-value function $Q^{*}(s, q)$ trough solving the Bellman Equations in an iterative way. It has been shown to converge if certain conditions are met  (\cite{dellavecchia}). Requires the model of the world; in particular, knowing $P(s', r | s, a)$ (\cite{Sutton1998}).
+        
+            \item \textbdd{Monte-Carlo Methods}: estimate state or action values by averaging the returns from many complete episodes, updating value estimates only at the end of each episode. These methods do not use partial updates or rely on existing value estimates, instead depending solely on the total actual rewards received. Q-tables are used to maintain Q-values troughout the learning process. This makes the methods impossible to scale to very large problems (\cite{Sutton1998}).
+        
+            \item \textbdd{Temporal Difference Methods}: due to the high variance associated with Monte Carlo methods, TD-learning introduces \textbdd{bootstrapping}, which updates Q-values using the immediate reward received and an estimate of future rewards, rather than relying solely on the total discounted return $G$. Two renowned methods fit into this category of algorithms: Q-Learning and SARSA (\cite{Sutton1998}).
+        
+            \item \textbdd{n-step Methods}: essentially a combination of both trying to find a sweet spot between deep and shallow backups. Introduces the n-step SARSA, n-step Q-Learning algorithms (\cite{Sutton1998}).
+        
+        \end{itemize}
+        
+        \noindent Addressing major challenges in Q-learning, such as extremely poor scaling in large environments with vast state and action spaces, \textbdd{function approximation methods} have been developed. Notably, linear function approximation adopts a statistical approach, while deep Q-learning leverages artificial neural networks to estimate \textbdd{Q-values}. Our research primarily focuses on deep Q-learning, but a brief overview of linear function approximation is also beneficial for understanding the broader context of approximation methods in Q-learning. 
+        
+        \bigskip
+        
+        
+        \noindent In linear function approximation, the objective is to approximate a value by using a linear combination of features and weights. Specifically for Q-function approximation, this involves representing the state space through a well-defined set of features, each assigned a specific weight. Instead of directly storing state-action pairs, the approach uses feature vectors $f(s,a)$, where each vector has a dimensionality of $n \times |A|$. Here, $n$ denotes the number of features, and $|A|$ represents the total number of possible actions (\textcolor{deepblue}{\cite{valuemethods}; \autoref{eq:feature-vector}}).
+        
+        \begin{equation}
+                f(s,a) = \begin{bmatrix}
+                f_1(s,a) \\
+                f_2(s,a) \\
+                \vdots \\
+                f_{n \times |A|}(s,a)
+                \end{bmatrix}
+            \label{eq:feature-vector}
+        \end{equation}
+        
+        \noindent A weight vector of the same size $W$ is assigned to correspond with each feature-action pair. The final Q-value is then calculated as the linear combination of these feature vectors and weight vectors (\textcolor{deepblue}{\cite{valuemethods}; \autoref{eq:q-approx}}).
+        
+        \begin{equation}
+            Q(s, a \text{ | } W) = f_1(s, a) \cdot w_1^a + f_2(s, a) \cdot w_2^a + \hdots + f_n(s, a) \cdot w_n^a
+            \label{eq:q-approx}
+        \end{equation}
+        
+        \noindent For effective weight updates in linear function approximation, it is crucial to start with a proper initialization technique and an update rule (\textcolor{deepblue}{\cite{valuemethods}; \autoref{eq:q-weight-update-rule}}). Given the linear nature of the model and the convexity of the optimization problem, these factors ensure convergence (\textcolor{deepblue}{\cite{2010Szepesvari}}).
+        
+        \begin{equation}
+            w_i^a = w_i^a + \alpha \cdot \delta f_i(s, a)
+            \label{eq:q-weight-update-rule}
+        \end{equation}
+        
+        \noindent In deep Q-learning, the task of updating weights and engineering features for a statistical linear function approximator is done by an artificial neural network. This network automatically learns the features through its layers. A significant advantage of this approach is its versatility; the ANN can handle various types of environment representations, including images, gridmaps, videos, and text. The improved update rule becomes the following (\textcolor{deepblue}{\cite{valuemethods}; \autoref{eq:q-weight-update-rule-ann}}):
+        
+        \begin{equation}
+            \theta = \theta + \alpha \cdot \delta \cdot \nabla_{\theta} Q(s, a | \theta)
+            \label{eq:q-weight-update-rule-ann}
+        \end{equation}
+        
+        \noindent In deep Q-learning, methods like DQN (\autoref{sec:dqn}) improve stability by using two neural networks: a primary Q network for updating Q-values and a separate target network, whose weights are periodically synced with the Q network, to provide a stable reference for updates.
+
+        \subsubsection{Deep Q Network (DQN)}
+        \label{sec:dqn}
+            
+            \noindent The fundamental concept behind Deep Q-Networks (DQNs) builds on the principles of classical Q-Learning, aiming to estimate the action-value function using the Bellman Equations to ensure convergence through value iteration (\textcolor{deepblue}{\cite{mnih2013playing}; \cite{stable-baselines3}}). However, this approach often struggles in practice due to issues like scalability and limited generalization. Value iteration and Q updates, which rely on sequences of actions in the environment, introduce a temporal sequence bias. This bias persists even in function approximators, whether they are linear or neural networks, that attempt to estimate the action-value function through parameterized approximations. DQNs are trained using neural network function approximators by minimizing a specific loss function (\textcolor{deepblue}{\cite{mnih2013playing}; \autoref{eq:Q-neural-loss}}).
+            
+            \begin{equation}
+                L^{DQN}(\theta_k, \theta) = \mathbb{E}_{s, a \sim \pi_{\theta_k}} \left [ \left (  \mathbb{E}_{s' \sim \epsilon} \left [ r + \gamma \underset{a'}{\text{ max}} Q(s', a' | \theta_k ) \right] - Q(s, a | \theta)  \right )^2\right]
+                \label{eq:Q-neural-loss}
+            \end{equation}
+            
+            
+            \noindent In Deep Q-Networks (DQNs), the target value within the loss function, which might seem counterintuitive in classical supervised learning settings where targets are predefined, is dynamically determined. The target for a DQN is composed of the immediate reward received from taking action $a$ in state $s$ plus the discounted future rewards, calculated using the latest frozen network parameters while taking the greedy action. This creates the \textbdd{target Q-value}. The loss function then measures the squared difference between the \textbdd{predicted Q-value} by the network and this target Q-value, effectively guiding the network's learning process.
+            
+            \bigskip
+            
+            \noindent Here, it is necessary to introduce how DQNs address the temporal bias in Q-Learning by incorporating an experience replay buffer (\textcolor{deepblue}{\cite{fedus2020revisiting}}). This buffer stores agent experiences at each timestep as $e_t = (s_t, a_t, r_t, s_{t+1})$ in a dataset, denoted $D$. To combat sequence bias and improve generalization, DQNs update Q-functions using minibatches randomly sampled from these stored experiences. Additionally, a new replay buffer has been introduced called the \textbdd{Prioritized Replay}, which enhances this mechanism by selectively sampling experiences where there is a significant distance between actual and expected rewards, thus correcting the inaccurate reward assumptions of the model.
+            
+            \bigskip
+            
+            \noindent Usually, like with any other state-of-the-art algorithm, DQNs optimize the loss function in minibatches from experience replay, thus using stochastic gradient descent methods. Q-learning is \textbdd{off policy}, meaning it follows and \textbdd{e-greedy behavior policy} and learns about the greedy policy. This makes the gradient of the loss as the following (\textcolor{deepblue}{\cite{mnih2013playing}; \autoref{eq:Q-neural-loss-gradient}}):
+            
+            \begin{equation}
+                \nabla_{\theta} L^{DQN}(\theta_k, \theta) = \mathbb{E}_{s, a \sim \pi_{\theta_k}; s' \sim \epsilon} \left [ \left ( r + \gamma\underset{a'}{\text{ max}}Q(s', a' | \theta_k) - Q(s, a | \theta) \right ) \nabla_\theta Q(s, a | \theta) \right].
+                \label{eq:Q-neural-loss-gradient}
+            \end{equation}
+            
+            \noindent The team behind DeepMind and the seminal paper did not provide a detailed description of the hyperparameters used nor any substantial information on hyperparameter annealing, or detailed, statistically significant evaluation metrics. Instead, they relied on reward as the primary performance metric during evaluation phases (\textcolor{deepblue}{\cite{mnih2013playing}}). However, using reward as a metric can be problematic since the reward system itself is a hyperparameter. It is susceptible to abrupt changes and large deviations that may not accurately reflect the agent's actual performance. 
+            
+            \bigskip
+            
+            \noindent OpenAI has found that \textbdd{epsilon annealing} is essential for early exploration and later exploitation in the training processes (\textcolor{deepblue}{\cite{baselines}}). Additionally, DQNs should use a version of \textbdd{Huber Loss} (\textcolor{deepblue}{\cite{wiki:Huber_loss}}), a smoothed mean-squared error loss that clips the multiplicative term during gradient computation, a method that closely resembles the regularization strategies utilized in TRPO and PPO through setting thresholds or clipping gradients to prevent excessive updates. Deep Q Networks led to the development of two advanced variants, Double Q Learning and Dueling DQNs. Although these versions build on the original DQN framework, our testing focused solely on the original algorithm, and therefore, we will not discuss these variants further.
+
+            \begin{algorithm}[htbp]
+            \caption{Deep Q-learning with Experience Replay (\cite{mnih2013playing})}
+            \begin{algorithmic}[1]
+            \State Initialize replay memory $D$ to capacity $N$
+            \State Initialize action-value function $Q$ with random weights
+            \For{episode $= 1$ to $M$}
+                \State Initialise sequence $s_1 = \{x_1\}$ and preprocessed sequence $\phi_1 = \phi(s_1)$
+                \For{$t = 1$ to $T$}
+                    \State With probability $\epsilon$ select a random action $a_t$
+                    \State otherwise select $a_t = \max_a Q^*(\phi(s_t), a; \theta)$
+                    \State Execute action $a_t$ in emulator and observe reward $r_t$ and image $x_{t+1}$
+                    \State Set $s_{t+1} = s_t, a_t, x_{t+1}$ and preprocess $\phi_{t+1} = \phi(s_{t+1})$
+                    \State Store transition $(\phi_t, a_t, r_t, \phi_{t+1})$ in $D$
+                    \State Sample random minibatch of transitions $(\phi_j , a_j , r_j , \phi_{j+1})$ from $D$
+                    \State Set $y_j = r_j$ for terminal $\phi_{j+1}$
+                    \State Set $y_j = r_j + \gamma \max_{a'} Q(\phi_{j+1}, a'; \theta)$ for non-terminal $\phi_{j+1}$
+                    \State Perform a gradient descent step on $(y_j - Q(\phi_j , a_j ; \theta))^2$
+                \EndFor
+            \EndFor
+            \end{algorithmic}
+            \end{algorithm}
+
+        \subsubsection{Quantile Regression Deep Q Network (QR-DQN)}
+        \label{sec:qrdqn}
+        
+            \noindent Quantile regression introduces a distributional approach to DQNs (\autoref{sec:dqn}), shifting from modeling the mean or expected return in a supervised setting to learning the \textbdd{full distribution of values} (\textcolor{deepblue}{\cite{dabney2017distributional}; \cite{stable-baselines3}}). This method explicitly models a distribution over returns rather than merely estimating the mean. In the seminal paper, the authors represented the returns as a random variable $Z$, whose expected value corresponds to the Q-value. In their research, the authors demonstrated that for a fixed policy, the Bellman operator applied to a value distribution is a contraction in the maximal form of the \textbdd{Wasserstein distance}. This led to the development of the algorithm known as \textbdd{C51} (\textcolor{deepblue}{\cite{bellemare2017distributional}}). However, employing the Wasserstein metric in loss calculations has proven to be practically infeasible because stochastic gradient methods cannot be directly applied. To overcome parts of this, C51 approximates the distribution by parameterizing $N$ fixed locations and adjusting the probabilities at these points to approximate the true distribution of the random variable. 
+            
+            \bigskip
+            
+            
+            \noindent QR-DQN fixes the above approach by constraining the probabilities to a uniform distribution and adjusting only the locations, or \textbdd{quantiles}, of the random variable $Z$. These quantiles act as dividing points within the range of the probability distribution over returns. Like its predecessor, QR-DQN employs the Wasserstein distance (\textcolor{deepblue}{\cite{dabney2017distributional}}). It stochastically adjusts the locations of these quantiles to minimize the Wasserstein distance between the approximate distribution and the target distribution.
+            
+            \bigskip
+            
+            \noindent To parameterize a model using parameters $\theta$ and a quantile distribution $Z_\theta$, each action pair is mapped to a uniform distribution supported on ${\theta(x,a)}$. This setup results in the following notation (\textcolor{deepblue}{\cite{dabney2017distributional}; \autoref{eq:parametric-z-variable}}):
+            
+            \begin{equation}
+                Z_\theta(x, a) = \frac{1}{N} \sum_{i=1}^{N} \underbrace{\delta_{\theta_i}(x, a)}_{\text{Dirac}}.
+                \label{eq:parametric-z-variable}
+            \end{equation}
+            
+            \noindent In the context of QR-DQN, when the Bellman update is projected onto the approximation space, it typically loses its contractive properties. However, it was demonstrated that the distributional Bellman update, when projected onto a parameterized quantile distribution in QR-DQN, retains its \textbdd{contraction characteristics} (\textcolor{deepblue}{\cite{bellemare2017distributional}}). Unlike traditional DQN that uses Huber loss, QR-DQN adapts this to \textbdd{Quantile Huber} loss to accommodate the distributional approach. The original Q-function update is modified by employing the distributional Bellman optimality operator, resulting in the updated formulation as follows (\textcolor{deepblue}{\cite{dabney2017distributional}; \autoref{eq:distributional-bellman}}):
+            
+            \begin{equation}
+                \mathrm{T} Z(x, a) = R(x, a) + \gamma Z(x', a'), \quad x' \sim P(\cdot|x, a), \quad a' = \text{arg}\underset{a'}{\text{ max}} \mathbb{E}_{z \sim Z(x', a')} \left[  z \right].
+                \label{eq:distributional-bellman}
+            \end{equation}
+            
+            \noindent In QR-DQN, the action selected for the next state is determined by the mean of the next state-action value distribution. In terms of neural network architecture, compared to traditional DQN, the primary modification required is the resizing of the output layers to accommodate $|A| \times N$, where $|A|$ represents the number of actions and $N$ represents the number of quantiles, which is a hyperparameter. Additionally, the loss function is updated from the standard Huber loss to a Quantile Huber loss to reflect the distributional approach (\textcolor{deepblue}{\cite{yang2020fully}}).
+
+    \subsection{Evolution Strategies}
+    \label{subsec:evol}
+
+        \noindent Evolutionary algorithms are a specific subset of optimization techniques that find unique applications in reinforcement learning. Though evolutionary algorithms and RL are strictly categorized as distinct subfields, evolutionary strategies are useful for neural network search and optimization, enhancing methods such as deep Q-learning and policy gradient techniques. Despite being less sample efficient than conventional RL algorithms, evolutionary algorithms require less computational resources and are easily parallelizable, leading to improved processing speeds (\textcolor{deepblue}{\cite{Yanes2021}}). 
+        
+        \bigskip
+        
+        \noindent Evolutionary algorithms draw inspiration from \textbdd{biological evolution}, utilizing processes such as reproduction, mutation, recombination, natural selection, and survival of the fittest. These mechanisms make them inherently proficient at exploration and optimization tasks. Among these, the \textbdd{genetic algorithm} (\textcolor{deepblue}{\cite{1975Holland}}) is a fairly well-known algorithm, simulating the process of natural selection inspired by Charles Darwin’s theory. However, a significant challenge with genetic algorithms is the encoding of the problem space, which does not always ensure the discovery of the most optimal solution, especially in vast search spaces.
+        
+        \bigskip
+        
+        \noindent We utilized a specific domain of evolution, called\textbdd{evolutionary artificial neural networks}, often termed Neuro-Evolution (\textcolor{deepblue}{\cite{Galvan_2021}}). These methods optimize neural network architecture by evolving topologies, connections, activation functions, the number of hidden layers, and even weights until an optimal solution is reached. Neuro-Evolution is particularly valuable in scenarios where domain-specific knowledge is limited, making it challenging to construct an optimal network architecture through conventional means. In our environment, neuroevolution has been employed to systematically explore the optimization space by conducting randomized searches for an optimal policy.
+
+        \subsubsection{Augmented Random Search (ARS)}
+        \label{sec:ars}
+    
+            \noindent Augmented Random Search (ARS) addresses the\textbdd{reproducibility crisis} in reinforcement learning, which has seen models become increasingly sample-efficient yet complex and challenging to replicate (\textcolor{deepblue}{\cite{mania2018simple}; \cite{stable-baselines3}}). ARS simplifies this approach by being a straightforward policy parameter search algorithm that incorporates basic techniques to enhance its effectiveness in control tasks. It is designed to overcome challenges such as initialization issues and sensitivity to random seeding (\textcolor{deepblue}{\cite{henderson2019deep}}), making it a robust alternative to more complex algorithms.
+            
+            \bigskip
+            
+            \noindent Augmented Random Search (ARS) is a\textbdd{derivation-free} algorithm, closely related to evolutionary algorithms in its operation. Each update in ARS is scaled by the standard deviation of the rewards collected during that update step. System states are normalized using only estimates of their mean and standard deviation. Unlike many other reinforcement learning strategies, ARS does not utilize neural networks. Instead, it operates with a simple linear policy (\textcolor{deepblue}{\cite{mania2018simple}}).
+            
+            \bigskip
+            
+            \noindent Basic Random Search (BRS) (\textcolor{deepblue}{\cite{mania2018simple}}), the predecessor to Augmented Random Search (ARS), explores the parameter space rather than the action space. BRS selects a random direction on the sphere within the parameter space and optimizes the function along this chosen direction. The updates directions are calculated as follows (\textcolor{deepblue}{\cite{mania2018simple}; \autoref{eq:ars-update-directions}}):
+            
+            \begin{equation}
+                \frac{r(\pi_{\theta+\nu\delta}, \xi_1) - r(\pi_{\theta-\nu\delta}, \xi_2)}{\nu},
+                \label{eq:ars-update-directions}
+            \end{equation}
+            
+            \noindent Where $\nu$ is a positive real number and $\delta$ is a zero-mean Gaussian, the update function in Basic Random Search (BRS) is unbiased with respect to the parameters when $\nu$ is small. Additionally, using minibatch updates can also reduce variance. This approach results in a smoothed objective function. Augmented Random Search enhances BRS by implementing larger updates to the parameters, scaling the steps with the standard deviation of the rewards collected in each iteration. ARS also improves efficiency by discarding\textbdd{perturbation directions} that yield the least improvement in reward.
+            
+            \begin{algorithm}[htbp]
+            \caption{Augmented Random Search (\cite{mania2018simple})}
+            \begin{algorithmic}[1]
+            \State \textbdd{Hyperparameters:} step-size $\alpha$, number of directions sampled per iteration $N$, standard deviation of exploration noise $\nu$, number of top-performing directions to use $b$.
+            \State \textbdd{Initialize:} Set $M_0$, $\mu_0$, $\Sigma_0 = I_n \in \mathbb{R}^{n \times n}$ and $j = 0$
+            \While{ending condition not satisfied}
+                \State Sample $\delta_1, \delta_2, \ldots, \delta_N$ in $\mathbb{R}^{p \times n}$ with i.i.d. standard normal entries.
+                \State Collect $2N$ rollouts of horizon $H$ and their corresponding rewards using the $2N$ policies:
+                \begin{align*}
+                &\text{V1:}
+                    \begin{cases} 
+                        \pi_{j,k,+}(x) = (M_j + \nu \delta_k)x \\
+                        \pi_{j,k,-}(x) = (M_j - \nu \delta_k)x
+                    \end{cases}
+                &\text{V2:}
+                    \begin{cases} 
+                        \pi_{j,k,+}(x) = (M_j + \nu \delta_k)x\text{ diag}(\Sigma_j)^{-1/2}(x - \mu_j) \\
+                        \pi_{j,k,-}(x) = (M_j - \nu \delta_k)x\text{ diag}(\Sigma_j)^{-1/2}(x - \mu_j)
+                    \end{cases}
+                \end{align*}
+                \State Sort the directions $\delta_k$ by $\max\{r(\pi_{j,k,+}), r(\pi_{j,k,-})\}$ and by $\pi_{j,(k),+}$ and $\pi_{j,(k),-}$ the corresponding policies.
+                \State Make the update step:
+                $$
+                M_{j+1} = M_j + \frac{\alpha}{b\sigma_R} \sum_{k=1}^b \left [r(\pi_{j,(k),+}) - r(\pi_{j,(k),-}) \right ] \delta_{(k)}
+                $$
+                \State Set $\mu_{j+1}, \Sigma_{j+1}$ to be the mean and covariance of the $2N H (j + 1)$ states encountered from the start of training.
+                \State $j \leftarrow j + 1$
+            \EndWhile
+            \end{algorithmic}
+            \end{algorithm}
+            
+            \bigskip
+            
+            \noindent Since these algorithms are designed to work with linear policies, they are primarily suited for\textbdd{control tasks}. However, we sought to assess their performance in more complex environments, such as Lux, particularly in discrete problem settings. Our findings support the assertion made in the seminal paper that these algorithms do not perform well in discrete tasks or within more complex environmental representations. 
+
+
+\subsection{MLP Policies}
+\label{sec:mlp-policies}
+
+    \noindent In the field of reinforcement learning (RL), an agent's decision-making is determined by its policy. One prominent implementation choice is Multi-Layer Perceptron (MLP) policies. Neural networks provide an expressive and adaptable architecture for mapping observations to actions. This subsection delves into the most essential state-of-the-art deep learning techniques that we have applied during our research, namely Residual Networks (\autoref{subsec:residual}), Leaky RELU activations (\autoref{subsec:leaky-relu}), Squeeze-and-Excitation Blocks (\autoref{subsec:se}), Batch Normalization (\autoref{subsec:batchnorm}), Spectral Normalization (\autoref{subsec:spectralnorm}), and Orthogonal Weight Initialization (\autoref{subsec:ortho}).
+
+    \subsubsection{Residual Network}\label{subsec:residual}
+
+        \noindent Residual Networks were developed as a response to the increasing complexity of model depth in image recognition tasks. Progressing from AlexNet (\textcolor{deepblue}{\cite{AlexNet}}) to VGG16 (\textcolor{deepblue}{\cite{simonyan2015deep}}), GoogLeNet (\textcolor{deepblue}{\cite{szegedy2014going}}), and finally to ResNet-50 (\textcolor{deepblue}{\cite{he2015deep}}), which has a depth of 50 layers, ResNets introduced a crucial feature called\textbdd{residual} or\textbdd{skip connections} (\textcolor{deepblue}{\autoref{fig:residual-net}}). These connections allow layers to receive information not only from adjacent layers but also from earlier layers via direct links, creating a parallel path for more effective information flow. Highlighted in the seminal paper by the Microsoft Research team, ResNets, despite their lower complexity relative to VGG-16, achieved an 8x increase in depth with 152 layers and recorded a $3.57\%$ error rate on the ImageNet dataset (\textcolor{deepblue}{\cite{he2015deep}}). This architecture's efficiency comes from its ability to enable later layers to learn only the\textbdd{residual differences} from their inputs rather than the entire function mapping. Specifically, if the desired output $H(x)$ is defined as $H(x)=F(x) + x$, where $F(x)$ represents the residual mapping to be learned, thus the network effectively learning an identity function when $F(x)=0$, i.e., when there is no difference between $x$ and $H(x)$.
+        
+        \bigskip
+        
+        \begin{figure}[htbp]
+            \centering
+            \includegraphics[width=0.45\linewidth]{images/methods_mono/residuals/residual_net.png}
+            \captionsetup{justification=justified, singlelinecheck=false, width=1\linewidth, labelfont=bf} 
+            \caption[]{A representation of a residual block and its utilization in Residual Networks, which usually include preprocessing layers, which can vary by input type. For images, this often involves convolution layers coupled with max pooling and ReLU activations. The network's head typically consists of a sequence of linear projection layers.}
+            \label{fig:residual-net}
+        \end{figure}
+        
+        
+        \noindent Residual connections address the challenge posed by extremely deep networks, where during the lengthy backpropagation process, the gradients of the loss functions can diminish to the point of vanishing. This premature vanishing effectively halts the learning process. By implementing residual connections, there is improved gradient flow throughout the network, which not only counters the\textbdd{vanishing gradient problem} but also helps prevent overfitting and deterioration of the model's performance. Residual networks address the gradient vanishing problem by functioning as an ensemble of shallow networks, which helps to avoid the issues associated with gradient explosions rather than directly solving them. This architectural approach is particularly beneficial in reinforcement learning tasks where the environment requires complex representations, enabling deeper networks to learn more effective mappings from inputs to outputs.
+
+    \subsubsection{Leaky ReLU}
+    \label{subsec:leaky-relu}
+
+        \noindent Leaky Rectified Linear Unit (Leaky ReLU) (\cite{xu2015empirical}) is a variant of the popular Rectified Linear Unit (ReLU) (\cite{agarap2019deep}) activation function. While ReLU sets negative values to zero, Leaky ReLU\textbdd{introduces a small, non-zero slope for negative inputs}. Unlike ReLU, the slope coefficient in Leaky ReLU is pre-defined and remains fixed throughout training, rather than being learned. This activation function is particularly useful in scenarios where\textbdd{sparse gradients} are a concern, such as training generative adversarial networks or actor-critic networks in reinforcement learning. In these contexts, maintaining non-zero gradients for negative inputs helps prevent the issue of \textbdd{dying ReLU} (\cite{Lu_2020}).
+        
+        \bigskip
+        
+        \noindent By allowing gradients to propagate even for negative inputs, Leaky ReLU effectively prevents them from vanishing, promoting more stable learning. Moreover, it\textbdd{pairs well with} techniques like\textbdd{orthogonal weight initialization}. It's important to note that the choice of activation function and weight initialization method can significantly impact the training dynamics and performance of neural networks. Therefore, careful consideration of these factors is essential for achieving optimal results in various tasks and domains (\cite{datta2020survey}; \cite{shengyi2022the37implementation}).
+        
+        \begin{figure}[htbp]
+            \centering
+            \includegraphics[width=0.6\linewidth]{images/methods_mono/leaky_relu/leaky_relu.png}
+            \captionsetup{justification=justified, singlelinecheck=false, width=1\linewidth, labelfont=bf} 
+            \caption[]{The figure illustrates the limitation of the popular ReLU activation function, which creates a \textbdd{dead zone} where negative inputs are squashed to zero. In contrast, Leaky ReLU addresses this issue by allowing negative outputs as well, introducing a small, pre-defined slope for negative inputs. This slope, typically fine-tuned for specific tasks, prevents the dead zone and ensures gradients can flow even for negative inputs. We used the default value for this slope, which is set to 0.01 in the official PyTorch implementation (\cite{pytorchinit}).}
+            \label{fig:leaky-relu}
+        \end{figure}
+
+    \subsubsection{Squeeze-and-Excitation Block} \label{subsec:se}
+
+        \noindent The concept behind Squeeze and Excitation networks is straightforward: to enhance the performance of ResNets with minimal computational overhead, thus optimizing the performance tradeoff (\textcolor{deepblue}{\cite{hu2017squeezeandexcitation}}). The approach involves adding parameters to each channel of a convolutional block, allowing the network to adaptively adjust the weighting of each feature map. This enables the network to learn an ordering of\textbdd{feature map importance}, effectively prioritizing certain features. This method is similar to feature selection techniques in machine learning (\textcolor{deepblue}{\cite{FeatureSelection}}), but with the key difference that it is learned dynamically by the network.
+        
+        \bigskip
+        
+        \begin{figure}[htbp]
+            \centering
+            \includegraphics[width=0.9\linewidth]{images/methods_mono/se_block/se_layer.png}
+            \captionsetup{justification=justified, singlelinecheck=false, width=1\linewidth, labelfont=bf} 
+            \caption[]{The figure illustrates how the channel-wise aggregation and self-gating mechanism generate per-feature channel weights for the original input. This process highlights the sequential transformation from spatial aggregation to the modulation of feature importance.}
+            \label{fig:seop}
+        \end{figure}
+        
+        \noindent After the residual layers, the network branches into a\textbdd{squeezing} path that compresses the input from $H\times W\times C$ to $1\times 1\times C$, effectively creating a channel descriptor that aggregates the feature maps across the spatial dimensions $H$ and $W$ (\textcolor{deepblue}{\cite{hu2017squeezeandexcitation}}). This aggregation is followed by an\textbdd{excitation} operation, a self-gating mechanism that generates per-channel modulation weights from input embeddings. These weights are then applied to scale the channels of the original input $H\times W\times C$, which is then passed to subsequent layers for further processing.
+
+    \subsubsection{Batch Normalization} \label{subsec:batchnorm}
+
+        \noindent As networks grew deeper, not only was there a need for residual connections, but also for advanced regularization techniques as well (\cite{TIAN2022146}). Batch normalization has come to light as a suitable solution in response to the challenges of deepening neural networks. Deep networks often employ\textbdd{saturating nonlinearities} or activation functions that lead to a phenomenon known as internal\textbdd{covariate shift} (\cite{ioffe2015batch}). This shift refers to the change in the distribution of network activations due to the updating of network parameters during training. When inputs pass through an activation function, they may be pushed to the extreme values of the function’s range, resulting in saturation. Saturation is problematic because it leads to derivatives near zero, especially noticeable in functions like the sigmoid, which squishes values between zero and one. Consequently, the derivatives at the extremes of the sigmoid function approach zero, causing very small updates during backpropagation (\cite{7376778}). This issue becomes more pronounced as network depth increases, eventually reaching a point where the network cannot effectively update its weights based on the loss function.
+        
+        \begin{figure}[htbp]
+          \centering
+          \begin{subfigure}{0.49\textwidth}
+            \includegraphics[width=\linewidth]{images/methods_mono/batch_norm/relu.png}
+            
+            \caption{ReLU nonlinearity.}
+            \label{fig:image1}
+          \end{subfigure}
+          \hfill
+          \begin{subfigure}{0.49\textwidth}
+            \includegraphics[width=\linewidth]{images/methods_mono/batch_norm/sigmoid.png}
+            \caption{Sigmoid nonlinearity.}
+            \label{fig:image2}
+          \end{subfigure}
+        
+          \medskip
+        
+          \begin{subfigure}{0.49\textwidth}
+            \includegraphics[width=\linewidth]{images/methods_mono/batch_norm/swish.png}
+            \caption{Swish nonlinearity.}
+            \label{fig:image3}
+          \end{subfigure}
+          \hfill
+          \begin{subfigure}{0.49\textwidth}
+            \includegraphics[width=\linewidth]{images/methods_mono/batch_norm/tanh.png}
+            \caption{Tanh nonlinearity.}
+            \label{fig:image4}
+          \end{subfigure}
+            \captionsetup{justification=justified, singlelinecheck=false, width=1\linewidth, labelfont=bf} 
+          \caption{These figures illustrate various popular activation functions alongside their derivative functions. We highlight regions at the extremes of each function where the derivatives are squished to very small values. In these regions, the network's updates during training are minimal.}
+          \label{fig:2x2grid}
+        \end{figure}
+        
+        \bigskip
+        
+        \noindent Batch Normalization originates from the standard practice of normalizing input data to zero mean and unit variance, which optimizes gradient descent by ensuring updates are consistent across all feature dimensions. This uniformity in the loss landscape results in smoother updates. Batch normalization applies this principle to batches of data within the neural network, normalizing the activations from each layer to help the gradients converge more effectively (\cite{ioffe2015batch}).
+        
+        \bigskip
+        
+        \noindent Batch normalization utilizes two learnable parameters, beta $(\beta)$ and gamma $(\gamma$), and two non-learnable parameters, the moving averages of mean and variance. The process involves calculating the mean and standard deviation for the batch, normalizing inputs, and then using $\beta$ and $\gamma$ to scale and shift these values. These adjustments allow the activations to shift to means other than zero and variances other than unit variance. The moving averages of mean and variance are updated based on the current batch's calculations. This normalization is performed for each feature channel. By stabilizing the learning process, batch normalization reduces the need for additional regularization methods, enables\textbdd{higher learning rates}, and decreases dependency on advanced initialization techniques (\cite{ioffe2015batch}).
+
+        \begin{comment}
+        \noindent In our model, we use batch normalization at\textbdd{each hidden layer}. We decided to apply the normalization\textbdd{before the activation functions} since this is what the original paper's authors suggested. In the layers where batch normalization is enabled, biases are disabled to avoid unnecessary computations (\cite{goodfellow-batchnorm}).
+        \end{comment}
+
+    \subsubsection{Spectral Normalization} \label{subsec:spectralnorm}
+
+        \noindent Spectral normalization, originally employed to stabilize the training of\textbdd{discriminator networks} in Generative Adversarial Networks (GANs) (\cite{miyato2018spectral}), has been sparsely adopted for use in actor-critic policy gradient methods in reinforcement learning. In GANs, spectral normalization addresses training instability and the issue of\textbdd{mode collapse}, which occurs when the generated and real distributions become disjoint, leading to vanishing gradients (\cite{yoshida2017spectral}). The structure of GANs, with distinct generator and discriminator networks, is similar to actor-critic methods in reinforcement learning, where actors and critics serve complementary roles. Additionally, Wasserstein GANs (WGANs) utilize the Wasserstein distance (\cite{wiki:Wasserstein_metric}) for their cost function, which provides smoother gradients. However, its effectiveness is based upon adhering to a\textbdd{Lipschitz constraint} $K$. Lipschitz continuous functions restrict how quickly the function values can change, maintaining a slope between any two points that is less than or equal to a constant K, known as the Lipschitz constant (\cite{wiki:Lipschitz_continuity}).
+        
+        \bigskip
+        
+        \noindent  This same principle can be applied in actor-critic methods in reinforcement learning, where spectral normalization stabilizes the training of critics by rescaling the weight tensor using the spectral norm $\sigma$, calculated using power iteration methods (\textcolor{deepblue}{\cite{pytorch2}; \autoref{eq:spectral_norm}}). 
+        
+        \begin{equation}
+            W_{\text{sn}} = \frac{W}{\sigma(W)}, \quad \sigma(W) = \underset{h: h \neq 0}{\max}\frac{\left\Vert W h \right\Vert_2}{\left\Vert h \right\Vert_2}
+            \label{eq:spectral_norm}
+        \end{equation}
+        
+        \noindent When spectral normalization is applied in reinforcement learning, both the actor and critic are trained simultaneously and are interdependent. Applying spectral normalization to the critic helps reduce the risk of\textbdd{policy collapse} (\cite{dohare2023overcoming}), where the actor might learn a suboptimal or\textbdd{degenerate policy}. Furthermore, in policy gradient methods, if learning rates and initialization are not properly managed, one network may dominate the other, leading to an imbalance. Spectral normalization has been demonstrated to increase the generalization and stability of reinforcement learning algorithms, particularly in complex domains such as those involving Atari games, where it has been effectively integrated with Deep Q-Networks (\cite{gogianu2021spectral}).
+
+    \subsubsection{Orthogonal Weight Initialization}
+    \label{subsec:ortho}
+        
+        \noindent Weight initialization is essential in deep neural networks as it sets the\textbdd{starting point} for training. Various methods have been employed for this purpose, with random initialization being one of the simplest. In random initialization, weights are assigned values from a normal distribution, which helps mitigate the vanishing gradient problem but can introduce significant variance within the network (\cite{hu2020provable}). Other popular methods include Xavier (\cite{kumar2017weight}) and Kaiming initialization (\cite{he2015delving}), which are effective for shallow and moderately deep networks. For more complex architectures, especially in deeper or recurrent neural networks (RNNs), orthogonal initialization is often used. This technique involves initializing the weights with an \textbdd{orthogonal matrix} (\cite{wiki:Orthogonal_matrix}), a square matrix whose columns and rows are orthogonal unit vectors. This ensures that the weights are independent and maintain equal magnitude.
+        
+        \bigskip
+        
+        \noindent Orthogonal initialization offers several benefits, particularly for deep linear networks, where it has been shown that the network width necessary for convergence to the global optimum does not depend on depth, unlike other initialization techniques that scale linearly with the number of layers (\cite{hu2020provable}). Additionally, the benefits of orthogonal initialization persist throughout training. This technique is also applied in practical scenarios, for instance, in the implementation of Proximal Policy Optimization (PPO), where it is used to initialize the hidden layers in Mujoco tasks, scaled by $\sqrt{2}$ with biases set to zero (\cite{shengyi2022the37implementation}).
+
+    \section{Environment} \label{sec:env}
+    \label{sec:environment}
+
+        \noindent The Lux AI Environment represents a 2D grid platform tailored for Multi-Agent Reinforcement Learning (MARL) research (\cite{chen2023emergent}), designed to tackle challenges in multi-variable optimization, resource acquisition, and allocation within a competitive 1v1 setting. Beyond optimization, proficient agents are tasked with adeptly analyzing their adversaries and formulating strategic policies to gain a decisive advantage (\textcolor{deepblue}{\cite{lux-ai-season-2}}). The environment is fully observed by all agents.
+        
+    \subsection{Map}
+
+        \noindent The world of Lux is represented as a\textbdd{2D grid}. Coordinates increase east (right) and south (down). The map is always a square and has a variable size of 32, 48, 64 or 128 tiles. The (0, 0) coordinate is at the top left. The map has various features, including raw resources (Ice, Ore), refined resources (Water, Metal), units (Light, Heavy), Factories, Rubble, and Lichen. \textcolor{deepblue}{\autoref{fig:lux-map}} shows two possible generations of the game environment, visualizing different block types and resources. In our research, we utilized Lux AI S2 version $2.2.0$ as the engine for our experiments (\textcolor{deepblue}{\cite{luxais2_neurips_23}}).
+        
+        \begin{figure}[htbp]
+            \centering
+            \includegraphics[width=0.62\linewidth]{images/intro_luxenv/map/resources.png}
+            \captionsetup{justification=justified, singlelinecheck=false, width=1\linewidth, labelfont=bf}    
+            \caption{Visual Representation of Lux 2D map types, which exhibit unique layouts, each generated based on specific seeds. In cave maps, resources are situated inside ravines, while mountain maps, presenting a more challenging terrain, hide resources beneath extensive rubble.}
+            \label{fig:lux-map}
+        \end{figure}
+
+
+    \subsection{Early Game}
+    \label{subsec:early-game}
+
+        \noindent Each player will start the game by bidding on factory placement order, then alternating placing several factories and specifying their starting resources. Factory placement policies play a crucial role in speeding up the learning process within the game environment. By strategically situating units closer to resources, these policies establish a less cluttered and more conducive proximity environment, thereby promoting faster resource collection. Additionally, the introduction of bidding mechanisms enhances the competitive aspect of the game, compelling players to outbid one another for optimal factory spawn locations. Players are given starting resources for the bidding process. \textcolor{deepblue}{\autoref{fig:lux-map2}} shows map states after concluding the \textbdd{factory placement} and \textbdd{bidding tasks}.
+        
+        \begin{figure}[htbp]
+            \centering
+            \includegraphics[width=0.62\linewidth]{images/intro_luxenv/map/factories_units.png}
+            \captionsetup{justification=justified, singlelinecheck=false, width=1\linewidth, labelfont=bf}    
+            \caption{Visual representation of a random factory placement policy on the two generated maps presented on \textcolor{deepblue}{\autoref{fig:lux-map}}. For further restrictions on factory placement and bidding, please refer to the more in-depth documentation \protect\footnotemark.}
+            \label{fig:lux-map2}
+        \end{figure}
+        
+        \footnotetext{Advanced specifications available on \href{https://github.com/Lux-AI-Challenge/Lux-Design-S2/blob/main/docs/advanced_specs.md}{GitHub.}}
+        
+    \subsection{Resources}
+        
+        \noindent The two kinds of raw resources shown in \textcolor{deepblue}{\autoref{fig:lux-map}}, Ice and Ore, can be refined by a factory into Water or Metal respectively. The raw resources are collected by Light or Heavy units and then dropped off once a unit transfers them to a friendly factory, which then automatically converts them into refined resources at a constant rate. Refined resources are used for growing Lichen, powering factories as well as building more units. For detailed conversion rates and restrictions on transferring resources, please refer to the documentation (\textcolor{deepblue}{\cite{lux-ai-season-2}}).
+
+
+
+    \subsection{Actions}
+    \label{subsec:lux-action}
+        
+        \noindent Units and factories can perform actions at each turn, given certain conditions and enough power to do so. In general, all actions are simultaneously applied and are validated against the state of the game at the start of each turn (\cite{chen2023emergent}). Every turn, players can give an action to each factory and a queue of actions to each unit. Units always execute actions from an action queue, which is limited to a size of 20, while factories directly execute actions. Players can choose to repeat actions for $n$ times, which further complicates the action queue. Submitting a new action queue for a robot requires the robot to use additional power to replace it's current action queue. It costs an additional $1$ power, for light units and an additional $10$ power, for heavy units. For further information regarding action queue updates and repeat handling, please, refer to the documentation (\textcolor{deepblue}{\cite{lux-ai-season-2}}). There are six possible action types that are simplified for easier understanding on \textcolor{deepblue}{\autoref{fig:lux-actions}}.
+        
+        \bigskip
+        
+        \begin{figure}[htbp]
+            \centering
+            \includegraphics[width=1\linewidth]{images/intro_luxenv/action/action_space.png}
+            \captionsetup{justification=justified, singlelinecheck=false, width=1\linewidth, labelfont=bf} 
+            \caption{Simplified representation of all possible actions available in the Lux environment. Additional limits and restrictions are applied in the implementation of the engine (\textcolor{deepblue}{\cite{lux-ai-season-2}}).}
+            \label{fig:lux-actions}
+        \end{figure}
+        
+        \noindent A factory is a building that takes up $3\times3$ tiles of space. Units created from the factory will appear at the center of the factory. Factories can assume passive roles with fixed heuristic action generation, alongside active roles where actions are learned. The action vectors for both factories and units are 1D vectors. Given $n$ units and $m$ factories, predicting action vectors yields matrices of $n\times6$ and $m\times1$, respectively. The response template to the \textbdd{Lux engine} conforms to the format illustrated in \textcolor{deepblue}{\autoref{fig:lux-actions_ex}}.
+        
+        \begin{figure}[htbp]
+            \centering
+            \includegraphics[width=1\linewidth]{images/intro_luxenv/action/action_example.png}
+            \captionsetup{justification=justified, singlelinecheck=false, width=1\linewidth, labelfont=bf}
+            \caption{Visual example of possible action vectors for both units and factories.}
+            \label{fig:lux-actions_ex}
+        \end{figure}
+
+    \subsection{Rubble Dynamics}
+    
+        \noindent Each square on the map has a rubble value, which affects how difficult that square is to move onto. Rubble value is an integer ranging from 0 to 100. Rubble can be removed from a square by a light or heavy unit by executing the dig action while occupying the square. This environment also has unit collisions. Units that move onto the same square on the same turn can be destroyed and add rubble to the square according to a list of extensive rules in the documentation (\textcolor{deepblue}{\cite{lux-ai-season-2}}). Rubble on top of an ice or ore square prevents resource collection, forcing the unit to first clear away all rubble in order to access the needed resources. Growing Lichen is also not possible on squares with any amount of rubble present.
+
+    \subsection{Night Cycles}
+    
+        \noindent Night cycles are introduced as a complexity measure in the Lux Environment to enhance dynamism and continual change. The environment alternates between \textbdd{day cycles}, which last 30 steps, and \textbdd{night cycles}, which are 20 steps long. This alternation continues until the episode concludes at 1,000 steps. During night cycles, the recharging capability of units is stopped, although factories continue to produce power without change (\textcolor{deepblue}{\cite{lux-ai-season-2}; \cite{chen2023emergent}}).
+
+    \subsection{Win Condition}
+    \label{sec:wincondition}
+    
+        \noindent A game can be resolved in four possible ways:
+        
+        \begin{itemize}[itemsep=4pt, parsep=0pt]
+        \item 
+        In the event that all factories belonging to a player explode, the opposing player is declared the winner.
+        \item 
+        If both players lose their last factories in the same step, the game ends in a draw.
+        \item If each player maintains at least one operational factory, victory in the Lux AI environment is determined by the quantity of Lichen tiles under their control. Lichen watering serves a dual purpose: establishing victory conditions and generating additional power for factories. Due to the intricate nature of power calculations and lichen watering dynamics, we advise consulting the detailed documentation for further understanding (\textcolor{deepblue}{\cite{lux-ai-season-2}}).
+        \item If the quantity of owned Lichen tiles match, the game concludes in a draw.
+        \end{itemize}
+        \noindent
 
 
 
