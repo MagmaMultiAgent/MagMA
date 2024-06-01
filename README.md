@@ -1,29 +1,37 @@
-<p align="center">
-    <img width="30%"  src="docs/images/logo.png"/>
-    <img width="30%"  src="docs/images/core.png"/>
-</p>
+![Version](https://img.shields.io/badge/python-v3.9-blue)&nbsp;![GitHub issues](https://img.shields.io/github/issues/MagmaMultiAgent/MagmaCore)&nbsp;![GitHub](https://img.shields.io/github/license/MagmaMultiAgent/MagmaCore)&nbsp;![GitHub release (with filter)](https://img.shields.io/github/v/release/MagmaMultiAgent/MagmaCore)&nbsp;![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Getlar/5a256487d767cc5d606d29bd521a18ae/raw/algo.json)&nbsp;![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Getlar/59b429b8fd9c4a525959c66dfa4ab97e/raw/TDK.json)
 
-![Version](https://img.shields.io/badge/python-v3.9-blue)&nbsp;![GitHub issues](https://img.shields.io/github/issues/MagmaMultiAgent/MagmaCore)&nbsp;![GitHub](https://img.shields.io/github/license/MagmaMultiAgent/MagmaCore)&nbsp;![GitHub release (with filter)](https://img.shields.io/github/v/release/MagmaMultiAgent/MagmaCore)&nbsp;![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Getlar/5a256487d767cc5d606d29bd521a18ae/raw/algo.json)
+# MagMA - TDK
 
-# MagmaCore - Multi-Agent Tooling for LuxAI
+Our presentation and TDK thesis are available on this branch.
 
-MagmaCore is a comprehensive toolkit designed to facilitate multi-agent system development within the LuxAI ecosystem. Our current branches have the following status:
-
-## Live Branches:
-
-✅ v0.0.2-AQ
-
-
-## Deprecated Branches:
-
-❌ v0.0.1-CNN
-
-❌ v0.0.1-CNN-mixed
-
-❌ v0.0.1-factory-net
-
-❌ v0.0.1-CNN-fixed
-
-❌ v0.0.1-CNN-action-per-unit
-
-❌ alpha-*
+![TDK-1](Presentation/TDK-1.jpg)
+![TDK-2](Presentation/TDK-2.jpg)
+![TDK-3](Presentation/TDK-3.jpg)
+![TDK-4](Presentation/TDK-4.jpg)
+![TDK-5](Presentation/TDK-5.jpg)
+![TDK-6](Presentation/TDK-6.jpg)
+![TDK-7](Presentation/TDK-7.jpg)
+![TDK-8](Presentation/TDK-8.jpg)
+![TDK-9](Presentation/TDK-9.jpg)
+![TDK-10](Presentation/TDK-10.jpg)
+![TDK-11](Presentation/TDK-11.jpg)
+![TDK-12](Presentation/TDK-12.jpg)
+![TDK-13](Presentation/TDK-13.jpg)
+![TDK-14](Presentation/TDK-14.jpg)
+![TDK-15](Presentation/TDK-15.jpg)
+![TDK-16](Presentation/TDK-16.jpg)
+![TDK-17](Presentation/TDK-17.jpg)
+![TDK-18](Presentation/TDK-18.jpg)
+![TDK-19](Presentation/TDK-19.jpg)
+![TDK-20](Presentation/TDK-20.jpg)
+![TDK-21](Presentation/TDK-21.jpg)
+![TDK-22](Presentation/TDK-22.jpg)
+![TDK-23](Presentation/TDK-23.jpg)
+![TDK-24](Presentation/TDK-24.jpg)
+![TDK-25](Presentation/TDK-25.jpg)
+![TDK-26](Presentation/TDK-26.jpg)
+![TDK-27](Presentation/TDK-27.jpg)
+![TDK-28](Presentation/TDK-28.jpg)
+![TDK-29](Presentation/TDK-29.jpg)
+![TDK-30](Presentation/TDK-30.jpg)
+![TDK-31](Presentation/TDK-31.jpg)
