@@ -1,4 +1,4 @@
-![Version](https://img.shields.io/badge/python-v3.9-blue)&nbsp;![GitHub issues](https://img.shields.io/github/issues/MagmaMultiAgent/MagmaCore)&nbsp;![GitHub](https://img.shields.io/github/license/MagmaMultiAgent/MagmaCore)&nbsp;![GitHub release (with filter)](https://img.shields.io/github/v/release/MagmaMultiAgent/MagmaCore)&nbsp;![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Getlar/5a256487d767cc5d606d29bd521a18ae/raw/algo.json)&nbsp;![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Getlar/59b429b8fd9c4a525959c66dfa4ab97e/raw/TDK.json)
+![Version](https://img.shields.io/badge/python-v3.9-blue)&nbsp;![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Getlar/5a256487d767cc5d606d29bd521a18ae/raw/algo.json)&nbsp;![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Getlar/59b429b8fd9c4a525959c66dfa4ab97e/raw/TDK.json)
 
 # MagMA - TDK
 
