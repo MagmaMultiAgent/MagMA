@@ -60,9 +60,10 @@ jobs:
 
     - name: Install Lux AI Python packages (if not in conda env)
       run: |
-        conda activate luxai_s2  # Activate environment if necessary (based on setup-conda)
+        echo "begin: PATH=$PATH;"
+        conda activate luxai_s2  
         pip install --no-cache-dir --upgrade pip
-        pip install --no-cache-dir -r requirements_GH.txt  # Install additional requirements (if any)
+        pip install --no-cache-dir -r requirements_GH.txt 
       shell: bash  # Only necessary if using pip install
 
     - name: Initialize CodeQL
