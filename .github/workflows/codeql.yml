@@ -24,57 +24,27 @@ jobs:
       contents: read
       security-events: write
 
-    defaults:
-        run:
-          shell: bash -l {0}
-
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [ 'python' ]
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
-      
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
 
-    - name: Install required system packages
-      run: |
-        sudo apt-get update --fix-missing
-        sudo apt-get install -y wget bzip2 ca-certificates curl git build-essential manpages-dev
-        sudo apt-get clean
-        sudo rm -rf /var/lib/apt/lists/*
-
-    - name: Setup Conda environment (using actions/setup-conda)
-      uses: conda-incubator/setup-miniconda@v2
-      with:
-        miniconda-version: "latest"
-        channels: bioconda, conda-forge, defaults
-        use-only-tar-bz2: true  # IMPORTANT: This needs to be set for caching to work properly!
-        auto-update-conda: true
-        auto-activate-base: false
-        environment-file: envs/conda/environment.yml
-        activate-environment: luxai_s2
-
-    - name: Copy pip requirements file
-      run: cp envs/pip/requirements_GH.txt .  # Only needed if you have separate pip requirements
-
-    - name: Install Lux AI Python packages (if not in conda env)
-      run: |
-        conda init bash
-        conda config --set always_yes yes --set changeps1 no
-        conda update -q conda
-        conda activate luxai_s2  
-        pip install --no-cache-dir --upgrade pip
-        pip install --no-cache-dir -r requirements_GH.txt 
-      shell: bash -el {0}  # Only necessary if using pip install
-
-    - name: Initialize CodeQL
-      uses: github/codeql-action/init@v2
-      with:
-        languages: ${{ matrix.language }}
-
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v2
-      with:
-        category: "/language:${{ matrix.language }}"
+      - name: Install required system packages
+        run: |
+          sudo apt-get update --fix-missing
+          sudo apt-get install -y wget bzip2 ca-certificates curl git build-essential manpages-dev
+          sudo apt-get clean
+          sudo rm -rf /var/lib/apt/lists/*
+      - name: Install dependencies
+        run: |
+          # $CONDA is an environment variable pointing to the root of the miniconda directory
+          $CONDA/bin/conda env update --file environment.yml --name base
+      - name: Lint with flake8
+        run: |
+          $CONDA/bin/conda install flake8
+          # stop the build if there are Python syntax errors or undefined names
+          $CONDA/bin/flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+          $CONDA/bin/flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
