@@ -59,4 +59,4 @@ jobs:
         
     - name: Analysing the code with pylint
       run: |
-        pylint $(git ls-files '*.py' ':!:src/luxai_s2/*' ':!:src/sb3_contrib/*' ':!:src/stable_baselines3/*') --fail-under=8
+        $CONDA/bin/pylint $(git ls-files '*.py' ':!:src/luxai_s2/*' ':!:src/sb3_contrib/*' ':!:src/stable_baselines3/*') --fail-under=8
