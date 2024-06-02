@@ -48,9 +48,21 @@ jobs:
           # $CONDA is an environment variable pointing to the root of the miniconda directory
           $CONDA/bin/conda env update --file environment.yml
           $CONDA/bin/conda init bash
+          
       
       - name: Install Lux AI Python packages
         run: |
+            source $CONDA/bin/activate luxai_s2
             pip install --no-cache-dir --upgrade pip
             pip install --no-cache-dir -r requirements_GH.txt 
         shell: bash -el {0}  # Only necessary if using pip install
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: ${{ 'python' }}
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+        with:
+          category: "/language:${{ 'python' }}"
