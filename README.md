@@ -1,23 +1,21 @@
-
 <p align="center">
-    <img width="100%"  src="docs/images/logo.png" />
+    <img width="100%"  src="docs/images/logo.png"/>
 </p>
 
-[![Docker Publish](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/docker-publish.yml/badge.svg?branch=main)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/docker-publish.yml)&nbsp;[![Pylint](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pylint.yml/badge.svg)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pylint.yml)&nbsp;[![CodeQL](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/github-code-scanning/codeql/badge.svg?branch=main)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/github-code-scanning/codeql)&nbsp;[![PyTest](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pytest.yml/badge.svg?branch=main)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pytest.yml)&nbsp;![Version](https://img.shields.io/badge/python-v3.8-blue)&nbsp;![GitHub issues](https://img.shields.io/github/issues/Getlar/VigIL-Game-Validation)&nbsp;![GitHub](https://img.shields.io/github/license/Getlar/VigIL-Game-Validation)&nbsp;![GitHub release (with filter)](https://img.shields.io/github/v/release/Getlar/VigIL-Game-Validation)&nbsp;![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Getlar/5a256487d767cc5d606d29bd521a18ae/raw/algo.json)
+[![Docker Publish](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/docker-publish.yml/badge.svg?branch=main)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/docker-publish.yml)&nbsp;[![Pylint](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pylint.yml/badge.svg)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pylint.yml)&nbsp;[![CodeQL](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/github-code-scanning/codeql/badge.svg?branch=main)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/github-code-scanning/codeql)&nbsp;[![PyTest](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pytest.yml/badge.svg?branch=main)](https://github.com/Getlar/VigIL-Game-Validation/actions/workflows/pytest.yml)&nbsp;![Version](https://img.shields.io/badge/python-v3.8-blue)&nbsp;![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Getlar/5a256487d767cc5d606d29bd521a18ae/raw/algo.json)&nbsp;![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Getlar/59b429b8fd9c4a525959c66dfa4ab97e/raw/TDK.json)&nbsp;![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Getlar/68de4e5ec35fcfe2a3f5583059a90521/raw/status.json)
 
-# VigIL - Lux AI Competition
+# MagMA - Single Unit Testbench
 
-This repository contains a thesis research exploring **AI-based Game Validation**, along with a partial submission and template for the second edition of the annual **NeurIPS** conference in 2023.
+We started with a **benchmarking study** to assess the performance of various RL algorithms within a standardized environment to identify the optimal algorithm for our purposes. We utilized OpenAI’s Gym (not Gymnasium at the time) package ([Brockman et al. 2016](https://arxiv.org/abs/1606.01540)) for compatibility with the Lux package and PettingZoo ([J. Terry et al. 2021](https://arxiv.org/abs/2009.14471)) for environment parallelization. To access state-of-the- art RL algorithms, we conducted our simple benchmarking study using Stable Baselines 3 ([Raffin et al. 2021](https://jmlr.org/papers/v22/20-1364.html)), a reliable collection of reinforcement learning algorithms implemented in PyTorch. This toolkit provided us with a unified framework for all included algorithms and offered subprocess-level vectorization through Python’s Ray (**Ray/RLlib**) framework ([Moritz et al. 2018](https://arxiv.org/abs/1712.05889)), TensorBoard sup- port ([Abadi et al. 2016](https://arxiv.org/abs/1605.08695)), and easy out-of-the-box usability. Another significant advantage of **Stable Baselines 3** is the fidelity of its implementation to the original specifications in the respective research papers, which meant that only minimal parameter adjustments were necessary for usage. Due to hard- ware constraints, specifically the availability of only eight logical CPU cores on our local machine, we were limited to running a maximum of eight parallel environments through subprocess-level vectorization. A more detailed description of the testbench can be found in our [TDK thesis](https://github.com/MagmaMultiAgent/MagmaCore/tree/TDK/TDK).
 
-The **Lux AI Challenge** is a competition where competitors design agents to tackle a multi-variable optimization, resource gathering, and allocation problem in a 1v1 scenario against other competitors. In addition to optimization, successful agents must be capable of analyzing their opponents and developing appropriate policies to get the upper hand.
 
 # Getting Started
 
-I highly recommend utilizing Docker to set up and manage the environment on your system. Alternatively, a binary installation is also a viable option, especially considering the excellent performance and reliability of the official [pip](https://pypi.org/project/luxai-s2/) package.
+I highly recommend utilizing Docker to set up and manage the environment on your system. Alternatively, a **Conda** installation is also a viable option, especially considering the excellent performance and reliability of the official [pip](https://pypi.org/project/luxai-s2/) package.
 
 ## Docker
 
-For implementing this solution, it's essential to have Docker Desktop installed on your system. Detailed guides for setting up Docker Desktop on [Mac](https://docs.docker.com/desktop/install/mac-install/), [Windows](https://docs.docker.com/desktop/install/windows-install/), and [Linux](https://docs.docker.com/desktop/install/linux-install/) can be accessed through the official Docker website. 
+For implementing this solution, it's essential to have Docker Desktop installed on your system. Detailed guides for setting up Docker Desktop on [Mac](https://docs.docker.com/desktop/install/mac-install/), [Windows](https://docs.docker.com/desktop/install/windows-install/), and [Linux](https://docs.docker.com/desktop/install/linux-install/) can be accessed through the official Docker website.
 
 ### CPU
 
@@ -45,50 +43,36 @@ Efficiently develop and test code within a Visual Studio Container by cloning th
 
 On a Mac, using a Dev Container can lead to problems due to image incompatibility with `ARM processors`. For Macs, it's better to utilize [dockerRun](https://github.com/Getlar/VigIL-Game-Validation/blob/main/docker_run.sh). If you're on an `x86-64 processor`, opt for the `VS Code` dev container.
 
-## Binary
+## Conda
 
-You will need `Python 3.8` installed on your system. Once installed, you can install the Lux AI season 2 environment and optionally the GPU version with:
-
-```bash
-pip install --upgrade luxai_s2
-pip install juxai-s2 # installs the GPU version, requires a compatible GPU
-```
-
-Due to potential compatibility challenges when installing `gym` alongside `vec_noise` and the `stable_baselines3` package, it is advisable to apply specific version **tags** during installation to prevent potential crashes. To mitigate this, I've streamlined the package selection in the [environment.yml file](https://github.com/Getlar/VigIL-Game-Validation/blob/main/envs/conda/environment.yml), aiming to alleviate strain on the conda environment setup.
-
-To create a conda environment and use it run:
+You will need `Python 3.9` installed on your system. Once installed. To create a conda environment and use it run:
 
 ```bash
-conda env create -f environment.yml
+conda env create -f envs/conda/environment.yml
 conda activate luxai_s2
+
+pip install --no-cache-dir ipykernel
+python -m ipykernel install --user --name=luxai_s2 --display-name "LuxAI S2"
 ```
 
-To install **additional packages** required to train and run specific agents run the following commands:
+To install **the rest of the packages** required to train and run specific agents run the following commands:
 
-#### Devtools:
+### Pip Packages
+
 ```bash
-apt update -y && apt upgrade -y && apt install -y build-essential && apt-get install -y manpages-dev # Required if dev tools are missing.
-```
-#### Base packages:
-```bash
-pip install setuptools==57.1.0 psutil==5.7.0 \ 
-    pettingzoo==1.12.0 vec_noise==1.1.4 ipykernel moviepy  pytest \
-    pygame termcolor wheel==0.38.4 notebook tensorboard
-```
-#### Lux packages:
-```bash
-pip install sb3_contrib stable_baselines3==1.7.0 gym==0.21 --upgrade luxai_s2
+pip install --no-cache-dir --upgrade pip
+pip install --no-cache-dir -r envs/pip/requirements_GH.txt
+
 ```
 
-#### Install JAX support: (Optional)
+### Install JAX support: (Optional)
+
 ```bash
 pip install --no-cache-dir juxai-s2
 ```
-
-To test the existing implementation check out the [running docs](https://github.com/Getlar/VigIL-Game-Validation/blob/main/src/README.MD).
 
 # Core Contributors
 
 I would like to extend my heartfelt gratitude to [Gulyás László](https://github.com/lesIII) for their invaluable guidance and insightful mentorship throughout the course of this project.
 
-I am also thankful to **Eötvös Lóránd University** for providing the necessary resources and environment that facilitated the development of this project.
+I am also thankful to **Eötvös Loránd University** and **The Department of Artificial Intelligence** for providing the necessary resources and environment that facilitated the development of this project.

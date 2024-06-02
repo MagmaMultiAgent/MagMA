@@ -14,6 +14,7 @@ on:
       - '!v0.0.1-CNN-mixed'
       - '!v0.0.1-action-per-unit'
       - '!v0.0.1-factory-net'
+
 jobs:
   analyze:
     name: Analyze
@@ -24,48 +25,88 @@ jobs:
       security-events: write
 
     strategy:
-      fail-fast: false
-      matrix:
-        language: [ 'python' ]
+        fail-fast: false
+        matrix:
+          language: [ 'python' ]
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
-      
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.8
-    - name: Set up Conda
-      uses: conda-incubator/setup-miniconda@v2
-      with:
-        auto-update-conda: false
-        miniconda-version: 'latest'
 
-    - name: Install devtools
+    - name: Install required system packages
       run: |
-        sudo apt-get update -y 
-        sudo apt-get upgrade -y 
-        sudo apt-get install -y build-essential 
-        sudo apt-get install -y manpages-dev
+        sudo apt-get update --fix-missing
+        sudo apt-get install -y wget bzip2 ca-certificates curl git build-essential manpages-dev
+        sudo apt-get clean
+        sudo rm -rf /var/lib/apt/lists/*
 
-    - name: Install dependencies
+    - name: Install Miniconda
       run: |
-        python -m pip install --upgrade pip
-        pip install pylint 
-        pip install -r envs/pip/requirements.txt
-        pip install vec-noise==1.1.4
-        pip install stable_baselines3==1.7.0
-        pip install gym==0.21
-        pip install --upgrade luxai_s2
-        pip install sb3-contrib
-        pip install pytest
-        
+        wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh
+        /bin/bash ~/miniconda.sh -b -p $HOME/miniconda
+        rm ~/miniconda.sh
+        $HOME/miniconda/bin/conda clean -a
+        echo ". $HOME/miniconda/etc/profile.d/conda.sh" >> $GITHUB_ENV
+        echo "conda activate base" >> ~/.bashrc
+
+    - name: Set environment variables
+      run: echo "$HOME/miniconda/bin" >> $GITHUB_ENV
+
+    - name: Copy conda environment file
+      run: cp envs/conda/environment.yml .
+
+    - name: Copy pip requirements file
+      run: cp envs/pip/requirements_GH.txt .
+
+    - name: Create Conda environment
+      run: |
+        . $HOME/miniconda/etc/profile.d/conda.sh
+        conda env create -f environment.yml
+        conda clean -afy
+
+    - name: Set up bash to run with luxai_s2 conda environment
+      shell: bash
+      run: |
+        echo "conda activate luxai_s2" >> ~/.bashrc
+
+    - name: Set PATH for the Conda environment
+      run: echo "$HOME/miniconda/envs/luxai_s2/bin" >> $GITHUB_ENV
+
+    - name: Install ipykernel
+      run: |
+        . $HOME/miniconda/etc/profile.d/conda.sh
+        conda activate luxai_s2
+        pip install --no-cache-dir ipykernel
+
+    - name: Add Lux conda env to ipykernel to run Notebooks
+      run: |
+        . $HOME/miniconda/etc/profile.d/conda.sh
+        conda activate luxai_s2
+        python -m ipykernel install --user --name=luxai_s2 --display-name "LuxAI S2"
+
+    - name: Install Lux AI Python packages
+      run: |
+        . $HOME/miniconda/etc/profile.d/conda.sh
+        conda activate luxai_s2
+        pip install --no-cache-dir --upgrade pip
+
+    - name: Install additional requirements
+      run: |
+        . $HOME/miniconda/etc/profile.d/conda.sh
+        conda activate luxai_s2
+        pip install --no-cache-dir -r requirements.txt
+
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v2
       with:
         languages: ${{ matrix.language }}
-        
+
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
       with:
         category: "/language:${{matrix.language}}"
+
+        
+
+
+                
