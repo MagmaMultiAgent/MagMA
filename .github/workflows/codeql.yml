@@ -46,6 +46,16 @@ jobs:
         /bin/bash ~/miniconda.sh -b -p $HOME/miniconda
         rm ~/miniconda.sh
         $HOME/miniconda/bin/conda clean -a
+        echo "export PATH=$HOME/miniconda/bin:$PATH" >> $HOME/.bashrc
+
+    - name: Set up Conda environment
+      run: |
+        source $HOME/.bashrc
+        conda init bash
+        conda config --set always_yes yes --set changeps1 no
+        conda update -q conda
+        conda info -a
+      shell: bash
 
     - name: Initialize Conda
       run: echo "source $HOME/miniconda/etc/profile.d/conda.sh" >> $BASH_ENV
