@@ -61,6 +61,7 @@ jobs:
 
     - name: Install Lux AI Python packages (if not in conda env)
       run: |
+        conda init bash
         conda update -q conda
         pip install --no-cache-dir --upgrade pip
         pip install --no-cache-dir -r requirements_GH.txt 
