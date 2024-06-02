@@ -46,8 +46,6 @@ jobs:
         /bin/bash ~/miniconda.sh -b -p $HOME/miniconda
         rm ~/miniconda.sh
         $HOME/miniconda/bin/conda clean -a
-      env:
-        PATH: ${{ github.workspace }}/miniconda/bin:$(echo $PATH)
 
     - name: Initialize Conda
       run: echo "source $HOME/miniconda/etc/profile.d/conda.sh" >> $BASH_ENV
