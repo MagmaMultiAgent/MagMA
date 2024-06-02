@@ -60,5 +60,5 @@ jobs:
     - name: Run PyTest
       run: |
         source $CONDA/bin/activate luxai_s2
-        PYTHONPATH=src/. pytest -v --cov=src tests/
+        PYTHONPATH=src/. pytest -v tests/
       #shell: bash -el {0}  # Only necessary if using pip install
