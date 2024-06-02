@@ -23,7 +23,7 @@ jobs:
       actions: read
       contents: read
       security-events: write
-      
+
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python 3.9
@@ -59,4 +59,4 @@ jobs:
         
     - name: Analysing the code with pylint
       run: |
-        $CONDA/bin/pylint $(git ls-files '*.py' ':!:src/luxai_s2/*' ':!:src/sb3_contrib/*' ':!:src/stable_baselines3/*') --fail-under=8
+        pylint $(git ls-files '*.py' ':!:src/luxai_s2/*' ':!:src/sb3_contrib/*' ':!:src/stable_baselines3/*') --fail-under=8

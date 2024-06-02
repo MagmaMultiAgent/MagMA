@@ -58,4 +58,4 @@ jobs:
 
     - name: Run PyTest
       run: |
-        PYTHONPATH=src/. $CONDA/bin/pytest -v --cov=src tests/
+        PYTHONPATH=src/. pytest -v --cov=src tests/
