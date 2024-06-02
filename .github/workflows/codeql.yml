@@ -40,66 +40,21 @@ jobs:
         sudo apt-get clean
         sudo rm -rf /var/lib/apt/lists/*
 
-    - name: Install Miniconda
+    - name: Setup Conda environment (using actions/setup-conda)
+      uses: actions/setup-conda@v2
+      with:
+        conda-version: "latest"
+        environment-file: envs/conda/environment.yml
+
+    - name: Copy pip requirements file (optional)
+      run: cp envs/pip/requirements_GH.txt .  # Only needed if you have separate pip requirements
+
+    - name: Install Lux AI Python packages (if not in conda env)
       run: |
-        wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh
-        /bin/bash ~/miniconda.sh -b -p $HOME/miniconda
-        rm ~/miniconda.sh
-        $HOME/miniconda/bin/conda clean -a
-        echo "export PATH=$HOME/miniconda/bin:$PATH" >> $HOME/.bashrc
-
-    - name: Set up Conda environment
-      run: |
-        source $HOME/.bashrc
-        conda init bash
-        conda config --set always_yes yes --set changeps1 no
-        conda update -q conda
-        conda info -a
-      shell: bash
-
-    - name: Initialize Conda
-      run: echo "source $HOME/miniconda/etc/profile.d/conda.sh" >> $BASH_ENV
-
-    - name: Copy conda environment file
-      run: cp envs/conda/environment.yml .
-
-    - name: Copy pip requirements file
-      run: cp envs/pip/requirements_GH.txt .
-
-    - name: Create Conda environment
-      run: |
-        source $HOME/miniconda/etc/profile.d/conda.sh
-        conda env create -f environment.yml
-        conda clean -afy
-      shell: bash
-
-    - name: Install ipykernel
-      run: |
-        source $HOME/miniconda/etc/profile.d/conda.sh
-        conda activate luxai_s2
-        pip install --no-cache-dir ipykernel
-      shell: bash
-
-    - name: Add Lux conda env to ipykernel to run Notebooks
-      run: |
-        source $HOME/miniconda/etc/profile.d/conda.sh
-        conda activate luxai_s2
-        python -m ipykernel install --user --name=luxai_s2 --display-name "LuxAI S2"
-      shell: bash
-
-    - name: Install Lux AI Python packages
-      run: |
-        source $HOME/miniconda/etc/profile.d/conda.sh
-        conda activate luxai_s2
+        conda activate luxai_s2  # Activate environment if necessary (based on setup-conda)
         pip install --no-cache-dir --upgrade pip
-      shell: bash
-
-    - name: Install additional requirements
-      run: |
-        source $HOME/miniconda/etc/profile.d/conda.sh
-        conda activate luxai_s2
-        pip install --no-cache-dir -r requirements_GH.txt
-      shell: bash
+        pip install --no-cache-dir -r requirements_GH.txt  # Install additional requirements (if any)
+      shell: bash  # Only necessary if using pip install
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v2
@@ -109,4 +64,4 @@ jobs:
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
       with:
-        category: "/language:${{matrix.language}}"
+        category: "/language:${{ matrix.language }}"
