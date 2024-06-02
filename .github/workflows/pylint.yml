@@ -60,3 +60,4 @@ jobs:
     - name: Analysing the code with pylint
       run: |
         $CONDA/bin/pylint $(git ls-files '*.py' ':!:src/luxai_s2/*' ':!:src/sb3_contrib/*' ':!:src/stable_baselines3/*') --fail-under=8
+      shell: bash -el {0}  # Only necessary if using pip install
