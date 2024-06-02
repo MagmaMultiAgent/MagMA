@@ -71,7 +71,12 @@ jobs:
         env:
           TAGS: ${{ steps.meta_cpu.outputs.tags }}
           DIGEST: ${{ steps.build-and-push-cpu.outputs.digest }}
-        run: echo "${TAGS}" | xargs -I {} cosign sign --yes {}@${DIGEST}
+          FULCIO_ROOT: /github/workspace/fulcio_v1.crt
+        run: |
+          curl -sSfLo $FULCIO_ROOT https://raw.githubusercontent.com/sigstore/fulcio/main/crtfulcio_v1.crt
+          for i in {1..5}; do
+            echo "${TAGS}" | xargs -I {} cosign sign --yes --fulcio-url https://fulcio.sigstore.dev --fulcio-oidc-url https://oauth2.sigstore.dev/auth {}@${DIGEST} && break || sleep 10;
+          done
 
   build_gpu:
     runs-on: ubuntu-latest
@@ -124,4 +129,9 @@ jobs:
         env:
           TAGS: ${{ steps.meta_gpu.outputs.tags }}
           DIGEST: ${{ steps.build-and-push-gpu.outputs.digest }}
-        run: echo "${TAGS}" | xargs -I {} cosign sign --yes {}@${DIGEST}
+          FULCIO_ROOT: /github/workspace/fulcio_v1.crt
+        run: |
+          curl -sSfLo $FULCIO_ROOT https://raw.githubusercontent.com/sigstore/fulcio/main/crtfulcio_v1.crt
+          for i in {1..5}; do
+            echo "${TAGS}" | xargs -I {} cosign sign --yes --fulcio-url https://fulcio.sigstore.dev --fulcio-oidc-url https://oauth2.sigstore.dev/auth {}@${DIGEST} && break || sleep 10;
+          done
