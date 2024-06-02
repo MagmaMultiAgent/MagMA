@@ -62,7 +62,9 @@ jobs:
     - name: Install Lux AI Python packages (if not in conda env)
       run: |
         conda init bash
+        conda config --set always_yes yes --set changeps1 no
         conda update -q conda
+        conda activate luxai_s2  
         pip install --no-cache-dir --upgrade pip
         pip install --no-cache-dir -r requirements_GH.txt 
       shell: bash -el {0}  # Only necessary if using pip install
