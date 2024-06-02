@@ -47,9 +47,11 @@ jobs:
         run: |
           # $CONDA is an environment variable pointing to the root of the miniconda directory
           $CONDA/bin/conda env update --file environment.yml
+          $CONDA/bin/conda init bash
+          $CONDA/bin/conda activate luxai_s2
       
       - name: Install Lux AI Python packages
         run: |
-            $CONDA/bin pip install --no-cache-dir --upgrade pip
-            $CONDA/bin pip install --no-cache-dir -r requirements_GH.txt 
+            pip install --no-cache-dir --upgrade pip
+            pip install --no-cache-dir -r requirements_GH.txt 
         shell: bash -el {0}  # Only necessary if using pip install
