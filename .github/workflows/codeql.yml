@@ -50,6 +50,6 @@ jobs:
       
       - name: Install Lux AI Python packages
         run: |
-            $CONDA/bin/conda pip install --no-cache-dir --upgrade pip
-            $CONDA/bin/conda pip install --no-cache-dir -r requirements_GH.txt 
+            $CONDA/bin pip install --no-cache-dir --upgrade pip
+            $CONDA/bin pip install --no-cache-dir -r requirements_GH.txt 
         shell: bash -el {0}  # Only necessary if using pip install
