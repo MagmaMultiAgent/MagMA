@@ -48,15 +48,16 @@ jobs:
           $CONDA/bin/conda env update --file environment.yml
           $CONDA/bin/conda init bash
           
+          
       
     - name: Install Lux AI Python packages
       run: |
             source $CONDA/bin/activate luxai_s2
             pip install --no-cache-dir --upgrade pip
             pip install --no-cache-dir -r requirements_GH.txt 
-      shell: bash -el {0}  # Only necessary if using pip install
+      #shell: bash -el {0}  # Only necessary if using pip install
 
     - name: Run PyTest
       run: |
         PYTHONPATH=src/. pytest -v --cov=src tests/
-      shell: bash -el {0}  # Only necessary if using pip install
+      #shell: bash -el {0}  # Only necessary if using pip install
