@@ -52,22 +52,19 @@ jobs:
         channels: bioconda, conda-forge, defaults
         use-only-tar-bz2: true  # IMPORTANT: This needs to be set for caching to work properly!
         auto-update-conda: true
-        auto-activate-base: true
+        auto-activate-base: false
         environment-file: envs/conda/environment.yml
+        activate-environment: luxai_s2
 
     - name: Copy pip requirements file
       run: cp envs/pip/requirements_GH.txt .  # Only needed if you have separate pip requirements
 
     - name: Install Lux AI Python packages (if not in conda env)
       run: |
-        conda init bash
-        conda config --set always_yes yes --set changeps1 no
         conda update -q conda
-        conda info -a
-        conda activate luxai_s2  
         pip install --no-cache-dir --upgrade pip
         pip install --no-cache-dir -r requirements_GH.txt 
-      shell: bash  # Only necessary if using pip install
+      shell: bash -el {0}  # Only necessary if using pip install
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v2
