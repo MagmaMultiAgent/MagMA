@@ -46,16 +46,11 @@ jobs:
         /bin/bash ~/miniconda.sh -b -p $HOME/miniconda
         rm ~/miniconda.sh
         $HOME/miniconda/bin/conda clean -a
+      env:
+        PATH: ${{ github.workspace }}/miniconda/bin:$(echo $PATH)
 
     - name: Initialize Conda
-      run: |
-        echo ". $HOME/miniconda/etc/profile.d/conda.sh" >> $GITHUB_ENV
-        echo "conda activate base" >> $GITHUB_ENV
-
-    - name: Set environment variables
-      run: |
-        echo "PATH=$HOME/miniconda/bin:$PATH" >> $GITHUB_ENV
-        echo "CONDA_ENV=base" >> $GITHUB_ENV
+      run: echo "source $HOME/miniconda/etc/profile.d/conda.sh" >> $BASH_ENV
 
     - name: Copy conda environment file
       run: cp envs/conda/environment.yml .
@@ -65,34 +60,38 @@ jobs:
 
     - name: Create Conda environment
       run: |
-        . $HOME/miniconda/etc/profile.d/conda.sh
+        source $HOME/miniconda/etc/profile.d/conda.sh
         conda env create -f environment.yml
         conda clean -afy
-        echo "conda activate luxai_s2" >> $GITHUB_ENV
+      shell: bash
 
     - name: Install ipykernel
       run: |
-        . $HOME/miniconda/etc/profile.d/conda.sh
+        source $HOME/miniconda/etc/profile.d/conda.sh
         conda activate luxai_s2
         pip install --no-cache-dir ipykernel
+      shell: bash
 
     - name: Add Lux conda env to ipykernel to run Notebooks
       run: |
-        . $HOME/miniconda/etc/profile.d/conda.sh
+        source $HOME/miniconda/etc/profile.d/conda.sh
         conda activate luxai_s2
         python -m ipykernel install --user --name=luxai_s2 --display-name "LuxAI S2"
+      shell: bash
 
     - name: Install Lux AI Python packages
       run: |
-        . $HOME/miniconda/etc/profile.d/conda.sh
+        source $HOME/miniconda/etc/profile.d/conda.sh
         conda activate luxai_s2
         pip install --no-cache-dir --upgrade pip
+      shell: bash
 
     - name: Install additional requirements
       run: |
-        . $HOME/miniconda/etc/profile.d/conda.sh
+        source $HOME/miniconda/etc/profile.d/conda.sh
         conda activate luxai_s2
         pip install --no-cache-dir -r requirements_GH.txt
+      shell: bash
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v2
