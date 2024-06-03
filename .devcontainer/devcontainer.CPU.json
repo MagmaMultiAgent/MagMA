@@ -9,9 +9,9 @@
             "github.copilot-chat", "github.vscode-github-actions", "ms-python.vscode-pylance"]
         }
     },
-    "workspaceFolder": "/usr/src/magmacore",
+    "workspaceFolder": "/usr/src/magma",
     "mounts": [
-        "source=${localWorkspaceFolder},target=/usr/src/magmacore,type=bind,consistency=cached"
+        "source=${localWorkspaceFolder},target=/usr/src/magma,type=bind,consistency=cached"
     ],
     "forwardPorts": [ 8888 ]
 }
