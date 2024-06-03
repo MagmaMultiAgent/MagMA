@@ -1,7 +1,7 @@
 FROM ubuntu:latest
 
 # Set working directory
-WORKDIR '/usr/src/magmacore'
+WORKDIR '/usr/src/luxai'
 
 # Install required system packages
 RUN apt-get update --fix-missing && \
@@ -24,8 +24,8 @@ ENV PATH /opt/conda/bin:$PATH
 # Copy conda environment file
 COPY envs/conda/environment.yml .
 
-# Copy requirements file
-COPY envs/pip/requirements.txt .
+# Copy pip environment file
+COPY envs/pip/requirements_GH.txt .
 
 # Create environment from yaml file
 RUN conda env create -f environment.yml && conda clean -afy
@@ -36,16 +36,17 @@ SHELL ["conda", "run", "-n", "luxai_s2", "/bin/bash", "-c"]
 # Set PATH for the Conda environment
 ENV PATH /opt/conda/envs/luxai_s2/bin:$PATH
 
+# Install ipykernel
+RUN pip install --no-cache-dir ipykernel
+
+# Add Lux conda env to ipykernel to run Notebooks
+RUN python -m ipykernel install --user --name=luxai_s2 --display-name "LuxAI S2"
+
+# Install Lux AI Python packages
 RUN pip install --no-cache-dir --upgrade pip
 
 # Install basic dev tools, like GCC
 RUN apt update -y && apt upgrade -y && apt install -y build-essential && apt-get install -y manpages-dev
-
-# Install requirements
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Add Lux conda env to ipykernel to run Notebooks
-RUN python -m ipykernel install --user --name=luxai_s2 --display-name "LuxAI S2"
 
 # Switch back to bash
 SHELL ["/bin/bash","-c"]
@@ -55,4 +56,7 @@ RUN conda init
 
 # Activate luxai_s2 environment on bash startup
 RUN echo 'conda activate luxai_s2' >> ~/.bashrc
+
+# Install requirements
+RUN pip install --no-cache-dir -r requirements_GH.txt
 

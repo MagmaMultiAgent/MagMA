@@ -3,8 +3,14 @@ name: "CodeQL Advanced"
 on:
   push:
     branches:
-      - 'v0.0.1-CNN-mixed'
-      - '!master'
+      - '!main'
+      - '!v0.0.3-Hybrid'
+      - '!v0.0.3-TDK'
+      - 'v0.0.3-Monolithic'
+      - '!v0.0.3-SUT'
+      - '!v0.0.2-MA-Eval'
+      - '!v0.0.1-action-per-unit'
+      - '!v0.0.1-factory-net'
 
 jobs:
   analyze:
@@ -15,55 +21,45 @@ jobs:
       contents: read
       security-events: write
 
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [ 'python' ]
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+
+      - name: Install required system packages
+        run: |
+          sudo apt-get update --fix-missing
+          sudo apt-get install -y wget bzip2 ca-certificates curl git build-essential manpages-dev
+          sudo apt-get clean
+          sudo rm -rf /var/lib/apt/lists/*
+
+      - name: Copy requirements file
+        run: |
+          cp envs/pip/requirements_GH.txt .  # Only needed if you have separate pip requirements
+          cp envs/conda/environment.yml .
+
+      - name: Install dependencies
+        run: |
+          # $CONDA is an environment variable pointing to the root of the miniconda directory
+          $CONDA/bin/conda env update --file environment.yml
+          $CONDA/bin/conda init bash
+          
       
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.9
-    - name: Set up Conda
-      uses: conda-incubator/setup-miniconda@v2
-      with:
-        auto-update-conda: false
-        miniconda-version: 'latest'
+      - name: Install Lux AI Python packages
+        run: |
+            source $CONDA/bin/activate luxai_s2
+            pip install --no-cache-dir --upgrade pip
+            pip install --no-cache-dir -r requirements_GH.txt 
+        shell: bash -el {0}  # Only necessary if using pip install
 
-    - name: Install devtools
-      run: |
-        sudo apt-get update -y 
-        sudo apt-get upgrade -y 
-        sudo apt-get install -y build-essential 
-        sudo apt-get install -y manpages-dev
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: ${{ 'python' }}
 
-    - name: Install Pip
-      run: |
-        python -m pip install --upgrade pip
-
-    - name: Install vec_noise
-      run: |
-        pip install numpy==1.26.4
-        pip install wheel==0.42.0
-        pip install setuptools==69.0.3
-        pip install protobuf==4.24.0
-        pip install --disable-pip-version-check --no-deps --no-cache-dir vec_noise
-
-    - name: Install Requirements
-      run: |
-        pip install --no-cache-dir -r envs/pip/requirements_GH.txt
-        pip install --no-cache-dir --upgrade "jax[cuda11_cudnn82]==0.4.7" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-        pip install --no-cache-dir git+https://github.com/RoboEden/jux.git@dev
-        
-    - name: Initialize CodeQL
-      uses: github/codeql-action/init@v2
-      with:
-        languages: ${{ matrix.language }}
-        
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v2
-      with:
-        category: "/language:${{matrix.language}}"
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+        with:
+          category: "/language:${{ 'python' }}"
