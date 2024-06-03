@@ -3,15 +3,12 @@ name: Docker
 on:
   push:
     branches:
-      - '!v0.0.2-AQ-MA'
-      - '!v0.0.2-MA'
-      - '!v0.0.2-MA-Eval'
       - '!main'
-      - '!TDK'
-      - 'alpha-CNN'
-      - '!alpha-algo'
-      - '!v0.0.1-CNN'
-      - '!v0.0.1-CNN-mixed'
+      - '!v0.0.3-Hybrid'
+      - '!v0.0.3-TDK'
+      - '!v0.0.3-Monolithic'
+      - 'v0.0.3-SUT'
+      - '!v0.0.2-MA-Eval'
       - '!v0.0.1-action-per-unit'
       - '!v0.0.1-factory-net'
 
