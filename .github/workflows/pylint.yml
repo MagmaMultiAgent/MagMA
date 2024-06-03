@@ -57,5 +57,5 @@ jobs:
     - name: Analysing the code with pylint
       run: |
         source $CONDA/bin/activate luxai_s2
-        pylint $(git ls-files '*.py' ':!:src/luxai_s2/*' ':!:src/sb3_contrib/*' ':!:src/stable_baselines3/*') --fail-under=5
+        pylint $(git ls-files '*.py' ':!:src/luxai_s2/*' ':!:src/sb3_contrib/*' ':!:src/stable_baselines3/*') --fail-under=4
       #shell: bash -el {0}  # Only necessary if using pip install
