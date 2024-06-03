@@ -1,0 +1,32 @@
+name: CodeCoverage
+
+on:
+  push:
+    branches:
+      - '!v0.0.3-TDK'
+      - '!v0.0.3-Monolithic'
+      - '!v0.0.3-SUT'
+      - '!v0.0.2-MA-Eval'
+      - '!v0.0.1-action-per-unit'
+      - '!v0.0.1-factory-net'
+      - '!v0.0.3-Hybrid'
+      - 'main'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9"]
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v4.0.1
+      env:
+            token: ${{ secrets.CODECOV_TOKEN }}
+            slug: MagmaMultiAgent/MagmaCore

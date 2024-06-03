@@ -1,18 +1,25 @@
-name: Badge Updater
+name: Algorithm Badge Updater
+
 on:
   push:
     branches:
-      - 'v0.0.2-AQ'
-      - '!master'
+      - '!v0.0.3-TDK'
+      - '!v0.0.3-Monolithic'
+      - '!v0.0.3-SUT'
+      - '!v0.0.2-MA-Eval'
+      - '!v0.0.1-action-per-unit'
+      - '!v0.0.1-factory-net'
+      - '!v0.0.3-Hybrid'
+      - 'main'
     paths:
       - README.md
       - .github/workflows/badge.yml
 jobs:
   build:
-    name: Badges
+    name: Badge Updater
     runs-on: ubuntu-latest
     steps:
-      - name: Update Version Badge
+      - name: Update Algorithm Badge
         uses: schneegans/dynamic-badges-action@v1.6.0
         with:
           auth: ${{ secrets.GIST_SECRET }}
@@ -21,3 +28,23 @@ jobs:
           label: algorithm
           message: M-PPO
           color: orange
+
+      - name: Update TDK Badge
+        uses: schneegans/dynamic-badges-action@v1.6.0
+        with:
+            auth: ${{ secrets.GIST_SECRET }}
+            gistID: 59b429b8fd9c4a525959c66dfa4ab97e
+            filename: TDK.json
+            label: TDK
+            message: Passed
+            color: green
+
+      - name: Update Status Badge
+        uses: schneegans/dynamic-badges-action@v1.6.0
+        with:
+              auth: ${{ secrets.GIST_SECRET }}
+              gistID: 68de4e5ec35fcfe2a3f5583059a90521
+              filename: status.json
+              label: Status
+              message: Active
+              color: green

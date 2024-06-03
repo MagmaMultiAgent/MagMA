@@ -1,47 +1,61 @@
-name: Pylint
+name: PyTest
 
 on:
   push:
     branches:
-      - 'v0.0.2-AQ'
-      - '!master'
+      - '!v0.0.3-TDK'
+      - '!v0.0.3-Monolithic'
+      - '!v0.0.3-SUT'
+      - '!v0.0.2-MA-Eval'
+      - '!v0.0.1-action-per-unit'
+      - '!v0.0.1-factory-net'
+      - '!v0.0.3-Hybrid'
+      - 'main'
 
 jobs:
-  build:
+  analyze:
+    name: Analyze
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.9"]
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
     steps:
     - uses: actions/checkout@v3
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v2
       with:
-        python-version: ${{ matrix.python-version }}
+          python-version: 3.9
 
-    - name: Install devtools
+    - name: Install required system packages
       run: |
-        sudo apt-get update -y 
-        sudo apt-get upgrade -y 
-        sudo apt-get install -y build-essential 
-        sudo apt-get install -y manpages-dev
-    - name: Install Pip
-      run: |
-        python -m pip install --upgrade pip
+          sudo apt-get update --fix-missing
+          sudo apt-get install -y wget bzip2 ca-certificates curl git build-essential manpages-dev
+          sudo apt-get clean
+          sudo rm -rf /var/lib/apt/lists/*
 
-    - name: Install vec_noise
+    - name: Copy requirements file
       run: |
-        pip install numpy==1.26.4
-        pip install wheel==0.42.0
-        pip install setuptools==69.0.3
-        pip install protobuf==4.24.0
-        pip install --disable-pip-version-check --no-deps --no-cache-dir vec_noise
+          cp envs/pip/requirements_GH.txt .  # Only needed if you have separate pip requirements
+          cp envs/conda/environment.yml .
 
-    - name: Install Requirements
+    - name: Install dependencies
       run: |
-        pip install --no-cache-dir -r envs/pip/requirements_GH.txt
-        pip install --no-cache-dir --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-        pip install --no-cache-dir pylint
-    - name: Analysing the code with pylint
+          # $CONDA is an environment variable pointing to the root of the miniconda directory
+          $CONDA/bin/conda env update --file environment.yml
+          $CONDA/bin/conda init bash
+          
+          
+      
+    - name: Install Lux AI Python packages
       run: |
-        pylint $(git ls-files '*.py' ':!:src/luxai_s2/*') --fail-under=5
+            source $CONDA/bin/activate luxai_s2
+            pip install --no-cache-dir --upgrade pip
+            pip install --no-cache-dir -r requirements_GH.txt 
+      #shell: bash -el {0}  # Only necessary if using pip install
+
+    - name: Run PyTest
+      run: |
+        source $CONDA/bin/activate luxai_s2
+        PYTHONPATH=src/. pytest -v src/tests/
+      #shell: bash -el {0}  # Only necessary if using pip install

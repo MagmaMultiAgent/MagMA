@@ -23,7 +23,7 @@ if [ -z "$device" ] || [ -z "$version" ]; then
 fi
 
 if [ "$device" = "cpu" ]; then
-    docker run -it -p 8888:8888 -v $(pwd):/usr/src/magmacore ranuon98/luxai_cpu:"$version" /bin/bash
+    docker run -it -p 8888:8888 -v $(pwd):/usr/src/magma ranuon98/luxai_cpu:"$version" /bin/bash
 else
-    docker run -it --gpus all -p 8888:8888 -v $(pwd):/usr/src/magmacore ranuon98/luxai_gpu:"$version" /bin/bash
+    docker run -it --gpus all -p 8888:8888 -v $(pwd):/usr/src/magma ranuon98/luxai_gpu:"$version" /bin/bash
 fi
