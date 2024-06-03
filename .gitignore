@@ -30,5 +30,4 @@ replay.html
 *.Identifier
 *_test.py
 *.html
-results/
 *.pt
