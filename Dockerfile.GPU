@@ -1,7 +1,7 @@
 FROM nvidia/cuda:12.2.0-base-ubuntu20.04
 
 # Set working directory
-WORKDIR '/usr/src/luxai'
+WORKDIR '/usr/src/magma'
 
 # Install required system packages
 RUN apt-get update --fix-missing && \

@@ -1,7 +1,7 @@
 FROM ubuntu:latest
 
 # Set working directory
-WORKDIR '/usr/src/luxai'
+WORKDIR '/usr/src/magma'
 
 # Install required system packages
 RUN apt-get update --fix-missing && \

@@ -8,9 +8,9 @@
             "extensions": ["ms-python.python", "ms-toolsai.jupyter"]
         }
     },
-    "workspaceFolder": "/usr/src/luxai",
+    "workspaceFolder": "/usr/src/magma",
     "mounts": [
-        "source=${localWorkspaceFolder},target=/usr/src/luxai,type=bind,consistency=cached"
+        "source=${localWorkspaceFolder},target=/usr/src/magma,type=bind,consistency=cached"
     ],
     "forwardPorts": [ 8888 ]
 }
